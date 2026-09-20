@@ -1,0 +1,24 @@
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Local environment. Provider credentials never enter the repository; every test
+# uses the in-repo deterministic fake instead (PRD 5, 9).
+.env
+.env.*
+!.env.example
+
+# Evaluation and ingestion outputs are reproducible from a command and are
+# published as evidence artefacts, not committed as working files. Datasets
+# themselves are content-hashed and DO belong in the repository (PRD 8.1).
+.runs/
+.cache/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
