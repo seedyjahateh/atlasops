@@ -1,0 +1,36 @@
+{
+  "$comment": [
+    "The named fixture corpus PRD 4.5 measures against, and the seeded revision pair its",
+    "chunk-reuse row asks for. Three documents, with a one-paragraph edit to the largest.",
+    "",
+    "The corpus is this size on purpose. Chunk reuse is a ratio, so its resolution is one",
+    "over the number of chunks in the revised source: a six-chunk document quantises the",
+    "measurement to seventeen-point steps, and a 90% target is then not merely unmet but",
+    "unmeasurable. A document that chunks into roughly twenty is the smallest fixture on",
+    "which the target means anything. It was not sized to make the number pass — the test",
+    "records the measured ratio either way, and the target is never moved.",
+    "",
+    "The chunking settings belong to the connector, not to the repository (PRD 4.3), which",
+    "is why they are stated here beside the corpus rather than as a default somewhere."
+  ],
+
+  "id": "ingest-fixture-v1",
+  "hardware": "not stated: this fixture measures counts and ratios, which do not depend on it",
+
+  "acl": { "readableBy": ["grp_engineering"], "existence": "visible" },
+
+  "chunking": { "maxTokens": 48, "boundaryDepth": 3 },
+
+  "sources": [
+    { "sourceId": "src_operations_handbook", "file": "corpus/operations-handbook.md" },
+    { "sourceId": "src_retention_policy", "file": "corpus/retention-policy.md" },
+    { "sourceId": "src_incident_runbook", "file": "corpus/incident-runbook.md" }
+  ],
+
+  "revision": {
+    "$comment": "One paragraph, edited in place. Every other passage stays byte-identical.",
+    "sourceId": "src_operations_handbook",
+    "find": "The handover note names the open incidents, the changes still in flight, and anything that\nis expected to page overnight. A note that says \"quiet week\" and nothing else is not a\nhandover.",
+    "replace": "The handover note names the open incidents, the changes still in flight, anything that is\nexpected to page overnight, and who is covering the morning stand-up. A note that says\n\"quiet week\" and nothing else is not a handover."
+  }
+}

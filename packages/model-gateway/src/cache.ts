@@ -17,6 +17,14 @@ import { contentHashOf, type EmbeddingModelRef } from "@atlasops/contracts";
 export interface EmbeddingCache {
   readonly get: (key: string) => readonly number[] | undefined;
   readonly set: (key: string, vector: readonly number[]) => void;
+  /**
+   * Required, not optional, because PRD 4.2's delete must reach "every cache keyed on it".
+   *
+   * A vector is derived from the text it was computed for, and a governed deletion that leaves the
+   * derivative behind has not deleted anything anybody would accept. Making this part of the
+   * interface means an implementation cannot be written that quietly has no way to forget.
+   */
+  readonly delete: (key: string) => void;
 }
 
 export function embeddingCacheKey(model: EmbeddingModelRef, text: string): string {
@@ -41,6 +49,9 @@ export function inMemoryEmbeddingCache(): RecordingEmbeddingCache {
     get: (key: string): readonly number[] | undefined => store.get(key),
     set: (key: string, vector: readonly number[]): void => {
       store.set(key, vector);
+    },
+    delete: (key: string): void => {
+      store.delete(key);
     },
     size: (): number => store.size,
   };

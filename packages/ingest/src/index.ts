@@ -1,13 +1,12 @@
 /**
- * The public surface of `@atlasops/ingest`, at P6a.
+ * The public surface of `@atlasops/ingest`.
  *
- * Layer 4. This phase is parsing and chunking only: pure functions over text, with a token counter
- * as the single injected port. It imports `@atlasops/contracts` and nothing else — the connectors,
- * the corpus wiring, the embedding reuse and the deletion propagation arrive in P6b, and each will
- * bring its dependency with it rather than being declared ahead of the code that needs it.
+ * Layer 4. It imports `contracts`, `telemetry`, `corpus`, `model-gateway` and `governance` — every
+ * dependency its row in PRD 11.2 allows, and each one arrived with the code that needed it rather
+ * than being declared ahead of it.
  *
- * The boundary this package will be tested against hardest is the one above it: `ingest` may never
- * import `retrieval`, `grounding` or `evalkit`. The checker enforces it; nothing here asserts it.
+ * The boundary that matters is the one above: `ingest` may never import `retrieval`, `grounding` or
+ * `evalkit`. The checker enforces it; nothing here asserts it.
  */
 
 export {
@@ -49,3 +48,37 @@ export {
 } from "./strategy.js";
 
 export { chunksFor, textOf, type ChunkingInput } from "./assemble.js";
+
+export type { Connector, FetchedSource } from "./connector.js";
+
+export {
+  fixtureConnector,
+  type FixtureConnector,
+  type FixtureConnectorOptions,
+  type FixtureSource,
+} from "./fixture-connector.js";
+
+export { failingChunkSink, inMemoryChunkSink, type ChunkSink, type StoredChunk } from "./sink.js";
+
+export {
+  ingest,
+  probeRemoved,
+  versionsOf,
+  type Disposition,
+  type IngestionReport,
+  type IngestionRun,
+  type SourceOutcome,
+} from "./pipeline.js";
+
+export {
+  INGESTION_BUDGETS,
+  assertWithinIngestionBudget,
+  checkIngestionBudget,
+  ingestionBudgetById,
+  ingestionCostPer1kChunks,
+  ingestionProfile,
+  type IngestionBudget,
+  type IngestionBudgetId,
+  type IngestionBudgetResult,
+  type IngestionProfileInput,
+} from "./budgets.js";

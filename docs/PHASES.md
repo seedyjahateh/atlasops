@@ -207,7 +207,7 @@ A phase is not done because the code exists. It is done when all of this is true
       single unbroken run terminates. A range no segmenter can divide is returned whole: an
       oversized chunk is a visible problem, a mangled one is not.
 
-- [ ] **P6b — `packages/ingest`: the pipeline.** Connectors, change detection wired to the corpus,
+- [x] **P6b — `packages/ingest`: the pipeline.** Connectors, change detection wired to the corpus,
       embedding reuse, deletion propagation, failure isolation, and the ingestion budgets.
       Implements PRD 4.2 and 4.5. Acceptance: re-ingesting an unchanged source makes zero model
       calls; chunks whose own text hash is unchanged reuse their embedding; deletion propagation is
@@ -222,6 +222,51 @@ A phase is not done because the code exists. It is done when all of this is true
       re-ingestion determinism is a property of the chunker and is settled in P6a; the other four
       rows need a pipeline and a fixture corpus to mean anything. Kept as one phase, the chunker
       would have been finished under the pressure of an unstarted pipeline.
+
+      Done. 27 tests, all five PRD 4.5 rows measured against the named fixture corpus through the
+      method the PRD states. The boundary was demonstrated rather than asserted: a real
+      `import { fuse } from "@atlasops/grounding"` in `packages/ingest` produced `forbidden-import`
+      and exit 1 from `boundaries:check`, and a named `no-restricted-imports` failure from `lint`;
+      removing it returned exit 0.
+
+      **The index is written before the corpus records the version live.** The opposite ordering
+      fails in the direction nothing recovers from: the corpus claims a live version retrieval
+      cannot see, and the next crawl compares hashes, finds the source unchanged and never retries.
+      This way the corpus stays put, the next run retries, and the only debris is chunks for a
+      version the corpus never made live — invisible to retrieval, because eligibility is computed
+      from the corpus rather than stored on the chunk. Asserted by running the whole corpus through
+      a failing sink and checking the corpus is untouched.
+
+      **A revision purges the old version from the index but never from the embedding cache.** The
+      cache is keyed on chunk text, and that *is* PRD 4.2's reuse mechanism. Eviction happens on
+      deletion only, where leaving a derivative behind would mean the deletion did not happen.
+
+      Measured on `ingest-fixture-v1` with the fixture's own chunking settings: the revised document
+      chunks into 28, of which 26 texts came from cache — a reuse ratio of 0.9286 against the 0.9
+      floor. Two chunks were re-embedded rather than one because the edited paragraph grew past the
+      token budget and split. That is a measurement of this fixture on this machine and is not a
+      result for anything else.
+
+      **PRD 4.5 gets its own budget table and its own checker.** Two of its five targets are floors,
+      not ceilings, and `telemetry`'s checker compares `value <= target` because every 9.3 budget is
+      a ceiling. Reusing it would have reported a corpus that reused nothing as comfortably within
+      budget. What is reused is `Measurement`, which cannot be built without a `ReferenceProfile`.
+
+      **The 9.3 ingestion cost budget is unmeasurable, not met.** `ingestionCostPer1kChunks` throws
+      against the empty price table (ADR 0002), and a test asserts that it throws — the distinction
+      is enforced rather than noted.
+
+      **Named gap: this pipeline does not refresh access labels.** A connector listing carries
+      identity and a content hash, so a permission change with no content change is invisible to it.
+      Label refresh belongs to a pass driven by the directory, not to a content crawl. The one case
+      that does surface — a source edited and reverted between `list` and `fetch` — is handled, and
+      relabels in place with no re-embedding.
+
+      `EmbeddingCache` gained a required `delete`. Additive, so no ADR, but it is required rather
+      than optional because PRD 4.2's delete must reach "every cache keyed on it", and an
+      implementation with no way to forget should not typecheck. The tradeoff: eviction is by cache
+      key, so deleting one source also evicts an entry another live source would have hit — a cache
+      miss, against refcounting a compute cache to save one re-embedding.
 
 - [ ] **P7 — `packages/indexing`.** Index adapters, schema migration, and permission predicate
       compilation. Implements PRD 6.2 — the pre-filter. Acceptance: a permission predicate is

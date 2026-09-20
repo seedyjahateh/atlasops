@@ -3,11 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Parsers, structure-aware chunking, and the chunk payload that reaches the index.",
+  "description": "Connectors, parsers, structure-aware chunking, change detection, and deletion.",
   "exports": {
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@atlasops/contracts": "workspace:*"
+    "@atlasops/contracts": "workspace:*",
+    "@atlasops/corpus": "workspace:*",
+    "@atlasops/governance": "workspace:*",
+    "@atlasops/model-gateway": "workspace:*",
+    "@atlasops/telemetry": "workspace:*"
   }
 }
