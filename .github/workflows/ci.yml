@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A second push to the same branch makes the first run's answer irrelevant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "24"
+
+jobs:
+  verify:
+    name: Verify (types, lint, format, tests, boundaries)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      # --frozen-lockfile, so a lockfile that disagrees with package.json fails
+      # here rather than resolving to something nobody reviewed.
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # One target, the same one a developer runs locally. A CI pipeline that
+      # checks more than `pnpm verify` is a pipeline people cannot reproduce.
+      - name: Verify
+        run: pnpm verify
+
+  hygiene:
+    name: Hygiene (encoding, line endings)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # A UTF-8 BOM breaks JSON.parse and CRLF breaks byte-identical builds. Both
+      # are easy to introduce from a Windows editor and invisible in review — and
+      # PRD 8.1 requires evaluation datasets to be content-hashed, so a line
+      # ending that differs by platform would quietly invalidate the evidence.
+      - name: No BOM or CRLF in tracked text files
+        run: |
+          set -euo pipefail
+          fail=0
+          while IFS= read -r file; do
+            if [ -f "$file" ] && head -c 3 "$file" | grep -q $'\xef\xbb\xbf'; then
+              echo "::error file=$file::UTF-8 BOM"
+              fail=1
+            fi
+            if [ -f "$file" ] && grep -qU $'\r' "$file"; then
+              echo "::error file=$file::CRLF line ending"
+              fail=1
+            fi
+          done < <(git ls-files -- '*.ts' '*.js' '*.json' '*.md' '*.yml' '*.yaml')
+          exit "$fail"

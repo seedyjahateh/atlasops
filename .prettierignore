@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+pnpm-lock.yaml
+
+# Generated from tools/boundaries/layers.json. Prettier and the generator would
+# disagree about table alignment, and the generator is the source of truth.
+docs/MODULES.md
+
+# Mirrored from the portfolio repository; formatting belongs to the canonical copy.
+docs/prd/

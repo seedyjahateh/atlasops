@@ -1,0 +1,13 @@
+{
+  "name": "@atlasops/boundaries",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Enforces the module boundaries declared in layers.json against the real import graph.",
+  "exports": {
+    ".": "./src/cli.ts"
+  },
+  "dependencies": {
+    "typescript": "^5.9.0"
+  }
+}

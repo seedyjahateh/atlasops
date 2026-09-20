@@ -1,0 +1,151 @@
+{
+  "$comment": [
+    "The single source of truth for module boundaries. PRD 11.2 states them as a table;",
+    "this is that table in machine-readable form, and the table in docs/MODULES.md is",
+    "generated from here rather than maintained beside it.",
+    "",
+    "Widening anything in this file is its own change, with its own justification, recorded",
+    "as an ADR. It is deliberately not something to edit in the same commit as the code that",
+    "wanted the wider boundary — that is how a boundary becomes a formality."
+  ],
+  "version": 1,
+
+  "layerNames": [
+    "contracts",
+    "telemetry",
+    "platform",
+    "corpus",
+    "pipeline",
+    "retrieval",
+    "grounding",
+    "evaluation",
+    "runtime"
+  ],
+
+  "packages": {
+    "@atlasops/contracts": {
+      "path": "packages/contracts",
+      "layer": 0,
+      "owns": "Shared types, JSON schemas, error taxonomy, identifier formats",
+      "mayImport": []
+    },
+    "@atlasops/telemetry": {
+      "path": "packages/telemetry",
+      "layer": 1,
+      "owns": "Span model, token and cost accounting, price table, budget assertions",
+      "mayImport": ["@atlasops/contracts"]
+    },
+    "@atlasops/governance": {
+      "path": "packages/governance",
+      "layer": 2,
+      "owns": "Principal and group resolution, ACL labels, audit record writing",
+      "mayImport": ["@atlasops/contracts", "@atlasops/telemetry"]
+    },
+    "@atlasops/model-gateway": {
+      "path": "packages/model-gateway",
+      "layer": 2,
+      "owns": "Embedding, rerank and generation interfaces, provider adapters, retries, caching",
+      "mayImport": ["@atlasops/contracts", "@atlasops/telemetry"]
+    },
+    "@atlasops/corpus": {
+      "path": "packages/corpus",
+      "layer": 3,
+      "owns": "Source and SourceVersion model, provenance, corpus store, retention",
+      "mayImport": ["@atlasops/contracts", "@atlasops/telemetry", "@atlasops/governance"]
+    },
+    "@atlasops/ingest": {
+      "path": "packages/ingest",
+      "layer": 4,
+      "owns": "Connectors, parsers, chunkers, dedup, change detection, deletion",
+      "mayImport": [
+        "@atlasops/contracts",
+        "@atlasops/telemetry",
+        "@atlasops/corpus",
+        "@atlasops/model-gateway",
+        "@atlasops/governance"
+      ]
+    },
+    "@atlasops/indexing": {
+      "path": "packages/indexing",
+      "layer": 4,
+      "owns": "Index adapters, schema migration, permission predicate compilation",
+      "mayImport": [
+        "@atlasops/contracts",
+        "@atlasops/telemetry",
+        "@atlasops/corpus",
+        "@atlasops/governance"
+      ]
+    },
+    "@atlasops/retrieval": {
+      "path": "packages/retrieval",
+      "layer": 5,
+      "owns": "Dense arm, lexical arm, RRF fusion, reranking, ablation switches",
+      "mayImport": [
+        "@atlasops/contracts",
+        "@atlasops/telemetry",
+        "@atlasops/indexing",
+        "@atlasops/governance",
+        "@atlasops/model-gateway"
+      ]
+    },
+    "@atlasops/grounding": {
+      "path": "packages/grounding",
+      "layer": 6,
+      "owns": "Prompt assembly, answer schema, citation binding, verification, abstention",
+      "mayImport": [
+        "@atlasops/contracts",
+        "@atlasops/telemetry",
+        "@atlasops/retrieval",
+        "@atlasops/governance",
+        "@atlasops/model-gateway"
+      ]
+    },
+    "@atlasops/evalkit": {
+      "path": "packages/evalkit",
+      "layer": 7,
+      "owns": "Harness, dataset loaders, metrics, ablation runner, statistics, reporting",
+      "mayImport": [
+        "@atlasops/contracts",
+        "@atlasops/telemetry",
+        "@atlasops/retrieval",
+        "@atlasops/grounding",
+        "@atlasops/governance"
+      ]
+    }
+  },
+
+  "groups": {
+    "apps": {
+      "pathPrefix": "apps/",
+      "layer": 8,
+      "owns": "Wiring, transport, configuration, deployment surface",
+      "mayImportAnyPackage": true,
+      "mayImportGroups": []
+    },
+    "exhibits": {
+      "pathPrefix": "exhibits/",
+      "layer": 8,
+      "owns": "One exhibit's own code, fixtures, datasets, README, evidence",
+      "mayImportAnyPackage": true,
+      "mayImportGroups": []
+    }
+  },
+
+  "providerSdks": {
+    "$comment": [
+      "Provider SDKs are reachable from exactly one module. Everything above model-gateway",
+      "talks to an interface, which is what lets every downstream test run against the",
+      "deterministic fake instead of a paid API."
+    ],
+    "allowedIn": ["@atlasops/model-gateway"],
+    "patterns": [
+      "openai",
+      "@anthropic-ai/*",
+      "cohere-ai",
+      "@google/generative-ai",
+      "@huggingface/*",
+      "replicate",
+      "@mistralai/*"
+    ]
+  }
+}

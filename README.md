@@ -18,11 +18,11 @@ a stated measurement method attached, never a result.
 
 ## Where to start reading
 
-| Document                                                  | What it is                                        |
-| --------------------------------------------------------- | ------------------------------------------------- |
+| Document                                                     | What it is                                          |
+| ------------------------------------------------------------ | --------------------------------------------------- |
 | [`docs/prd/RAG-01-atlasops.md`](docs/prd/RAG-01-atlasops.md) | The specification. Section 11 is the module layout. |
-| [`docs/PHASES.md`](docs/PHASES.md)                        | The build plan, and the bar every phase must meet. |
-| `docs/adr/`                                               | Decisions, once there are any to record.           |
+| [`docs/PHASES.md`](docs/PHASES.md)                           | The build plan, and the bar every phase must meet.  |
+| `docs/adr/`                                                  | Decisions, once there are any to record.            |
 
 The specification's canonical copy lives in the portfolio repository at
 `docs/prd/projects/RAG-01-atlasops.md`. The copy here is the working reference; if the two ever

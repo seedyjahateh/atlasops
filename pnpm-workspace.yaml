@@ -1,0 +1,16 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+  - "exhibits/*"
+  - "tools/*"
+
+# Install-time build scripts are denied by default and approved one at a time, on
+# purpose: a postinstall script runs arbitrary code with the developer's
+# credentials in scope, and "whatever the lockfile happened to pull in" is not a
+# threat model. Each entry here is a decision.
+#
+#   esbuild — downloads its platform binary. A direct transitive dependency of
+#   both vitest and tsx, which are deliberate choices; without the binary neither
+#   runs at all. Widely deployed and maintained upstream.
+allowBuilds:
+  esbuild: true

@@ -36,11 +36,18 @@ A phase is not done because the code exists. It is done when all of this is true
 
 ## Phases
 
-- [ ] **P0 — Foundation and boundary enforcement.** pnpm workspace, TypeScript strict, ESLint flat
+- [x] **P0 — Foundation and boundary enforcement.** pnpm workspace, TypeScript strict, ESLint flat
       config, Vitest, Prettier, CI, `tools/boundaries` (layer manifest, generator, checker),
       CODEOWNERS. Implements PRD 11.3. Acceptance: `pnpm verify` green; `boundaries:check` fails a
-      deliberately introduced illegal import and passes once removed; the module table in the PRD
-      is generated from `layers.json` rather than hand-maintained.
+      deliberately introduced illegal import and passes once removed; the module table is generated
+      from `layers.json` rather than hand-maintained.
+
+      Done. The acceptance was demonstrated rather than assumed: a real `packages/contracts`
+      importing `@atlasops/telemetry` produced `forbidden-import` and exit 1, and removing it
+      returned exit 0. The generated table went to `docs/MODULES.md` instead of back into the PRD —
+      the PRD here is a mirror of the portfolio's canonical copy and a generator that rewrote it
+      would put the two in permanent conflict. Recorded as ADR 0001.
+
 - [ ] **P1 — `packages/contracts`.** Shared types, JSON schemas, error taxonomy, identifier
       formats. Zero runtime dependencies, zero internal imports. Implements PRD 4.4 (what every
       chunk carries) and 7.1 (the answer contract). Acceptance: schemas validate a known-good and a

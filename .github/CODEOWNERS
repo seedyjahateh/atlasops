@@ -1,0 +1,12 @@
+# Widening a boundary is possible. It is not possible to do quietly.
+#
+# PRD 11.3 mechanism 5: the manifest and the public surface of every package
+# require review, because those are the two files where a boundary stops being a
+# boundary — and both are small, easy-to-miss diffs in an otherwise large change.
+
+* @seedyjahateh
+
+/tools/boundaries/ @seedyjahateh
+/packages/*/package.json @seedyjahateh
+/docs/prd/ @seedyjahateh
+/docs/adr/ @seedyjahateh
