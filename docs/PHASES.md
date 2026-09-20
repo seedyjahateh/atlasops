@@ -164,10 +164,30 @@ A phase is not done because the code exists. It is done when all of this is true
       upstream still lists is not a malformed input — it is a decision for a person, and the next
       crawl must not silently undo somebody's deletion.
 
-- [ ] **P6 — `packages/ingest`.** Connectors, parsers, chunkers, dedup, change detection, deletion.
-      Implements PRD 4.2, 4.3, 4.4 and 4.5. Acceptance: chunk boundaries are deterministic for a
-      fixed input; every chunk carries the full 4.4 payload; re-ingesting an unchanged source is a
-      no-op; ingestion budgets are asserted against a named fixture corpus.
+- [ ] **P6a — `packages/ingest`: parsing and chunking.** The document tree, the structure-aware
+      chunker, the fixed-width fallback, and the PRD 4.4 chunk payload. Implements PRD 4.3 and 4.4.
+      Acceptance: chunk boundaries are deterministic for a fixed input; a chunk never crosses a
+      heading boundary above the configured depth; a table or a code block is never split mid-row;
+      every chunk is a contiguous slice of its source version and carries the full 4.4 payload,
+      parsed through `parseChunk` rather than merely typed; the fixed-width strategy is selectable
+      per connector rather than globally.
+
+- [ ] **P6b — `packages/ingest`: the pipeline.** Connectors, change detection wired to the corpus,
+      embedding reuse, deletion propagation, failure isolation, and the ingestion budgets.
+      Implements PRD 4.2 and 4.5. Acceptance: re-ingesting an unchanged source makes zero model
+      calls; chunks whose own text hash is unchanged reuse their embedding; deletion propagation is
+      complete before the job returns and a post-delete probe does not return the chunk; one bad
+      source in a mixed batch fails alone; the 4.5 targets are asserted against a named fixture
+      corpus, as targets with a stated measurement method rather than as results.
+
+      **Why P6 is split.** The original entry carried six responsibilities across four PRD
+      sections, and the seam between them is real rather than administrative: P6a is pure functions
+      over text with no ports at all, and P6b is orchestration whose every interesting property is
+      about what it does *not* call. Splitting them also splits the 4.5 table along the same line —
+      re-ingestion determinism is a property of the chunker and is settled in P6a; the other four
+      rows need a pipeline and a fixture corpus to mean anything. Kept as one phase, the chunker
+      would have been finished under the pressure of an unstarted pipeline.
+
 - [ ] **P7 — `packages/indexing`.** Index adapters, schema migration, and permission predicate
       compilation. Implements PRD 6.2 — the pre-filter. Acceptance: a permission predicate is
       compiled into the index query itself; a post-filter implementation is present only as a
