@@ -38,6 +38,15 @@ importers:
 
   packages/contracts: {}
 
+  packages/corpus:
+    dependencies:
+      '@atlasops/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@atlasops/governance':
+        specifier: workspace:*
+        version: link:../governance
+
   packages/governance:
     dependencies:
       '@atlasops/contracts':

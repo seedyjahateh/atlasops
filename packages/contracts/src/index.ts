@@ -23,6 +23,16 @@ export {
   type ContentHash,
 } from "./hash.js";
 
+/**
+ * The one validation primitive that is also a format every layer above records.
+ *
+ * Exported rather than kept private because the alternative is each layer writing its own instant
+ * check, and the subtlety here — `new Date("2026-13-45")` does not throw, so validation has to be a
+ * re-serialise-and-compare round trip — is precisely the part that gets reimplemented wrongly. The
+ * rest of `validate.ts` stays private: those are this package's own parsing internals.
+ */
+export { requireInstant } from "./validate.js";
+
 export {
   formatSourceId,
   parseSourceId,

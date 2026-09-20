@@ -1,0 +1,14 @@
+{
+  "name": "@atlasops/corpus",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sources, immutable source versions, provenance, retention, and retrieval eligibility.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@atlasops/contracts": "workspace:*",
+    "@atlasops/governance": "workspace:*"
+  }
+}

@@ -33,6 +33,15 @@ export const ERROR_CODES = [
    * push every one of those call sites to enumerate four cases that all end in the same fallback.
    */
   "MODEL_UNAVAILABLE",
+  /**
+   * A source was deleted by order, and the operation would have resurrected it (PRD 4.2).
+   *
+   * Distinct from `VALIDATION` because the caller's response is different in kind: a malformed
+   * input is fixed by the caller, whereas a deleted source is reinstated — if at all — by a person
+   * who takes responsibility for undoing somebody else's deletion. Collapsing the two would mean
+   * the next crawl silently resurrects deleted content and reports it as a parse problem.
+   */
+  "SOURCE_DELETED",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

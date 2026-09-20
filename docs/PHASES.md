@@ -128,10 +128,42 @@ A phase is not done because the code exists. It is done when all of this is true
       `MODEL_UNAVAILABLE` was added to the error taxonomy in `contracts`. Additive rather than a
       reversal, so no ADR: one code with a `kind` and a `capability` field, because PRD 9.4's
       degraded-mode switch branches on which capability is gone, not on why.
-- [ ] **P5 — `packages/corpus`.** Source and SourceVersion model, provenance, corpus store,
+
+- [x] **P5 — `packages/corpus`.** Source and SourceVersion model, provenance, corpus store,
       retention. Implements PRD 4.1 and 4.2. Acceptance: a source version is immutable once
       written; change detection identifies added, modified and deleted sources; deletion is
       honoured through to retrieval eligibility.
+
+      Done. 41 tests. The boundary was demonstrated rather than asserted: a real
+      `import { fakeEmbedder } from "@atlasops/model-gateway"` in `packages/corpus` produced
+      `forbidden-import` and exit 1 from `boundaries:check`, and a named `no-restricted-imports`
+      failure from `lint`; removing it returned exit 0.
+
+      **Rollback is a pointer move, literally.** A version's identity is the hash of its bytes, so a
+      source reverting to earlier content produces an identifier the store already holds. Writing a
+      second copy would need a different `supersedes` on an immutable record, which is a
+      contradiction — so the store keeps a head pointer and a log of head movements rather than a
+      linked list. That is also what makes the temporal read honest: `versionAsOf` walks the head
+      log, and a date sort would return the wrong record after any rollback.
+
+      **An access label is not a version** (ADR 0003). Identity is bytes alone, so a permission
+      change produces no new version, and it must still take effect immediately rather than waiting
+      for somebody to edit the document. The label has its own log, the frozen record keeps what was
+      observed, and the live path re-labels. Working that through surfaced a real hazard the ADR
+      records: two sources with byte-identical content share a version id and therefore share chunk
+      ids, so deduplicating across ACL zones in P6 or P7 would be a leak arriving through an
+      optimisation. Corpus never keys versions globally — every reference carries its source.
+
+      **An incomplete listing cannot produce deletions.** Deletion is inferred from absence, so a
+      connector returning an empty page on an expired token is one inference away from wiping a
+      corpus while every layer above does exactly what it was told. Completeness is a claim the
+      connector has to make, not a property of the array having entries in it.
+
+      `SOURCE_DELETED` was added to the error taxonomy in `contracts`, and `requireInstant` to its
+      public surface. Both additive, so no ADR. The first exists because a deleted source that
+      upstream still lists is not a malformed input — it is a decision for a person, and the next
+      crawl must not silently undo somebody's deletion.
+
 - [ ] **P6 — `packages/ingest`.** Connectors, parsers, chunkers, dedup, change detection, deletion.
       Implements PRD 4.2, 4.3, 4.4 and 4.5. Acceptance: chunk boundaries are deterministic for a
       fixed input; every chunk carries the full 4.4 payload; re-ingesting an unchanged source is a

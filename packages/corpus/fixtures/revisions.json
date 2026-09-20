@@ -1,0 +1,70 @@
+{
+  "$comment": [
+    "A seeded revision pair for change detection (PRD 4.2). Two listings from the same",
+    "connector, a month apart, exercising all four outcomes at once: one source is edited,",
+    "one disappears, one is new, and two are untouched.",
+    "",
+    "Sources carry their text rather than a content hash. A hand-written hash in a fixture is",
+    "an unverifiable constant — nobody can tell a correct one from a typo, and the test that",
+    "reads it would agree with either. The test hashes the text with the same function the",
+    "store uses, so the fixture states the input and the code derives the identity."
+  ],
+
+  "acl": { "readableBy": ["grp_engineering"], "existence": "visible" },
+
+  "baseline": {
+    "connector": "fixture",
+    "observedAt": "2026-03-01T00:00:00.000Z",
+    "complete": true,
+    "sources": [
+      {
+        "sourceId": "src_handbook",
+        "text": "Engineering handbook. On-call rotates weekly, handover at 10:00 Monday."
+      },
+      {
+        "sourceId": "src_policy",
+        "text": "Retention policy. Build logs are kept for 30 days."
+      },
+      {
+        "sourceId": "src_roster",
+        "text": "On-call roster. Week 9: platform. Week 10: data."
+      },
+      {
+        "sourceId": "src_runbook",
+        "text": "Runbook: restarting the ingest worker. Drain, wait for the queue, restart."
+      }
+    ]
+  },
+
+  "revision": {
+    "connector": "fixture",
+    "observedAt": "2026-04-01T00:00:00.000Z",
+    "complete": true,
+    "sources": [
+      {
+        "sourceId": "src_handbook",
+        "text": "Engineering handbook. On-call rotates weekly, handover at 10:00 Monday."
+      },
+      {
+        "sourceId": "src_policy",
+        "text": "Retention policy. Build logs are kept for 90 days."
+      },
+      {
+        "sourceId": "src_roster",
+        "text": "On-call roster. Week 9: platform. Week 10: data."
+      },
+      {
+        "sourceId": "src_onboarding",
+        "text": "Onboarding checklist. Request access, read the handbook, shadow an on-call."
+      }
+    ]
+  },
+
+  "expected": {
+    "added": ["src_onboarding"],
+    "modified": ["src_policy"],
+    "unchanged": ["src_handbook", "src_roster"],
+    "deleted": ["src_runbook"],
+    "tombstoned": []
+  }
+}
