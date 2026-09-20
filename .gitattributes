@@ -1,0 +1,18 @@
+# LF in the repository, on every platform.
+#
+# Without this, a Windows checkout with core.autocrlf=true rewrites every file on
+# the way in and out. That breaks byte-identical builds, makes content hashes
+# platform-dependent — which matters here, because PRD 8.1 requires evaluation
+# datasets to be content-hashed — and produces diffs where nothing changed.
+* text=auto eol=lf
+
+# Binary, never touched.
+*.png binary
+*.jpg binary
+*.webp binary
+*.avif binary
+*.pdf binary
+*.woff2 binary
+
+# Generated and checked in, so review should not drown in them.
+pnpm-lock.yaml linguist-generated=true -diff
