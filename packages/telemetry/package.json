@@ -1,0 +1,13 @@
+{
+  "name": "@atlasops/telemetry",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Spans, token and cost accounting, the versioned price table, and budget assertions.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@atlasops/contracts": "workspace:*"
+  }
+}

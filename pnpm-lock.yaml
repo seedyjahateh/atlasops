@@ -38,6 +38,12 @@ importers:
 
   packages/contracts: {}
 
+  packages/telemetry:
+    dependencies:
+      '@atlasops/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
   tools/boundaries:
     dependencies:
       typescript:

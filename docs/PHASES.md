@@ -63,10 +63,26 @@ A phase is not done because the code exists. It is done when all of this is true
       an unresolvable ACL is a separate, louder failure — conflating those two is how "unknown"
       becomes "public" (6.1). And a claim segment with no references fails to parse, so an
       unsupported claim is a schema violation rather than a quality problem (7.1).
-- [ ] **P2 — `packages/telemetry`.** Span model, token and cost accounting, versioned price table,
+
+- [x] **P2 — `packages/telemetry`.** Span model, token and cost accounting, versioned price table,
       budget assertions. Implements PRD 9.2 and 9.3. Acceptance: a recorded span tree produces a
       stage breakdown; cost is computed from the versioned table and the table's version is part of
       every record; a budget assertion fails loudly rather than warning.
+
+      Done. 31 tests, none of which sleep — the clock is injected, so every duration asserted is an
+      exact number rather than "greater than zero".
+
+      The breakdown reports self time as well as inclusive time. Summing only inclusive durations
+      double-counts every parent and reports more work than the request took, which is the shape of
+      number that makes a dashboard untrustworthy; a stage is answerable for its self time.
+
+      **The price table ships empty and an unpriced model throws** (ADR 0002). Real vendor prices
+      are facts this repository does not hold, and returning zero for an unknown model would make
+      every cost budget in PRD 9.3 pass trivially while the error surfaced on an invoice.
+
+      A `Measurement` cannot be constructed without a reference profile and a sample size, which is
+      PRD 9.1's "a budget quoted without its profile is not quotable" made structural. Sample size
+      travels with every value because a nearest-rank p95 over twenty samples is the maximum.
 - [ ] **P3 — `packages/governance`.** Principals, group resolution, ACL labels, audit records.
       Implements PRD 6.1 and 6.6. Acceptance: an audit record exists for every authorisation
       decision; label resolution is deterministic and tested against a permission fixture set.
