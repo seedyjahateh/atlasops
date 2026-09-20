@@ -1,0 +1,13 @@
+{
+  "name": "@atlasops/ingest",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Parsers, structure-aware chunking, and the chunk payload that reaches the index.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@atlasops/contracts": "workspace:*"
+  }
+}

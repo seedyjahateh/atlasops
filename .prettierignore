@@ -9,3 +9,8 @@ docs/MODULES.md
 
 # Mirrored from the portfolio repository; formatting belongs to the canonical copy.
 docs/prd/
+
+# Parser fixtures. Their exact bytes are the input under test — character offsets,
+# blank lines and table alignment are the thing being asserted, so a formatter that
+# improved them would silently rewrite the test.
+packages/ingest/fixtures/

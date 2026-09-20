@@ -164,13 +164,48 @@ A phase is not done because the code exists. It is done when all of this is true
       upstream still lists is not a malformed input — it is a decision for a person, and the next
       crawl must not silently undo somebody's deletion.
 
-- [ ] **P6a — `packages/ingest`: parsing and chunking.** The document tree, the structure-aware
+- [x] **P6a — `packages/ingest`: parsing and chunking.** The document tree, the structure-aware
       chunker, the fixed-width fallback, and the PRD 4.4 chunk payload. Implements PRD 4.3 and 4.4.
       Acceptance: chunk boundaries are deterministic for a fixed input; a chunk never crosses a
       heading boundary above the configured depth; a table or a code block is never split mid-row;
       every chunk is a contiguous slice of its source version and carries the full 4.4 payload,
       parsed through `parseChunk` rather than merely typed; the fixed-width strategy is selectable
       per connector rather than globally.
+
+      Done. 52 tests. The boundary was demonstrated rather than asserted: a real
+      `import { rank } from "@atlasops/retrieval"` in `packages/ingest` produced `forbidden-import`
+      and exit 1 from `boundaries:check`, and a named `no-restricted-imports` failure from `lint`;
+      removing it returned exit 0.
+
+      **A chunk is a contiguous slice of its source, and nothing in this package holds text.** The
+      parser emits offsets; the chunker packs offsets; a draft's text is the slice. That is what
+      makes PRD 4.4's character offsets and PRD 7.2's verification pass mean the same thing. A
+      parser that normalised whitespace or re-emitted a heading above the block it introduced would
+      produce offsets that point at nearly the cited words, and a verification pass that is nearly
+      right is worse than none.
+
+      **The Markdown parser is hand-written, for the same reason `contracts` owns its validators.**
+      What this layer needs from a parser is faithful positions, and rendering-oriented libraries
+      treat positions as secondary and whitespace normalisation as a feature. It recognises exactly
+      PRD 4.3's five constructs and no inline syntax — inline syntax cannot change where a chunk may
+      be cut, and every construct parsed is one that can be parsed wrongly.
+
+      **The token counter is a port and the default is named `approximateTokenCounter`.** A real
+      token count belongs to a specific model's tokenizer, which this repository does not hold.
+      Shipping a character-ratio estimate under a name like `countTokens` would put a number that is
+      not a token count into PRD 4.4's `tokenCount`, from where it reaches cost arithmetic and
+      eventually a published figure, indistinguishable from a measured one. The estimate is allowed
+      to decide where to cut; it is not allowed to be reported.
+
+      Packing counts additively — the counter applied to the text between the current end and the
+      new one, not to the whole candidate each time, which is quadratic in document length. The
+      size a chunk finally reports is one counter call on the finished slice.
+
+      The oversized-block splitter tries the coarsest structural cut first and only reaches a finer
+      one for a segment still over budget on its own, which is how a table is cut between rows and a
+      code block between lines. Under both sits a fixed-width backstop that exists solely so a
+      single unbroken run terminates. A range no segmenter can divide is returned whole: an
+      oversized chunk is a visible problem, a mangled one is not.
 
 - [ ] **P6b — `packages/ingest`: the pipeline.** Connectors, change detection wired to the corpus,
       embedding reuse, deletion propagation, failure isolation, and the ingestion budgets.
