@@ -1,0 +1,26 @@
+{
+  "requestId": "req_01k9z4m2nq",
+  "abstained": false,
+  "segments": [
+    {
+      "text": "Only the current version of a source stays live in the retrieval index.",
+      "references": [
+        {
+          "chunkId": "chk_d094f486a7dad5d072c3014259b2b71897f186f7a9ed2f1cd86d9df228f43230_3",
+          "sourceVersionId": "sv_d094f486a7dad5d072c3014259b2b71897f186f7a9ed2f1cd86d9df228f43230",
+          "span": { "start": 0, "end": 74 }
+        }
+      ]
+    },
+    {
+      "text": "Prior versions are retained in the corpus store for audit and temporal evaluation.",
+      "references": [
+        {
+          "chunkId": "chk_d094f486a7dad5d072c3014259b2b71897f186f7a9ed2f1cd86d9df228f43230_3",
+          "sourceVersionId": "sv_d094f486a7dad5d072c3014259b2b71897f186f7a9ed2f1cd86d9df228f43230",
+          "span": { "start": 74, "end": 162 }
+        }
+      ]
+    }
+  ]
+}

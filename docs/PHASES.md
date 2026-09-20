@@ -48,10 +48,21 @@ A phase is not done because the code exists. It is done when all of this is true
       the PRD here is a mirror of the portfolio's canonical copy and a generator that rewrote it
       would put the two in permanent conflict. Recorded as ADR 0001.
 
-- [ ] **P1 — `packages/contracts`.** Shared types, JSON schemas, error taxonomy, identifier
+- [x] **P1 — `packages/contracts`.** Shared types, JSON schemas, error taxonomy, identifier
       formats. Zero runtime dependencies, zero internal imports. Implements PRD 4.4 (what every
       chunk carries) and 7.1 (the answer contract). Acceptance: schemas validate a known-good and a
       known-bad fixture; identifiers round-trip; the package imports nothing.
+
+      Done. 37 tests. Four fixtures — two good, two bad — read as untrusted JSON rather than
+      imported, because that is the path real input takes. Imports are `node:crypto` in source and
+      nothing else; `dependencies` is empty and the boundary checker enforces `mayImport: []`.
+
+      Three PRD requirements were made structural rather than documented. A chunk identifier is
+      derived from its version and ordinal, so re-ingestion determinism (4.5) holds by construction
+      and a disagreeing id is a parse error. An ACL whose readable set is empty grants nothing, and
+      an unresolvable ACL is a separate, louder failure — conflating those two is how "unknown"
+      becomes "public" (6.1). And a claim segment with no references fails to parse, so an
+      unsupported claim is a schema violation rather than a quality problem (7.1).
 - [ ] **P2 — `packages/telemetry`.** Span model, token and cost accounting, versioned price table,
       budget assertions. Implements PRD 9.2 and 9.3. Acceptance: a recorded span tree produces a
       stage breakdown; cost is computed from the versioned table and the table's version is part of

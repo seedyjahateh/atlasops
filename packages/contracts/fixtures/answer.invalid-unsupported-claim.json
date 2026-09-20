@@ -1,0 +1,21 @@
+{
+  "$why": "The second segment carries no references. PRD 7.1 makes an unsupported claim a schema violation rather than a quality problem, so this must fail parsing and not merely score badly.",
+  "requestId": "req_01k9z4m2nq",
+  "abstained": false,
+  "segments": [
+    {
+      "text": "Only the current version of a source stays live in the retrieval index.",
+      "references": [
+        {
+          "chunkId": "chk_d094f486a7dad5d072c3014259b2b71897f186f7a9ed2f1cd86d9df228f43230_3",
+          "sourceVersionId": "sv_d094f486a7dad5d072c3014259b2b71897f186f7a9ed2f1cd86d9df228f43230",
+          "span": { "start": 0, "end": 74 }
+        }
+      ]
+    },
+    {
+      "text": "Deleted sources are purged within twenty-four hours.",
+      "references": []
+    }
+  ]
+}

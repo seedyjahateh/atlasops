@@ -1,0 +1,20 @@
+{
+  "chunkId": "chk_d094f486a7dad5d072c3014259b2b71897f186f7a9ed2f1cd86d9df228f43230_3",
+  "sourceId": "src_handbook.retention-policy",
+  "sourceVersionId": "sv_d094f486a7dad5d072c3014259b2b71897f186f7a9ed2f1cd86d9df228f43230",
+  "ordinal": 3,
+  "headingPath": ["Data handling", "Retention"],
+  "charStart": 1840,
+  "charEnd": 2112,
+  "tokenCount": 61,
+  "contentHash": "sha256:df8d38d0e0174f6baa9624b943cdfe03326c2523484d2b2ab4c07c3ef5e3fe42",
+  "effectiveDate": "2026-04-01T00:00:00.000Z",
+  "acl": {
+    "readableBy": ["grp_engineering", "grp_legal"],
+    "existence": "visible"
+  },
+  "embedding": {
+    "id": "text-embedding-3-large",
+    "dimension": 3072
+  }
+}

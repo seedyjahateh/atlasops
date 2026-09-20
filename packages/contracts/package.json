@@ -1,0 +1,11 @@
+{
+  "name": "@atlasops/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared types, validators, error taxonomy and identifier formats. Layer 0: imports nothing.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {}
+}

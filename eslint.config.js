@@ -44,7 +44,10 @@ const boundaryConfigs = Object.entries(manifest.packages).map(([id, rule]) => {
                 `with an ADR.`,
             })),
             ...forbiddenSdks.map((pattern) => ({
-              group: [pattern, pattern.endsWith("/*") ? pattern : `${pattern}/*`],
+              // A pattern that already ends in `/*` covers its own subpaths. Emitting
+              // both forms would produce a duplicate, and ESLint's schema requires the
+              // group to be unique — which is how this was caught.
+              group: pattern.endsWith("/*") ? [pattern] : [pattern, `${pattern}/*`],
               message:
                 `${id} may not import a provider SDK. Only ` +
                 `${manifest.providerSdks.allowedIn.join(", ")} may — everything above it depends on ` +
