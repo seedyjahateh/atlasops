@@ -56,6 +56,18 @@ importers:
         specifier: workspace:*
         version: link:../telemetry
 
+  packages/indexing:
+    dependencies:
+      '@atlasops/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@atlasops/corpus':
+        specifier: workspace:*
+        version: link:../corpus
+      '@atlasops/governance':
+        specifier: workspace:*
+        version: link:../governance
+
   packages/ingest:
     dependencies:
       '@atlasops/contracts':

@@ -268,11 +268,51 @@ A phase is not done because the code exists. It is done when all of this is true
       key, so deleting one source also evicts an entry another live source would have hit — a cache
       miss, against refcounting a compute cache to save one re-embedding.
 
-- [ ] **P7 — `packages/indexing`.** Index adapters, schema migration, and permission predicate
+- [x] **P7 — `packages/indexing`.** Index adapters, schema migration, and permission predicate
       compilation. Implements PRD 6.2 — the pre-filter. Acceptance: a permission predicate is
       compiled into the index query itself; a post-filter implementation is present only as a
       rejected comparison in tests, proving the pre-filter returns no row the principal may not
       see.
+
+      Done. 37 tests. The boundary was demonstrated rather than asserted: a real
+      `import { chunksFor } from "@atlasops/ingest"` in `packages/indexing` produced
+      `forbidden-import` and exit 1 from `boundaries:check`, and a named `no-restricted-imports`
+      failure from `lint`; removing it returned exit 0. `ingest` and `indexing` are siblings and
+      neither may import the other, which is why `IndexRow` exists beside `ingest`'s `StoredChunk`
+      — an application wires the two, being the layer allowed to know about both. The comment in
+      `ingest/src/sink.ts` that said otherwise was corrected.
+
+      **The pre-filter is where the rows are, not where the filter is.** Rows live in a posting list
+      per readable group, and `visible(predicate)` is the only read path out of the store — there is
+      no unfiltered accessor to forget. A post-filter cannot be written against this package without
+      first writing the accessor it does not have.
+
+      **The compiled predicate is data, not a closure.** A `(row) => boolean` can be invoked
+      anywhere, including after candidate generation, and nothing distinguishes a pre-filter from a
+      post-filter that happens to run early. A declarative filter has to be compiled into an
+      adapter's own access path, which makes that path reviewable.
+
+      **The assertions are about the implementation, not the output.** Every search records which
+      rows it touched, and the tests assert that no row the principal cannot read was examined.
+      Checking returned candidates would pass equally for a post-filter.
+
+      The rejected implementations are written out in the test file and nowhere else, so both leaks
+      are demonstrated rather than described: the post-filter scores forbidden rows and returns a
+      shorter result set than the pre-filter for the same limit, and a corpus-wide-IDF scorer
+      re-orders the documents the principal *can* read.
+
+      **Term statistics are computed over what the principal can read** (ADR 0004). BM25's IDF over
+      the whole corpus lets documents the principal cannot read change the ordering of the ones they
+      can — the same leak PRD 6.2 rejects post-filtering for, arriving through a statistic instead
+      of a row. The cost: scores are not comparable between principals, which makes it load-bearing
+      that fusion and the 8.2 metrics are rank-based rather than score-based.
+
+      Also here: the existence probe PRD 6.4 needs is a separately named call returning only counts
+      and policies — never an identifier, text or score — so it cannot become the post-filter under
+      another name; a `hidden` source produces wording byte-identical to "nothing was found". And a
+      Promise-returning method rejects rather than throwing, because a caller that wrote `.catch()`
+      would otherwise crash on the synchronous branch.
+
 - [ ] **P8 — `packages/retrieval`.** Dense arm, lexical arm, RRF fusion, reranking, ablation
       switches. Implements PRD 5.1 to 5.5. Acceptance: fusion is reciprocal rank, not score
       interpolation, and a test demonstrates why on a case where interpolation misranks; each arm

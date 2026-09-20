@@ -1,10 +1,13 @@
 /**
  * Where chunks go, and the probe that proves they left (PRD 4.2).
  *
- * The real implementations are `indexing`'s adapters in P7 — a lexical index and a vector index.
- * This is the port they will satisfy, plus the in-memory one every test above uses. The shape is
- * dictated by one sentence of PRD 4.2: "a delete must remove the chunk from the lexical index, the
- * vector index, and every cache keyed on it, and a post-delete probe query must not return it."
+ * This is `ingest`'s own port, plus the in-memory implementation every test above uses. The real
+ * indexes live in `indexing` — but `ingest` and `indexing` are siblings at layer 4 and neither may
+ * import the other (PRD 11.2), so nothing there implements this interface. An application adapts
+ * `indexing`'s lexical and vector indexes to it, because an application is the layer allowed to
+ * know about both. The shape is dictated by one sentence of PRD 4.2: "a delete must remove the
+ * chunk from the lexical index, the vector index, and every cache keyed on it, and a post-delete
+ * probe query must not return it."
  *
  * Three consequences, all visible in the interface:
  *
