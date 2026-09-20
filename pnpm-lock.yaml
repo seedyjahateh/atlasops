@@ -47,6 +47,15 @@ importers:
         specifier: workspace:*
         version: link:../telemetry
 
+  packages/model-gateway:
+    dependencies:
+      '@atlasops/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@atlasops/telemetry':
+        specifier: workspace:*
+        version: link:../telemetry
+
   packages/telemetry:
     dependencies:
       '@atlasops/contracts':

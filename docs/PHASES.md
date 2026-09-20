@@ -105,10 +105,29 @@ A phase is not done because the code exists. It is done when all of this is true
       and the abstention wording for `nothing-relevant` and `excluded-hidden` is one constant
       referenced twice, because two identical literals drift and the drift silently reopens the
       enumeration oracle PRD 6.4 describes.
-- [ ] **P4 — `packages/model-gateway`.** Embedding, rerank and generation interfaces with provider
+
+- [x] **P4 — `packages/model-gateway`.** Embedding, rerank and generation interfaces with provider
       adapters, retries, and caching. Implements PRD 5 and 9. Acceptance: interfaces first, with a
       deterministic in-repo fake used by every downstream test; retry and timeout behaviour tested
       without sleeping in real time; no provider SDK reachable from any package above this one.
+
+      Done. 24 tests, none of which wait. `Sleeper` is a port: the recording implementation resolves
+      immediately and keeps the delays it was asked for, so the backoff schedule is asserted exactly
+      — `[100, 200]` — rather than inferred from "it eventually succeeded", which would pass for a
+      loop with no backoff at all.
+
+      The SDK containment was demonstrated, not assumed: a real `import OpenAI from "openai"` in
+      `packages/governance` produced `provider-sdk-outside-gateway` and exit 1; removing it returned
+      exit 0.
+
+      Cache first, retry inside — a cached text never enters the retry loop, and only the texts that
+      miss are sent. The cache key includes the model id and dimension, because without that
+      changing embedding model returns the previous model's vectors through the fastest path in the
+      system rather than through a migration somebody would have reviewed.
+
+      `MODEL_UNAVAILABLE` was added to the error taxonomy in `contracts`. Additive rather than a
+      reversal, so no ADR: one code with a `kind` and a `capability` field, because PRD 9.4's
+      degraded-mode switch branches on which capability is gone, not on why.
 - [ ] **P5 — `packages/corpus`.** Source and SourceVersion model, provenance, corpus store,
       retention. Implements PRD 4.1 and 4.2. Acceptance: a source version is immutable once
       written; change detection identifies added, modified and deleted sources; deletion is

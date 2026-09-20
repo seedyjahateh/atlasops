@@ -24,6 +24,15 @@ export const ERROR_CODES = [
   "UNSUPPORTED_REFERENCE",
   /** A budget declared in the specification was exceeded (PRD 9.3). */
   "BUDGET_EXCEEDED",
+  /**
+   * A model could not be called: unavailable, rate-limited, timed out, or refused the request.
+   *
+   * One code rather than four, with the distinction carried as a `kind` on the error. The caller
+   * that matters is PRD 9.4's degraded-mode switch, and it branches on which capability is missing
+   * — reranker, vector index, generator — not on why. A taxonomy that splits by cause here would
+   * push every one of those call sites to enumerate four cases that all end in the same fallback.
+   */
+  "MODEL_UNAVAILABLE",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

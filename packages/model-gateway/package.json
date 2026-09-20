@@ -1,0 +1,14 @@
+{
+  "name": "@atlasops/model-gateway",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Embedding, rerank and generation behind interfaces. The only module a provider SDK may enter.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@atlasops/contracts": "workspace:*",
+    "@atlasops/telemetry": "workspace:*"
+  }
+}
