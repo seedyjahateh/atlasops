@@ -1,0 +1,14 @@
+{
+  "name": "@atlasops/governance",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Principals, group resolution, authorisation decisions, and the audit record.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@atlasops/contracts": "workspace:*",
+    "@atlasops/telemetry": "workspace:*"
+  }
+}

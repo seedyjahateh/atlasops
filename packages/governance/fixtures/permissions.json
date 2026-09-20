@@ -1,0 +1,67 @@
+{
+  "$why": "The permission fixture set. Each case is a principal, a label, and the decision the system must reach. Kept as data rather than as test code so that adding a case is not adding a test, and so the same set can be replayed by the governance probe in PRD 12 item 3.",
+  "memberships": {
+    "prn_alice": ["grp_engineering"],
+    "prn_bob": ["grp_legal", "grp_engineering"],
+    "prn_carol": ["grp_contractors"],
+    "prn_dave": []
+  },
+  "cases": [
+    {
+      "name": "single matching group",
+      "principal": "prn_alice",
+      "label": { "readableBy": ["grp_engineering"], "existence": "visible" },
+      "allowed": true,
+      "reason": "group-match"
+    },
+    {
+      "name": "one of several held groups matches",
+      "principal": "prn_bob",
+      "label": { "readableBy": ["grp_legal"], "existence": "visible" },
+      "allowed": true,
+      "reason": "group-match"
+    },
+    {
+      "name": "no held group appears on the label",
+      "principal": "prn_carol",
+      "label": { "readableBy": ["grp_engineering", "grp_legal"], "existence": "visible" },
+      "allowed": false,
+      "reason": "no-group-match"
+    },
+    {
+      "name": "principal holds no groups at all",
+      "principal": "prn_dave",
+      "label": { "readableBy": ["grp_engineering"], "existence": "visible" },
+      "allowed": false,
+      "reason": "no-group-match"
+    },
+    {
+      "name": "empty readable set denies everyone, including a member of every other group",
+      "principal": "prn_bob",
+      "label": { "readableBy": [], "existence": "visible" },
+      "allowed": false,
+      "reason": "empty-acl"
+    },
+    {
+      "name": "empty readable set denies a principal with no groups too",
+      "principal": "prn_dave",
+      "label": { "readableBy": [], "existence": "hidden" },
+      "allowed": false,
+      "reason": "empty-acl"
+    },
+    {
+      "name": "a hidden label still grants when the group matches",
+      "principal": "prn_alice",
+      "label": { "readableBy": ["grp_engineering"], "existence": "hidden" },
+      "allowed": true,
+      "reason": "group-match"
+    },
+    {
+      "name": "existence policy does not affect the read decision, only the wording of a refusal",
+      "principal": "prn_carol",
+      "label": { "readableBy": ["grp_engineering"], "existence": "hidden" },
+      "allowed": false,
+      "reason": "no-group-match"
+    }
+  ]
+}

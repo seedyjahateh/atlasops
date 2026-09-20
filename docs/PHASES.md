@@ -83,9 +83,28 @@ A phase is not done because the code exists. It is done when all of this is true
       A `Measurement` cannot be constructed without a reference profile and a sample size, which is
       PRD 9.1's "a budget quoted without its profile is not quotable" made structural. Sample size
       travels with every value because a nearest-rank p95 over twenty samples is the maximum.
-- [ ] **P3 — `packages/governance`.** Principals, group resolution, ACL labels, audit records.
+
+- [x] **P3 — `packages/governance`.** Principals, group resolution, ACL labels, audit records.
       Implements PRD 6.1 and 6.6. Acceptance: an audit record exists for every authorisation
       decision; label resolution is deterministic and tested against a permission fixture set.
+
+      Done. 29 tests. The permission cases live in `fixtures/permissions.json` as data, so adding a
+      case is not adding a test — and the same set can be replayed by the governance probe PRD 12
+      item 3 requires before promotion. A test asserts the fixture contains both outcomes, so a set
+      that only ever allows cannot pass unnoticed.
+
+      **`canRead` is deliberately not re-exported from this package.** It is a fine pure predicate,
+      but the only authorisation path through the governance surface is `journal.authorize`, which
+      records the decision as it answers. Re-exporting the unaudited predicate would make the
+      unaudited path the convenient one.
+
+      `releaseAnswer` writes the audit before returning the answer, and withholds the answer if the
+      write fails — PRD 6.6's "an audit log that can be lost on the response path is not an audit
+      log", made structural. Also enforced: a failed group resolution is `ACL_UNRESOLVED` and never
+      an empty group set, because empty means "reads nothing" and failure means "we do not know";
+      and the abstention wording for `nothing-relevant` and `excluded-hidden` is one constant
+      referenced twice, because two identical literals drift and the drift silently reopens the
+      enumeration oracle PRD 6.4 describes.
 - [ ] **P4 — `packages/model-gateway`.** Embedding, rerank and generation interfaces with provider
       adapters, retries, and caching. Implements PRD 5 and 9. Acceptance: interfaces first, with a
       deterministic in-repo fake used by every downstream test; retry and timeout behaviour tested
