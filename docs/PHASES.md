@@ -402,7 +402,7 @@ A phase is not done because the code exists. It is done when all of this is true
       price table ships empty (ADR 0002), recording zero would fabricate a cost and throwing would
       turn a missing price list into an outage.
 
-- [ ] **P10a — `packages/evalkit`: datasets and the computable metrics.** The four dataset shapes
+- [x] **P10a — `packages/evalkit`: datasets and the computable metrics.** The four dataset shapes
       as content-hashed, versioned artefacts with a protected held-out split, and every metric that
       can be computed without a judge. Implements PRD 8.1, 8.2 (rows 1, 3, 5, 6) and 8.4.
       Acceptance: a dataset's hash is derived from its items and a declared hash that disagrees is
@@ -413,6 +413,42 @@ A phase is not done because the code exists. It is done when all of this is true
       computed against the abstention set; leak count and existence-disclosure count are computed
       against the permission probe set, and leak count is a hard binary gate at zero; per-query
       scores are retained rather than only aggregates.
+
+      Done. 40 tests. The boundary was demonstrated rather than asserted: a real
+      `import { inMemoryChunkSink } from "@atlasops/ingest"` in `packages/evalkit` produced
+      `forbidden-import` and exit 1 from `boundaries:check`, and a named `no-restricted-imports`
+      failure from `lint`; removing it returned exit 0.
+
+      **A `MetricResult` cannot be built without the per-query scores it came from.** PRD 8.5's
+      paired bootstrap is the whole regression gate, and a metric implemented as "return the mean"
+      would have thrown away the only thing it can be paired on. `metricResult` is the single
+      constructor and derives the aggregate; the aggregation is named, because leak count is a sum
+      and one leak in two hundred queries is not 0.005 of one.
+
+      **The leak gate throws rather than returning a number**, and there is deliberately no
+      configurable threshold — there is no argument for the acceptable number of leaks, and a
+      configurable one is a number somebody raises at 5pm on a Friday. The count includes anything
+      that reached the candidate set, not only what was cited: PRD 6.2 forbids materialising an
+      unreadable chunk into the prompt at all, and the prose is downstream of it either way.
+
+      **nDCG is graded and its ideal ranking comes from every label.** A test holds two runs that
+      recall scores identically and graded nDCG does not, with the expected value worked out in the
+      test rather than taken from the implementation. An IDCG over the retrieved set would score a
+      run that missed the best passage entirely as perfect.
+
+      Datasets recompute their own content hash and refuse a file whose labels moved without its
+      version moving — the first of PRD 8.1's two ways to fake an improvement. The hash is over a
+      canonical rendering, so reformatting a fixture does not force a version bump. The held-out
+      split is sealed: the development path gets development items and `unseal` needs a stated
+      reason that the handle carries into whatever artefact is built from it. Not impossible to
+      read, which it cannot be — impossible to read by accident or in silence.
+
+      Two smaller decisions worth naming. An abstention is excluded from citation precision rather
+      than scored 1, because a system that never answers would otherwise be perfectly precise, and
+      it is scored 0 on recall, because the material existed and the answer did not reach it.
+      Existence disclosure is compared against `governance`'s own wording constants rather than a
+      copy of them, since two identical literals drift and the drift makes the count fall to zero
+      for the wrong reason.
 
 - [ ] **P10b — `packages/evalkit`: the harness, statistics and reporting.** The ablation runner,
       judged metrics with PRD 8.3's three controls, the paired bootstrap, and the report artefact.

@@ -1,0 +1,17 @@
+{
+  "name": "@atlasops/evalkit",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Versioned evaluation datasets and the metrics that can be computed without a judge.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@atlasops/contracts": "workspace:*",
+    "@atlasops/governance": "workspace:*",
+    "@atlasops/grounding": "workspace:*",
+    "@atlasops/retrieval": "workspace:*",
+    "@atlasops/telemetry": "workspace:*"
+  }
+}

@@ -47,6 +47,24 @@ importers:
         specifier: workspace:*
         version: link:../governance
 
+  packages/evalkit:
+    dependencies:
+      '@atlasops/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@atlasops/governance':
+        specifier: workspace:*
+        version: link:../governance
+      '@atlasops/grounding':
+        specifier: workspace:*
+        version: link:../grounding
+      '@atlasops/retrieval':
+        specifier: workspace:*
+        version: link:../retrieval
+      '@atlasops/telemetry':
+        specifier: workspace:*
+        version: link:../telemetry
+
   packages/governance:
     dependencies:
       '@atlasops/contracts':
