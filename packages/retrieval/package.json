@@ -1,0 +1,17 @@
+{
+  "name": "@atlasops/retrieval",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Dense arm, lexical arm, reciprocal rank fusion, reranking, and ablation switches.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@atlasops/contracts": "workspace:*",
+    "@atlasops/governance": "workspace:*",
+    "@atlasops/indexing": "workspace:*",
+    "@atlasops/model-gateway": "workspace:*",
+    "@atlasops/telemetry": "workspace:*"
+  }
+}

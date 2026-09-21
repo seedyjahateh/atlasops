@@ -95,6 +95,24 @@ importers:
         specifier: workspace:*
         version: link:../telemetry
 
+  packages/retrieval:
+    dependencies:
+      '@atlasops/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@atlasops/governance':
+        specifier: workspace:*
+        version: link:../governance
+      '@atlasops/indexing':
+        specifier: workspace:*
+        version: link:../indexing
+      '@atlasops/model-gateway':
+        specifier: workspace:*
+        version: link:../model-gateway
+      '@atlasops/telemetry':
+        specifier: workspace:*
+        version: link:../telemetry
+
   packages/telemetry:
     dependencies:
       '@atlasops/contracts':

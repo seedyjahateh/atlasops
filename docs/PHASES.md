@@ -313,10 +313,51 @@ A phase is not done because the code exists. It is done when all of this is true
       Promise-returning method rejects rather than throwing, because a caller that wrote `.catch()`
       would otherwise crash on the synchronous branch.
 
-- [ ] **P8 — `packages/retrieval`.** Dense arm, lexical arm, RRF fusion, reranking, ablation
+- [x] **P8 — `packages/retrieval`.** Dense arm, lexical arm, RRF fusion, reranking, ablation
       switches. Implements PRD 5.1 to 5.5. Acceptance: fusion is reciprocal rank, not score
       interpolation, and a test demonstrates why on a case where interpolation misranks; each arm
       can be ablated by configuration; freshness and superseded sources are honoured.
+
+      Done. 38 tests. The boundary was demonstrated rather than asserted: a real
+      `import { inMemoryCorpusStore } from "@atlasops/corpus"` in `packages/retrieval` produced
+      `forbidden-import` and exit 1 from `boundaries:check`, and a named `no-restricted-imports`
+      failure from `lint`; removing it returned exit 0.
+
+      **Retrieval may not import `corpus`**, which is the constraint that shaped PRD 5.5's
+      implementation. The layer deciding what is current must not be reachable from the layer that
+      ranks, so `VersionOracle` is a port and an application answers it from the corpus.
+
+      **The interpolation comparison is a demonstration, not a quotation.** A min-max interpolator
+      lives in the test file and nowhere else, with two arms in which A and B hold identical raw
+      scores and identical ranks while only a third, lower-ranked document moves. Interpolation
+      swaps the top two; RRF returns the same ordering. The same case asserts what RRF gives up —
+      A and B tie although one dominates an arm — which PRD 5.2 accepts and points at the reranker
+      to restore.
+
+      **No line in this package drops a candidate for permission reasons**, and there is nowhere
+      one could be added: the predicate is compiled once and applied by both indexes during
+      candidate generation, so nothing unreadable ever arrives.
+
+      **Every number in the config is marked unselected.** PRD 5.2 requires `k` and the depths to be
+      selected on the development split and recorded in the evaluation artefact; the defaults carry
+      `provenance: "unselected-default"`, every result records it, and the cache key includes it so
+      a selected run can never be served from an unselected entry.
+
+      The temporal filter runs between the arms and fusion **and renumbers**, because RRF reads
+      ranks and a gap would score a live document one place worse than it is. The residual is named:
+      the index's depth cutoff still counted the superseded rows, so this is a second line of
+      defence behind `ingest`'s purge — which is also why an `as-of` query is only answerable over
+      an index configured to retain superseded versions.
+
+      Stemming is deliberately absent from query analysis (PRD 5.4 lists it). A stemmer must run
+      identically at index time and query time; stemming only the query matches nothing, because
+      `indexing` tokenises documents without it. Lowercasing and stopword removal are safe
+      asymmetrically and are done.
+
+      A `MIXED_EMBEDDING_MODEL` failure does not degrade. It is a configuration defect, and serving
+      lexical-only past it would hide a broken vector index behind a slightly worse ranking for as
+      long as nobody read the flag.
+
 - [ ] **P9 — `packages/grounding`.** Prompt assembly, answer schema, citation binding,
       verification, abstention. Implements PRD 7.1 to 7.3 and 6.5. Acceptance: every returned claim
       binds to a retrieved chunk; an answer that cannot be verified abstains rather than degrading;
