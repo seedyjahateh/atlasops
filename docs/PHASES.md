@@ -603,12 +603,48 @@ A phase is not done because the code exists. It is done when all of this is true
       the third time that pair has damaged UTF-8 in this project; source edits go through the
       editing tools.
 
-- [ ] **P12 — Evidence.** Produce the artefacts PRD 12 requires: the evaluation report, the
+- [x] **P12 — Evidence.** Produce the artefacts PRD 12 requires: the evaluation report, the
       governance report with a zero leak count, the cost and latency report against the 9.1
       reference profile, and the boundary-enforcement artefact showing at least two exhibits
       consuming `packages/*` and importing no other exhibit. Acceptance: every artefact exists and
       is reproducible from a command. Only then may the portfolio manifest be proposed for
       promotion — as a separate reviewed edit, never implied from here.
+
+      Done, and the honest answer is **not every artefact exists**. Five of PRD 12's seven are
+      produced; two cannot be, and the phase's real deliverable is
+      `docs/promotion-readiness.md`, which says so item by item and concludes that the manifest
+      stays at `proofLevel: "code"`.
+
+      **Met:** a running system (item 1, four documented commands run end to end in P11b); the
+      governance report (item 3); the threat model (item 6); the limitations list (item 7). The
+      evaluation report (item 2) is produced and records everything PRD 12 asks for — dataset
+      versions and hashes, corpus snapshot, commit, model identifiers by role, the judge's pinned
+      prompt version, run count, per-query records, the full 8.2 table with a stated reason for
+      every row that could not be computed — and **supports no claim about quality**, because every
+      model in it is a stand-in.
+
+      **Not met:** item 4, the cost and latency report, blocked twice over — no load run exists,
+      and the price table ships empty (ADR 0002) so cost is unmeasurable rather than zero. Item 5,
+      the boundary artefact, requires the graph to show at least two exhibits consuming
+      `packages/*`; there are **no exhibits**, and `pnpm boundaries:evidence` writes that into the
+      file it generates rather than rendering the half it can.
+
+      **The governance report is the one artefact stated without qualification**, because a leak
+      count measures the permission pre-filter — ordinary code with no model in it. Zero leaks over
+      three probes, zero within the injection subset, zero existence disclosures, and the
+      audit-record schema derived from a record the run actually wrote rather than transcribed.
+
+      **Generating the artefact found a real bug in my own metric.** The first run reported two
+      existence disclosures. `existenceDisclosureCount` was counting any message other than the
+      nothing-found wording, which made every successful answer a disclosure — but PRD 8.1 item 4
+      says a correct system returns "nothing or a restricted answer", and an answer built from
+      material the principal *can* read says nothing about what was withheld. Fixed to compare
+      against the `excluded-visible` wording, with a test for the case that was miscounted. That is
+      what generating evidence is for: the number was wrong in the flattering-to-notice direction,
+      and only running it surfaced that.
+
+      Two datasets moved version again, for the reason the mechanism exists: the probe set gained
+      the injection marker PRD 12 item 3 needs, so its labels changed, so its hash moved.
 
 ## What this build does not do
 

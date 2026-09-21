@@ -101,6 +101,16 @@ export interface RunReport {
   readonly runId: string;
   readonly system: string;
   readonly arm: ArmName;
+  /**
+   * Model identifiers by role, as PRD 12 item 2 requires an evaluation report to record.
+   *
+   * Supplied by the caller rather than discovered, because the harness talks to an `AnswerSystem`
+   * and deliberately cannot see inside it. A run that does not name its models produces numbers
+   * nobody can attribute, which is the state PRD 9.1 calls not quotable.
+   */
+  readonly models: Readonly<Record<string, string>>;
+  /** The commit the run was made from. Null when the caller did not record one. */
+  readonly commit: string | null;
   readonly datasets: readonly string[];
   /**
    * Which splits this run actually evaluated.
@@ -135,6 +145,9 @@ export interface RunInput {
   readonly probes?: Dataset<PermissionProbeItem> | undefined;
   readonly judge?: Judge | undefined;
   readonly prices?: PriceTable | undefined;
+  /** Model identifiers by role. See `RunReport.models`. */
+  readonly models?: Readonly<Record<string, string>> | undefined;
+  readonly commit?: string | undefined;
   readonly now: () => string;
 }
 
@@ -411,6 +424,11 @@ export async function runEvaluation(input: RunInput): Promise<RunReport> {
     ),
     system: input.system.name,
     arm: input.arm,
+    models: {
+      ...(input.models ?? {}),
+      ...(input.judge === undefined ? {} : { judge: input.judge.identity.modelId }),
+    },
+    commit: input.commit ?? null,
     datasets,
     splits: [...splits].sort(),
     table,

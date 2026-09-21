@@ -41,8 +41,24 @@ export function renderRunReport(report: RunReport): string {
     "",
     `- **System:** ${report.system}`,
     `- **Arm:** ${report.arm}`,
+    `- **Commit:** ${report.commit ?? "not recorded"}`,
     `- **Measured at:** ${report.measuredAt}`,
     `- **Judge:** ${report.judge === null ? "none" : describeJudge(report.judge)}`,
+    "",
+    "## Models",
+    "",
+    ...(Object.keys(report.models).length === 0
+      ? [
+          "_No model identifiers were recorded._ PRD 12 item 2 requires them, and a run without",
+          "them produces numbers nobody can attribute.",
+        ]
+      : Object.entries(report.models)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([role, id]) => `- **${role}:** \`${id}\``)),
+    "",
+    "Runs per arm: 1. PRD 8.5 asks for repeated runs with reported variance where a system cannot",
+    "be made deterministic; every model in this build is a deterministic stand-in, so repetition",
+    "would produce identical numbers and a variance of zero that means nothing.",
     "",
     "## Datasets",
     "",

@@ -132,3 +132,10 @@ export {
 } from "./compare.js";
 
 export { renderComparison, renderRunReport } from "./report.js";
+
+export {
+  INJECTION_SUBPOPULATION,
+  probeOutcomesOf,
+  renderGovernanceReport,
+  type GovernanceReportInput,
+} from "./governance-report.js";

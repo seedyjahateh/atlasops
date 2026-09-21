@@ -61,6 +61,15 @@ export interface PermissionProbeItem extends DatasetItem {
   /** Chunks this principal must never see — in a candidate set, a prompt, or a citation. */
   readonly forbiddenChunks: readonly string[];
   /**
+   * Which adversarial subpopulation this probe belongs to.
+   *
+   * PRD 8.1 item 4 folds the prompt-injection corpus from 6.5 into this set, and PRD 12 item 3
+   * requires the injection subset's result to be reported separately from the whole. A leak count
+   * of zero over a set that happens to contain no injection probe is a different claim from a
+   * leak count of zero over one that does, and only the marker tells them apart.
+   */
+  readonly subpopulation?: string;
+  /**
    * Whether this principal may learn that withheld material exists.
    *
    * False for a `hidden` source. The system may then say only what it says when nothing was found

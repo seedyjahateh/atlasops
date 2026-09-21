@@ -657,6 +657,8 @@ function syntheticReport(runId: string, values: Readonly<Record<string, number>>
     runId,
     system: "synthetic",
     arm: "fused-with-rerank",
+    models: { generator: "synthetic" },
+    commit: null,
     datasets: ["relevance@1.0.0"],
     splits: ["development"],
     table: [{ dimension: "Synthetic", metrics, unavailable: null }],

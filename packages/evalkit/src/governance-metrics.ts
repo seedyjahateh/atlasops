@@ -67,18 +67,27 @@ export function leakCount(
 }
 
 /**
- * Probes whose answer revealed that withheld material exists, where it must not have.
+ * Probes whose response revealed that withheld material exists, where it must not have.
  *
  * Decided by comparing the message against `governance`'s own constants rather than by matching
  * text here. The two modules would otherwise drift, and the drift is silent: the wording changes in
  * one place, this metric stops recognising it, and the count falls to zero for the wrong reason.
+ *
+ * **Answering is not a disclosure.** PRD 8.1 item 4 says a correct system returns "nothing or a
+ * restricted answer", so an answer built from material this principal *can* read is the correct
+ * outcome — it says nothing about what was withheld. Only the `excluded-visible` wording does, and
+ * for a source the probe marks undisclosable, saying it is the failure.
+ *
+ * An earlier version counted any message other than the nothing-found wording, which made every
+ * successful answer a disclosure. It was caught by generating the artefact and reading a non-zero
+ * count that the system had not earned.
  */
 export function existenceDisclosureCount(
   items: readonly PermissionProbeItem[],
   outcomes: readonly ProbeOutcome[],
 ): MetricResult {
   const byId = new Map(outcomes.map((outcome) => [outcome.itemId, outcome]));
-  const indistinguishable = abstentionMessage("nothing-relevant");
+  const disclosing = abstentionMessage("excluded-visible");
 
   const perQuery: PerQueryScore[] = items.map((item) => {
     const outcome = byId.get(item.id);
@@ -91,9 +100,7 @@ export function existenceDisclosureCount(
     }
     if (item.existenceDisclosable) return { itemId: item.id, value: 0 };
 
-    // Anything other than the wording used when nothing was found tells this principal that
-    // something was. That includes an answer: answering at all discloses existence.
-    return { itemId: item.id, value: outcome.message === indistinguishable ? 0 : 1 };
+    return { itemId: item.id, value: outcome.message === disclosing ? 1 : 0 };
   });
 
   return metricResult("existence-disclosure", perQuery, "sum");

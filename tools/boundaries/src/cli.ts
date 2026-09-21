@@ -5,11 +5,12 @@
  * on stdout while exiting zero is worse than no checker, because it looks like one.
  */
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { check } from "./check.js";
+import { renderEvidence } from "./evidence.js";
 import { listSourceFiles, ownerOfFile, readEdges } from "./graph.js";
 import { loadManifest, ManifestError } from "./manifest.js";
 import { renderTable } from "./table.js";
@@ -85,6 +86,45 @@ function runTable(write: boolean): number {
   return 0;
 }
 
+/**
+ * PRD 12 item 5's artefact.
+ *
+ * It refuses to write one when the check fails. An evidence file recording its own failure is a
+ * file somebody will find later and read as evidence of something.
+ */
+function runEvidence(argv: readonly string[], outputDir: string): number {
+  const manifest = loadManifest(MANIFEST_PATH);
+  const files = collectFiles();
+  const owners = new Map(files.map((file) => [file, ownerOfFile(manifest, file)]));
+  const edges = readEdges(REPOSITORY_ROOT, manifest, files);
+  const violations = check({ root: REPOSITORY_ROOT, manifest, files, edges, owners });
+
+  if (violations.length > 0) {
+    process.stderr.write(
+      `boundaries: ${String(violations.length)} violation(s); no evidence artefact was written\n`,
+    );
+    return 1;
+  }
+
+  const at = argv.indexOf("--commit");
+  const commit = at === -1 ? null : (argv[at + 1] ?? null);
+
+  const rendered = renderEvidence({
+    manifest,
+    files,
+    edges,
+    violations: 0,
+    commit,
+    measuredAt: new Date().toISOString(),
+  });
+
+  mkdirSync(outputDir, { recursive: true });
+  const path = join(outputDir, "boundaries.md");
+  writeFileSync(path, rendered, "utf8");
+  process.stdout.write(`boundaries: wrote ${path}\n`);
+  return 0;
+}
+
 function main(argv: readonly string[]): number {
   const command = argv[0] ?? "check";
   try {
@@ -94,6 +134,10 @@ function main(argv: readonly string[]): number {
       return checkResult === 0 && tableResult === 0 ? 0 : 1;
     }
     if (command === "table") return runTable(argv.includes("--write"));
+    if (command === "evidence") {
+      const at = argv.indexOf("--out");
+      return runEvidence(argv, at === -1 ? "evidence" : (argv[at + 1] ?? "evidence"));
+    }
   } catch (error) {
     if (error instanceof ManifestError) {
       process.stderr.write(`boundaries: ${error.message}\n`);
@@ -101,7 +145,9 @@ function main(argv: readonly string[]): number {
     }
     throw error;
   }
-  process.stderr.write(`boundaries: unknown command "${command}" (expected "check" or "table")\n`);
+  process.stderr.write(
+    `boundaries: unknown command "${command}" (expected "check", "table" or "evidence")\n`,
+  );
   return 1;
 }
 

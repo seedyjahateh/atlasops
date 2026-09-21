@@ -83,7 +83,7 @@ describe("running the suite", () => {
     expect(ablation?.content).toContain("not labelled against this corpus");
   });
 
-  it("writes one artefact per arm plus the ablation deltas", async () => {
+  it("writes one artefact per arm, the governance report, and the ablation deltas", async () => {
     const outcome = await runEvaluationSuite(readRunnerConfig(ENV), DATASETS);
     const names = artefactsFor(outcome).map((artefact) => artefact.name);
 
@@ -92,8 +92,45 @@ describe("running the suite", () => {
       "run-lexical-only.md",
       "run-fused-no-rerank.md",
       "run-fused-with-rerank.md",
+      "governance.md",
       "ablation.md",
     ]);
+  });
+
+  it("renders the governance report from the full arm, not an ablated one", async () => {
+    // A leak count from an ablated arm says nothing about the configuration a deployment serves.
+    const outcome = await runEvaluationSuite(readRunnerConfig(ENV), DATASETS);
+    const governance = artefactsFor(outcome).find((a) => a.name === "governance.md");
+
+    expect(governance?.content).toContain("**Arm:** fused-with-rerank");
+    expect(governance?.content).toContain("permission-probe@1.1.0");
+    expect(governance?.content).toContain("**Injection probes:** 1");
+  });
+
+  it("derives the audit schema from a record the run actually wrote", async () => {
+    const outcome = await runEvaluationSuite(readRunnerConfig(ENV), DATASETS);
+    expect(outcome.auditSample).not.toBeNull();
+
+    const governance = artefactsFor(outcome).find((a) => a.name === "governance.md");
+    expect(governance?.content).toContain("`groupSetHash`");
+  });
+
+  it("records the model identifiers PRD 12 item 2 requires", async () => {
+    const outcome = await runEvaluationSuite(readRunnerConfig(ENV), DATASETS);
+    for (const run of outcome.runs) {
+      expect(run.models).toEqual({
+        embedder: "stand-in-embedder",
+        reranker: "stand-in-reranker",
+        generator: "stand-in-not-a-model",
+        judge: "stand-in-judge",
+      });
+    }
+  });
+
+  it("records the commit when one is supplied, and its absence when not", async () => {
+    const withCommit = readRunnerConfig({ ...ENV, ATLASOPS_COMMIT: "abc123" });
+    expect((await runEvaluationSuite(withCommit, DATASETS)).commit).toBe("abc123");
+    expect((await runEvaluationSuite(readRunnerConfig(ENV), DATASETS)).commit).toBeNull();
   });
 
   it("says in the ablation artefact that a negative delta is not a build failure", async () => {

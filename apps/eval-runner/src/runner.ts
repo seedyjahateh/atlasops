@@ -29,16 +29,18 @@ import {
   compareArms,
   fixtureJudge,
   loadDataset,
+  renderGovernanceReport,
   renderRunReport,
   runEvaluation,
   type ArmDelta,
   type ArmName,
   type Dataset,
   type DatasetInput,
+  type PermissionProbeItem,
   type RunReport,
 } from "@atlasops/evalkit";
-import { inMemoryAuditSink, staticGroupResolver } from "@atlasops/governance";
-import { citingStandIn } from "@atlasops/grounding";
+import { inMemoryAuditSink, staticGroupResolver, type AuditRecord } from "@atlasops/governance";
+import { STAND_IN_MODEL_ID, citingStandIn } from "@atlasops/grounding";
 import { currentSchema, inMemoryLexicalIndex, inMemoryVectorIndex } from "@atlasops/indexing";
 import { filesystemConnector, structureAware } from "@atlasops/ingest";
 import {
@@ -72,6 +74,14 @@ export interface RunnerConfig {
    * able to see that, so the report records it.
    */
   readonly allowSnapshotMismatch: boolean;
+  /**
+   * The commit this run was made from.
+   *
+   * PRD 12 item 2 requires it on the evaluation report. Supplied rather than discovered: shelling
+   * out to git from inside a runtime makes the artefact depend on the working tree being a
+   * checkout, and a CI job knows its own SHA anyway. Absent is recorded as absent.
+   */
+  readonly commit: string | null;
 }
 
 /** A flag, taking precedence over the environment. See `apps/api/src/config.ts` for why both. */
@@ -106,6 +116,7 @@ export function readRunnerConfig(
     corpusGroup,
     allowSnapshotMismatch:
       argv.includes("--allow-snapshot-mismatch") || env.ATLASOPS_ALLOW_SNAPSHOT_MISMATCH === "1",
+    commit: flag(argv, "commit") ?? env.ATLASOPS_COMMIT ?? null,
   };
 }
 
@@ -134,6 +145,11 @@ export interface EvaluationOutcome {
   /** The corpus the arms were actually run against. */
   readonly corpusSnapshot: string;
   readonly snapshotMatchesDatasets: boolean;
+  /** The probe set, so the governance artefact can be rendered against what actually ran. */
+  readonly probes: Dataset<PermissionProbeItem> | null;
+  /** One real record the run wrote, so the audit schema is derived rather than described. */
+  readonly auditSample: AuditRecord | null;
+  readonly commit: string | null;
 }
 
 /**
@@ -222,6 +238,8 @@ export async function runEvaluationSuite(
     );
   }
 
+  const audit = inMemoryAuditSink();
+
   const pipeline = createAnswerPipeline({
     store,
     lexical,
@@ -232,7 +250,7 @@ export async function runEvaluationSuite(
     reranker: fakeReranker("stand-in-reranker"),
     generator: citingStandIn(),
     groups: staticGroupResolver({ prn_alice: [group], prn_reader: [group] }),
-    audit: inMemoryAuditSink(),
+    audit,
     oracle: corpusVersionOracle(store),
     now: () => new Date().toISOString(),
   });
@@ -247,6 +265,14 @@ export async function runEvaluationSuite(
         ...loaded,
         judge: fixtureJudge({ modelId: "stand-in-judge", promptVersion: "v1" }),
         prices: UNPRICED_TABLE,
+        // PRD 12 item 2. Every one of these is a stand-in, and naming them is how a reader of the
+        // artefact can tell that without being told.
+        models: {
+          embedder: EMBEDDING.id,
+          reranker: "stand-in-reranker",
+          generator: STAND_IN_MODEL_ID,
+        },
+        ...(config.commit === null ? {} : { commit: config.commit }),
         now: () => new Date().toISOString(),
       }),
     );
@@ -257,6 +283,9 @@ export async function runEvaluationSuite(
     deltas: compareArms(runs, "fused-with-rerank" satisfies ArmName),
     corpusSnapshot,
     snapshotMatchesDatasets,
+    probes: loaded.probes ?? null,
+    auditSample: audit.records()[0] ?? null,
+    commit: config.commit,
   };
 }
 
@@ -269,6 +298,21 @@ export function artefactsFor(outcome: EvaluationOutcome): readonly {
     name: `run-${run.arm}.md`,
     content: renderRunReport(run),
   }));
+
+  // PRD 12 item 3. Rendered from the full arm, because that is the configuration a deployment
+  // would serve — a leak count from an ablated arm says nothing about the system that ships.
+  const full = outcome.runs.find((run) => run.arm === "fused-with-rerank");
+  if (outcome.probes !== null && full !== undefined) {
+    files.push({
+      name: "governance.md",
+      content: renderGovernanceReport({
+        run: full,
+        probes: outcome.probes,
+        auditSample: outcome.auditSample,
+        commit: outcome.commit,
+      }),
+    });
+  }
 
   const deltas = [
     "# Ablation deltas",

@@ -123,13 +123,15 @@ describe("datasets are versioned artefacts (PRD 8.1)", () => {
     for (const dataset of [relevance, grounded, abstention, probes]) {
       expect(dataset.contentHash).toMatch(/^sha256:[0-9a-f]{64}$/);
     }
-    // The grounded set is at 1.1.0 because the human-labelled calibration subset PRD 8.3 requires
-    // was added to it: the labels changed, so the hash moved, so the version had to move with it.
+    // Two sets have moved past 1.0.0, and both for the same reason: the labels changed, so the
+    // hash moved, so the version had to move with it. The grounded set gained the human-labelled
+    // calibration subset PRD 8.3 requires; the probe set gained the injection marker PRD 12 item 3
+    // needs to report that subset separately.
     expect([relevance.version, grounded.version, abstention.version, probes.version]).toEqual([
       "1.0.0",
       "1.1.0",
       "1.0.0",
-      "1.0.0",
+      "1.1.0",
     ]);
   });
 
@@ -525,6 +527,18 @@ describe("governance metrics have a different gate (PRD 8.4)", () => {
       { itemId: "prb-002", materialised: [], message: abstentionMessage("nothing-relevant") },
     ];
     expect(existenceDisclosureCount(items, disclosed).value).toBe(0);
+  });
+
+  it("does not count a successful answer as a disclosure", () => {
+    // PRD 8.1 item 4: a correct system returns "nothing or a restricted answer". An answer built
+    // from material this principal can read says nothing about what was withheld. An earlier
+    // version of this metric counted every answer, which made a clean run look like two leaks of
+    // a different kind — caught by generating the artefact and reading a count nobody had earned.
+    const answered: ProbeOutcome[] = [
+      { itemId: "prb-001", materialised: [A], message: "The refund window is thirty days." },
+      { itemId: "prb-002", materialised: [A], message: "The refund window is thirty days." },
+    ];
+    expect(existenceDisclosureCount(items, answered).value).toBe(0);
   });
 });
 

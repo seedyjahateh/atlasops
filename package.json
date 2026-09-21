@@ -15,6 +15,8 @@
     "test": "vitest run",
     "boundaries:check": "tsx tools/boundaries/src/cli.ts check",
     "boundaries:table": "tsx tools/boundaries/src/cli.ts table --write",
+    "boundaries:evidence": "tsx tools/boundaries/src/cli.ts evidence",
+    "evidence": "pnpm boundaries:evidence && pnpm app:eval",
     "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm boundaries:check",
     "app:api": "tsx apps/api/src/main.ts --corpus examples/corpus",
     "app:ingest": "tsx apps/ingest-worker/src/main.ts --corpus examples/corpus",
