@@ -41,6 +41,16 @@ export interface FusedCandidate extends Candidate {
   readonly fusedScore: number;
   /** Which retrievers found it, and where. The evidence an ablation report is built from. */
   readonly contributions: readonly Contribution[];
+  /**
+   * What the cross-encoder scored this (query, chunk) pair, or null when it did not run.
+   *
+   * Carried because PRD 7.3 defines its abstention threshold on "the reranked top candidates", and
+   * that is the only score in the pipeline that means anything across queries — the fused score is
+   * a sum of reciprocal ranks and the index scores are corpus-dependent. **Null is not zero.** A
+   * bypassed reranker has not judged the support to be poor; it has not judged it at all, and
+   * collapsing the two would turn PRD 9.4's degraded mode into a blanket abstention.
+   */
+  readonly rerankScore: number | null;
 }
 
 export function reciprocalRankFusion(
@@ -76,6 +86,7 @@ export function reciprocalRankFusion(
     .map((entry) => ({
       ...entry.candidate,
       fusedScore: entry.score,
+      rerankScore: null,
       // Sorted, so two runs that queried the arms in a different order produce equal records.
       contributions: [...entry.contributions].sort((a, b) =>
         a.retriever.localeCompare(b.retriever),

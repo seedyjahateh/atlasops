@@ -358,11 +358,50 @@ A phase is not done because the code exists. It is done when all of this is true
       lexical-only past it would hide a broken vector index behind a slightly worse ranking for as
       long as nobody read the flag.
 
-- [ ] **P9 — `packages/grounding`.** Prompt assembly, answer schema, citation binding,
+- [x] **P9 — `packages/grounding`.** Prompt assembly, answer schema, citation binding,
       verification, abstention. Implements PRD 7.1 to 7.3 and 6.5. Acceptance: every returned claim
       binds to a retrieved chunk; an answer that cannot be verified abstains rather than degrading;
       retrieved content is treated as data and a prompt-injection fixture does not change
       behaviour.
+
+      Done. 40 tests. The boundary was demonstrated rather than asserted: a real
+      `import { inMemoryLexicalIndex } from "@atlasops/indexing"` in `packages/grounding` produced
+      `forbidden-import` and exit 1 from `boundaries:check`, and a named `no-restricted-imports`
+      failure from `lint`; removing it returned exit 0. The tests build `RetrievalResult` values by
+      hand for the same reason — reaching for a real index would have been the first crack in that
+      boundary.
+
+      **The injection defence is not detection.** Nothing pattern-matches the fixture passages; a
+      defence built on recognising phrasings fails on the first rephrasing. Two properties hold
+      whatever the passage says: a passage cannot close its own block, because the delimiter is
+      neutralised on the way in — that is the injection that actually works against a naive
+      assembler — and an answer produced by a model that *did* obey one cannot be released, because
+      the verifier is not a language model and never reads the passage.
+
+      **Spans are verified against the text the model was shown**, not the stored chunk. The two
+      differ by a few characters exactly when a document talks about this system, and verifying
+      against the chunk would reject a correct citation or accept one pointing at different words.
+
+      **The abstention reason is for the audit; the message is for the caller.** `reason`
+      distinguishes `permission-excluded` from `low-support`, which is the distinction PRD 6.4 says
+      an attacker must not be able to make — so the message goes through `governance`'s constants,
+      where hidden-excluded and nothing-found are the same bytes. Asserted both ways. A caller that
+      surfaces `reason` to an unprivileged user reopens the oracle, which is stated in the code
+      because no type can prevent it.
+
+      One bounded regeneration, then abstention (PRD 7.2), with the failures handed to the retry.
+      Bounded at one because a verifier-driven retry loop spends budget converging on an answer the
+      evidence does not support, and PRD 7.3 makes abstention a feature rather than that loop's
+      failure.
+
+      Three additive changes to lower layers, none a reversal, so none takes an ADR. `Candidate`
+      gained `acl`, because PRD 7.2's readability check has to be a second check rather than "it was
+      in the retrieved set" twice. `FusedCandidate` gained `rerankScore`, because PRD 7.3's
+      threshold is defined on the reranked score and **null is not zero** — a bypassed reranker has
+      not judged the support to be poor. And `AuditRecord.costUsd` widened to `number | null`: the
+      price table ships empty (ADR 0002), recording zero would fabricate a cost and throwing would
+      turn a missing price list into an outage.
+
 - [ ] **P10 — `packages/evalkit`.** Harness, dataset loaders, metrics, ablation runner, statistics,
       reporting. Implements PRD 8. Acceptance: datasets are content-hashed and versioned; a run
       emits the full 8.2 metric table plus per-query raw results; regression detection is

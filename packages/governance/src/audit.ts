@@ -64,7 +64,16 @@ export interface AuditRecord {
   readonly models: readonly string[];
   readonly inputTokens: number;
   readonly outputTokens: number;
-  readonly costUsd: number;
+  /**
+   * Null when the models in this request have no price in the table that was in force.
+   *
+   * Widened from `number` when the answer path was built: the price table ships empty (ADR 0002),
+   * and the two alternatives were both worse than an honest null. Recording zero would fabricate a
+   * cost — the exact thing that ADR forbids — and throwing would make an unpriced model withhold
+   * every answer, turning a missing price list into an outage. A reader of the record can tell
+   * "this cost nothing" from "nobody knows what this cost"; a zero cannot.
+   */
+  readonly costUsd: number | null;
   readonly stageTimings: readonly StageTiming[];
   readonly writtenAt: string;
 }
@@ -79,7 +88,8 @@ export interface SealInput {
   readonly models: readonly string[];
   readonly inputTokens: number;
   readonly outputTokens: number;
-  readonly costUsd: number;
+  /** Null when the models have no price in the table in force. See `AuditRecord.costUsd`. */
+  readonly costUsd: number | null;
   readonly stageTimings: readonly StageTiming[];
   readonly writtenAt: string;
 }

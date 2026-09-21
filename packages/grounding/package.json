@@ -1,0 +1,17 @@
+{
+  "name": "@atlasops/grounding",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Prompt assembly, answer schema, citation binding, verification, and abstention.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@atlasops/contracts": "workspace:*",
+    "@atlasops/governance": "workspace:*",
+    "@atlasops/model-gateway": "workspace:*",
+    "@atlasops/retrieval": "workspace:*",
+    "@atlasops/telemetry": "workspace:*"
+  }
+}

@@ -152,6 +152,7 @@ function candidateOf(row: IndexRow, rank: number, score: number): Candidate {
     sourceVersionId: row.chunk.sourceVersionId,
     headingPath: row.chunk.headingPath,
     text: row.text,
+    acl: row.chunk.acl,
     score,
     rank,
   };

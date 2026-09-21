@@ -207,7 +207,9 @@ export async function retrieve(
       const byId = new Map(fused.map((candidate) => [candidate.chunkId, candidate]));
       candidates = outcome.result.scores.flatMap((score, position) => {
         const candidate = byId.get(score.id as FusedCandidate["chunkId"]);
-        return candidate === undefined ? [] : [{ ...candidate, rank: position + 1 }];
+        return candidate === undefined
+          ? []
+          : [{ ...candidate, rank: position + 1, rerankScore: score.score }];
       });
       span.end();
     } catch (error) {

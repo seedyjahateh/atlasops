@@ -11,7 +11,7 @@
  * lookup to fetch the passage would be a second place a permission check could be forgotten.
  */
 
-import type { Chunk, ChunkId, SourceId, SourceVersionId } from "@atlasops/contracts";
+import type { AclLabel, Chunk, ChunkId, SourceId, SourceVersionId } from "@atlasops/contracts";
 
 export interface IndexRow {
   readonly chunk: Chunk;
@@ -25,6 +25,16 @@ export interface Candidate {
   readonly sourceVersionId: SourceVersionId;
   readonly headingPath: readonly string[];
   readonly text: string;
+  /**
+   * The label this chunk carries.
+   *
+   * Every candidate is already readable by the principal — the pre-filter saw to that — so this is
+   * not how access is decided. It travels because PRD 7.2 requires the verification pass to check
+   * independently that "every referenced chunk was readable by this principal", and a check that
+   * can only say "it was in the retrieved set" is the same check twice rather than a second one.
+   * It also lets PRD 6.6's audit record an authorisation decision per cited chunk.
+   */
+  readonly acl: AclLabel;
   readonly score: number;
   /** One-based, so a reciprocal-rank fusion in PRD 5.3 has no zero to divide by. */
   readonly rank: number;
@@ -37,6 +47,7 @@ export function candidateOf(row: IndexRow, score: number, rank: number): Candida
     sourceVersionId: row.chunk.sourceVersionId,
     headingPath: row.chunk.headingPath,
     text: row.text,
+    acl: row.chunk.acl,
     score,
     rank,
   };
