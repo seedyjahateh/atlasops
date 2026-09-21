@@ -15,7 +15,11 @@
     "test": "vitest run",
     "boundaries:check": "tsx tools/boundaries/src/cli.ts check",
     "boundaries:table": "tsx tools/boundaries/src/cli.ts table --write",
-    "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm boundaries:check"
+    "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm boundaries:check",
+    "app:api": "tsx apps/api/src/main.ts --corpus examples/corpus",
+    "app:ingest": "tsx apps/ingest-worker/src/main.ts --corpus examples/corpus",
+    "app:eval": "tsx apps/eval-runner/src/main.ts --corpus examples/corpus --datasets packages/evalkit/fixtures/datasets.v1.json --allow-snapshot-mismatch",
+    "app:console": "tsx apps/console/src/main.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

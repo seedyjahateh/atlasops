@@ -1,0 +1,23 @@
+{
+  "name": "@atlasops/eval-runner",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The RAG-01 scheduled evaluation runtime. Runs the ablation arms and writes artefacts.",
+  "scripts": {
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@atlasops/composition": "workspace:*",
+    "@atlasops/contracts": "workspace:*",
+    "@atlasops/corpus": "workspace:*",
+    "@atlasops/evalkit": "workspace:*",
+    "@atlasops/governance": "workspace:*",
+    "@atlasops/grounding": "workspace:*",
+    "@atlasops/indexing": "workspace:*",
+    "@atlasops/ingest": "workspace:*",
+    "@atlasops/model-gateway": "workspace:*",
+    "@atlasops/retrieval": "workspace:*",
+    "@atlasops/telemetry": "workspace:*"
+  }
+}

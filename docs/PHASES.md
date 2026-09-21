@@ -548,7 +548,7 @@ A phase is not done because the code exists. It is done when all of this is true
       below it is an inviting home for anything two applications happen to share. The mitigation is
       that it holds assembly and no utilities, opens no connection, and reads no configuration.
 
-- [ ] **P11b — The four applications.** `apps/api`, `apps/ingest-worker`, `apps/eval-runner`,
+- [x] **P11b — The four applications.** `apps/api`, `apps/ingest-worker`, `apps/eval-runner`,
       `apps/console`. Implements PRD 10. Acceptance: the four run from documented commands;
       each is wiring and configuration over `packages/composition` and nothing else; no
       application imports another, and that is demonstrated rather than asserted; the console is
@@ -563,6 +563,45 @@ A phase is not done because the code exists. It is done when all of this is true
       deliberate, reviewed act"), and doing that is a boundary change with its own ADR, which is
       exactly the kind of thing that should not be buried in a commit that also adds four
       applications.
+
+      Done. 47 tests across the four, and all four commands were run end to end rather than
+      assumed: `app:ingest` crawled `examples/corpus` and wrote 6 chunks; `app:eval` ran all four
+      arms and wrote five artefacts; `app:api` served a real cited answer over HTTP; `app:console`
+      served the artefact index, set a content-security-policy and refused a traversal with 404.
+      The boundary was demonstrated — `apps/eval-runner` importing `apps/api` produced
+      `app-is-a-leaf` and exit 1; removing it returned exit 0.
+
+      **What is not installed is stated where somebody will read it.** No provider adapter exists,
+      so every model identifier these processes record says so — `stand-in-embedder`,
+      `stand-in-reranker`, `stand-in-not-a-model` — and `apps/README.md` leads with the two
+      consequences: the embedder has no semantic structure, so the dense arm returns candidates for
+      a query the corpus cannot answer and the API answers almost anything with something; and the
+      generator does no language modelling. There is a test asserting that first one rather than
+      leaving it as a footnote. No persistent store exists either, so the four processes cannot
+      share a corpus, which is why the API and the runner crawl one themselves — and both refuse
+      any other profile by name rather than falling back.
+
+      **The evaluation runner refuses a dataset labelled against a different corpus**, which is PRD
+      8.1's second way to fake an improvement. The in-repo fixtures are labelled against no corpus,
+      so `app:eval` passes `--allow-snapshot-mismatch` and every artefact it writes says on its
+      face that the numbers are not comparable to a run whose snapshot matched.
+
+      Smaller decisions worth recording. The worker exits non-zero when a source failed: isolation
+      is about not losing the good sources, not about making the bad one invisible to a scheduler.
+      The API never returns `Abstention.reason`, and the test asserts the whole key set rather than
+      the absence of one name. The console refuses anything that is not a GET before it looks at a
+      path, and allow-lists artefact names against the directory listing rather than blocking `..`.
+
+      `filesystemConnector` was added to `ingest` — connectors are its row in PRD 11.2, and two
+      applications need one. It makes PRD 4.2's `complete` flag real: an unreadable subdirectory
+      produces a partial listing rather than a short one, so the corpus withholds deletions instead
+      of acting on a crawl that half-failed. `citingStandIn` was added to `grounding`, which owns
+      the answer schema it emits.
+
+      One process note: I corrupted all four entry points with a PowerShell `Get-Content -Raw` /
+      `Set-Content` rewrite — BOM added, em dashes mojibaked — and rewrote them properly. That is
+      the third time that pair has damaged UTF-8 in this project; source edits go through the
+      editing tools.
 
 - [ ] **P12 — Evidence.** Produce the artefacts PRD 12 requires: the evaluation report, the
       governance report with a zero leak count, the cost and latency report against the 9.1

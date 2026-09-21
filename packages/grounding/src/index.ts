@@ -44,3 +44,5 @@ export {
   type GroundingRequest,
   type GroundingResult,
 } from "./ground.js";
+
+export { STAND_IN_MODEL_ID, citingStandIn } from "./stand-in.js";

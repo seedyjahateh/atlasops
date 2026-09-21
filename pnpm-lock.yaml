@@ -36,6 +36,101 @@ importers:
         specifier: ^3.0.0
         version: 3.2.7(@types/node@24.13.6)(supports-color@7.2.0)(tsx@4.23.13)
 
+  apps/api:
+    dependencies:
+      '@atlasops/composition':
+        specifier: workspace:*
+        version: link:../../packages/composition
+      '@atlasops/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@atlasops/corpus':
+        specifier: workspace:*
+        version: link:../../packages/corpus
+      '@atlasops/governance':
+        specifier: workspace:*
+        version: link:../../packages/governance
+      '@atlasops/grounding':
+        specifier: workspace:*
+        version: link:../../packages/grounding
+      '@atlasops/indexing':
+        specifier: workspace:*
+        version: link:../../packages/indexing
+      '@atlasops/ingest':
+        specifier: workspace:*
+        version: link:../../packages/ingest
+      '@atlasops/model-gateway':
+        specifier: workspace:*
+        version: link:../../packages/model-gateway
+      '@atlasops/retrieval':
+        specifier: workspace:*
+        version: link:../../packages/retrieval
+      '@atlasops/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
+
+  apps/console: {}
+
+  apps/eval-runner:
+    dependencies:
+      '@atlasops/composition':
+        specifier: workspace:*
+        version: link:../../packages/composition
+      '@atlasops/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@atlasops/corpus':
+        specifier: workspace:*
+        version: link:../../packages/corpus
+      '@atlasops/evalkit':
+        specifier: workspace:*
+        version: link:../../packages/evalkit
+      '@atlasops/governance':
+        specifier: workspace:*
+        version: link:../../packages/governance
+      '@atlasops/grounding':
+        specifier: workspace:*
+        version: link:../../packages/grounding
+      '@atlasops/indexing':
+        specifier: workspace:*
+        version: link:../../packages/indexing
+      '@atlasops/ingest':
+        specifier: workspace:*
+        version: link:../../packages/ingest
+      '@atlasops/model-gateway':
+        specifier: workspace:*
+        version: link:../../packages/model-gateway
+      '@atlasops/retrieval':
+        specifier: workspace:*
+        version: link:../../packages/retrieval
+      '@atlasops/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
+
+  apps/ingest-worker:
+    dependencies:
+      '@atlasops/composition':
+        specifier: workspace:*
+        version: link:../../packages/composition
+      '@atlasops/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@atlasops/corpus':
+        specifier: workspace:*
+        version: link:../../packages/corpus
+      '@atlasops/indexing':
+        specifier: workspace:*
+        version: link:../../packages/indexing
+      '@atlasops/ingest':
+        specifier: workspace:*
+        version: link:../../packages/ingest
+      '@atlasops/model-gateway':
+        specifier: workspace:*
+        version: link:../../packages/model-gateway
+      '@atlasops/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
+
   packages/composition:
     dependencies:
       '@atlasops/contracts':

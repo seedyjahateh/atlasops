@@ -1,0 +1,19 @@
+{
+  "name": "@atlasops/ingest-worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The RAG-01 ingestion runtime. Crawls a corpus and writes the store and the indexes.",
+  "scripts": {
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@atlasops/composition": "workspace:*",
+    "@atlasops/contracts": "workspace:*",
+    "@atlasops/corpus": "workspace:*",
+    "@atlasops/indexing": "workspace:*",
+    "@atlasops/ingest": "workspace:*",
+    "@atlasops/model-gateway": "workspace:*",
+    "@atlasops/telemetry": "workspace:*"
+  }
+}

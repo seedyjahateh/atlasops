@@ -58,6 +58,8 @@ export {
   type FixtureSource,
 } from "./fixture-connector.js";
 
+export { filesystemConnector, type FilesystemConnectorOptions } from "./filesystem-connector.js";
+
 export { failingChunkSink, inMemoryChunkSink, type ChunkSink, type StoredChunk } from "./sink.js";
 
 export {

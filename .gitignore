@@ -15,6 +15,7 @@ coverage/
 # themselves are content-hashed and DO belong in the repository (PRD 8.1).
 .runs/
 .cache/
+evidence/
 
 # Editor / OS
 .DS_Store

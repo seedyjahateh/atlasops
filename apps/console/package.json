@@ -1,0 +1,11 @@
+{
+  "name": "@atlasops/console",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The RAG-01 read-only console over evaluation artefacts.",
+  "scripts": {
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {}
+}
