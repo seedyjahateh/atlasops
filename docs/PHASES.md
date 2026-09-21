@@ -508,10 +508,31 @@ A phase is not done because the code exists. It is done when all of this is true
       changed, so the hash moved, so the version had to. That is P10a's mechanism working on its
       first real edit rather than a nuisance.
 
-- [ ] **P11 — Applications.** `apps/api`, `apps/ingest-worker`, `apps/eval-runner`, `apps/console`.
-      Implements PRD 10. Acceptance: the four components run from documented commands; they
-      communicate through the corpus store and indexes rather than direct calls; a stalled
-      ingestion job does not degrade answer latency, and a test demonstrates that.
+- [ ] **P11a — `packages/composition`: the composition root.** The answer pipeline and the
+      ingestion pipeline, assembled from ports, so that the thing the evaluation measures and the
+      thing the API serves are the same object. Implements PRD 10's separation of concerns and
+      11.2's rule that a shared helper is promoted into a package rather than imported sideways.
+      Acceptance: a new layer between `evalkit` and the application group, declared in
+      `layers.json` with an ADR; the answer pipeline is constructed once and consumed by both the
+      API and the evaluation runner; a stalled ingestion job does not degrade answer latency, and
+      a test demonstrates that by interleaving a hanging ingestion with answered queries.
+
+- [ ] **P11b — The four applications.** `apps/api`, `apps/ingest-worker`, `apps/eval-runner`,
+      `apps/console`. Implements PRD 10. Acceptance: the four run from documented commands;
+      each is wiring and configuration over `packages/composition` and nothing else; no
+      application imports another, and that is demonstrated rather than asserted; the console is
+      read-only over answers, traces and evaluation artefacts.
+
+      **Why P11 is split.** `apps/eval-runner` has to evaluate the same answer pipeline
+      `apps/api` serves, and an application may not import another application — so without a
+      promoted composition package the runner would rebuild the pipeline itself, and an
+      evaluation could then pass while the API served something subtly different. That is not a
+      tidiness problem; it is the failure that makes the whole of PRD 8 worthless. PRD 11.2
+      already prescribes the fix ("promote it into a package with a defined contract — a
+      deliberate, reviewed act"), and doing that is a boundary change with its own ADR, which is
+      exactly the kind of thing that should not be buried in a commit that also adds four
+      applications.
+
 - [ ] **P12 — Evidence.** Produce the artefacts PRD 12 requires: the evaluation report, the
       governance report with a zero leak count, the cost and latency report against the 9.1
       reference profile, and the boundary-enforcement artefact showing at least two exhibits
