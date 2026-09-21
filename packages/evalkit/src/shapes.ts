@@ -32,6 +32,17 @@ export interface GroundedAnswerItem extends DatasetItem {
   readonly principal: string;
   readonly referenceAnswer: string;
   readonly supportingChunks: readonly string[];
+  /**
+   * The human-labelled calibration subset PRD 8.3 requires.
+   *
+   * Present on a subset, not on every item — labelling all of them by hand is the cost the judge
+   * exists to avoid. Its presence is what lets judge-human agreement be reported alongside every
+   * judged metric, and `judgedMetrics` refuses to return a judged score when no item carries one.
+   */
+  readonly humanJudgement?: {
+    readonly supported: boolean;
+    readonly contradicted: boolean;
+  };
 }
 
 /** PRD 8.1 item 3: unanswerable and under-supported queries. */

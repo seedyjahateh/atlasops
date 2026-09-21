@@ -56,11 +56,16 @@
   },
 
   "groundedAnswers": {
+    "$comment": [
+      "Version 1.1.0: the human-labelled calibration subset PRD 8.3 requires was added to two",
+      "items. The labels changed, so the content hash moved, so the version moved with it — which",
+      "is the mechanism working rather than a nuisance."
+    ],
     "id": "grounded-answers",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "kind": "grounded-answers",
     "corpusSnapshot": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "contentHash": "sha256:77ac1d32033b08c26979ae25f78ec74d83fce246efd646408cf96fef00785fab",
+    "contentHash": "sha256:6033c2edc592f7e3422fdc8e9ac6caf0ca2f76ada1585c52db7226c48eee5846",
     "items": [
       {
         "id": "grd-001",
@@ -70,7 +75,8 @@
         "referenceAnswer": "Thirty days from delivery.",
         "supportingChunks": [
           "chk_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_0"
-        ]
+        ],
+        "humanJudgement": { "supported": true, "contradicted": false }
       },
       {
         "id": "grd-002",
@@ -80,7 +86,8 @@
         "referenceAnswer": "The ledger is locked.",
         "supportingChunks": [
           "chk_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb_0"
-        ]
+        ],
+        "humanJudgement": { "supported": true, "contradicted": false }
       },
       {
         "id": "grd-003",

@@ -122,8 +122,15 @@ describe("datasets are versioned artefacts (PRD 8.1)", () => {
   it("loads each of the four shapes with its declared hash intact", () => {
     for (const dataset of [relevance, grounded, abstention, probes]) {
       expect(dataset.contentHash).toMatch(/^sha256:[0-9a-f]{64}$/);
-      expect(dataset.version).toBe("1.0.0");
     }
+    // The grounded set is at 1.1.0 because the human-labelled calibration subset PRD 8.3 requires
+    // was added to it: the labels changed, so the hash moved, so the version had to move with it.
+    expect([relevance.version, grounded.version, abstention.version, probes.version]).toEqual([
+      "1.0.0",
+      "1.1.0",
+      "1.0.0",
+      "1.0.0",
+    ]);
   });
 
   it("refuses a file whose labels moved without its version moving", () => {

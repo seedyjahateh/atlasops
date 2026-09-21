@@ -450,7 +450,7 @@ A phase is not done because the code exists. It is done when all of this is true
       copy of them, since two identical literals drift and the drift makes the count fall to zero
       for the wrong reason.
 
-- [ ] **P10b — `packages/evalkit`: the harness, statistics and reporting.** The ablation runner,
+- [x] **P10b — `packages/evalkit`: the harness, statistics and reporting.** The ablation runner,
       judged metrics with PRD 8.3's three controls, the paired bootstrap, and the report artefact.
       Implements PRD 8.2 (rows 2, 4, 7), 8.3 and 8.5. Acceptance: the harness runs an answer system
       across a dataset version and emits the full 8.2 table plus per-query raw results; four
@@ -467,6 +467,46 @@ A phase is not done because the code exists. It is done when all of this is true
       They also fail differently — a wrong metric is a silently wrong number, and a wrong gate is a
       release that should not have shipped — so grading them in one pass means grading neither
       carefully.
+
+      Done. 45 tests. The boundary was demonstrated rather than asserted: a real
+      `import { inMemoryVectorIndex } from "@atlasops/indexing"` in `packages/evalkit` produced
+      `forbidden-import` and exit 1; removing it returned exit 0.
+
+      **The bootstrap earns its place in one pair of tests.** Two runs with an identical mean delta
+      of 0.005 get opposite verdicts: a handful of queries moving both ways is `no-change`, and a
+      uniform shift across all two hundred is `improvement`. A third test asserts the direction that
+      flatters the method less — four queries out of two hundred each gaining a full point, with
+      nothing worse, _is_ called an improvement, because it is one. The machinery is for telling
+      noise from signal, not for refusing small samples on principle.
+
+      **The gate reads the interval's lower bound**, with a test where the point estimate is
+      positive and the gate still refuses. The tolerance ships unselected at zero, which is
+      conservative on purpose — the remedy for a wide interval is more queries, not a looser gate.
+
+      **Judged metrics cannot be obtained without the agreement that qualifies them.**
+      `judgedMetrics` returns the supported-claim rate, the contradiction rate and judge-human
+      agreement as one value, and throws when no calibration item carries a human label. The judge
+      is pinned by model and prompt version, and `requireSameJudge` refuses a comparison across a
+      change to either. PRD 8.3's third control lives in the comparison: a judged improvement beside
+      a retrieval regression comes out as a regression, before anything else can call it a win.
+
+      Two corrections I made to my own test expectations rather than to the code. A three-query
+      fixture cannot support a confident verdict, so the end-to-end regression test now asserts
+      `no-change` _and_ a failed gate, with the reason naming the sample size — and the
+      verdict-logic tests feed per-query scores directly instead of enlarging the fixture until the
+      numbers came out. The `lowerIsBetter` set is what stops a rise in leak count reading as an
+      improvement; there is a test for the sign flip.
+
+      Deliberately conservative elsewhere: `compareRuns` refuses two different arms, two different
+      dataset versions and two different judges; `compareArms` is a separate operation, because an
+      ablation is not a regression and running one through the release gate would report
+      "dense-only is worse" as a build failure. The report prints dataset versions, sample sizes,
+      the reason any row is empty, whether the run read the held-out split, and — when a p95 rests
+      on twenty samples or fewer — that it is a maximum wearing a percentile's name.
+
+      The grounded-answer fixture moved to 1.1.0 when the calibration labels were added: the labels
+      changed, so the hash moved, so the version had to. That is P10a's mechanism working on its
+      first real edit rather than a nuisance.
 
 - [ ] **P11 — Applications.** `apps/api`, `apps/ingest-worker`, `apps/eval-runner`, `apps/console`.
       Implements PRD 10. Acceptance: the four components run from documented commands; they

@@ -1,15 +1,17 @@
 /**
- * The public surface of `@atlasops/evalkit`, at P10a.
+ * The public surface of `@atlasops/evalkit`.
  *
  * Layer 7. It imports `contracts`, `telemetry`, `retrieval`, `grounding` and `governance` — and
- * notably not `indexing`, `corpus`, `ingest` or `model-gateway`. That is why nothing here runs a
- * system: this phase is functions over labelled data and recorded outputs. The harness that drives
- * an answer system arrives in P10b and takes it as a port, which is also what keeps the harness
- * able to evaluate something other than this repository's own wiring.
+ * notably not `indexing`, `corpus`, `ingest` or `model-gateway`. The system under test is therefore
+ * a port, which it should have been anyway: a harness that could only evaluate this repository's
+ * own wiring could not be used to evaluate a change to that wiring, which is the one thing it
+ * exists for.
  *
- * Two shapes are load-bearing and neither is a convention anybody has to remember. A `MetricResult`
- * cannot be built without the per-query scores it came from (PRD 8.5), and the leak gate throws
- * rather than returning a number (PRD 8.4).
+ * Four shapes are load-bearing, and none of them is a convention anybody has to remember. A
+ * `MetricResult` cannot be built without the per-query scores it came from (PRD 8.5). The leak gate
+ * throws rather than returning a number (PRD 8.4). Judged metrics cannot be obtained without the
+ * judge-human agreement that qualifies them (PRD 8.3). And the release gate reads a confidence
+ * interval's lower bound, never the point estimate (PRD 8.5).
  */
 
 export {
@@ -72,3 +74,61 @@ export {
   type GovernanceGate,
   type ProbeOutcome,
 } from "./governance-metrics.js";
+
+export { seededRng, type Rng } from "./rng.js";
+
+export {
+  BOOTSTRAP_DEFAULTS,
+  GATE_DEFAULTS,
+  pairedBootstrap,
+  verdictOf,
+  withinTolerance,
+  type BootstrapOptions,
+  type BootstrapResult,
+  type GatePolicy,
+  type ToleranceProvenance,
+  type Verdict,
+} from "./bootstrap.js";
+
+export {
+  describeJudge,
+  fixtureJudge,
+  judgedMetrics,
+  requireSameJudge,
+  sameJudge,
+  type Judge,
+  type JudgeIdentity,
+  type JudgeRequest,
+  type JudgedMetrics,
+  type JudgedOutcome,
+  type Judgement,
+} from "./judge.js";
+
+export { ARMS, configForArm, type ArmName } from "./arms.js";
+
+export {
+  metricsOf,
+  runEvaluation,
+  type AnswerSystem,
+  type LatencyRow,
+  type QueryRecord,
+  type RunInput,
+  type RunReport,
+  type SystemObservation,
+  type SystemQuery,
+  type TableRow,
+} from "./harness.js";
+
+export {
+  JUDGED_METRICS,
+  LOWER_IS_BETTER,
+  RETRIEVAL_METRICS,
+  compareArms,
+  compareRuns,
+  type ArmDelta,
+  type CompareOptions,
+  type ComparisonReport,
+  type MetricComparison,
+} from "./compare.js";
+
+export { renderComparison, renderRunReport } from "./report.js";
