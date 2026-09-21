@@ -20,13 +20,14 @@ fact and not the one that decides whether a boundary held.
 | 5 retrieval | `@atlasops/retrieval` | Dense arm, lexical arm, RRF fusion, reranking, ablation switches | `@atlasops/contracts`, `@atlasops/telemetry`, `@atlasops/indexing`, `@atlasops/governance`, `@atlasops/model-gateway` |
 | 6 grounding | `@atlasops/grounding` | Prompt assembly, answer schema, citation binding, verification, abstention | `@atlasops/contracts`, `@atlasops/telemetry`, `@atlasops/retrieval`, `@atlasops/governance`, `@atlasops/model-gateway` |
 | 7 evaluation | `@atlasops/evalkit` | Harness, dataset loaders, metrics, ablation runner, statistics, reporting | `@atlasops/contracts`, `@atlasops/telemetry`, `@atlasops/retrieval`, `@atlasops/grounding`, `@atlasops/governance` |
+| 8 composition | `@atlasops/composition` | The answer and ingestion pipelines, assembled from ports | `@atlasops/contracts`, `@atlasops/telemetry`, `@atlasops/governance`, `@atlasops/model-gateway`, `@atlasops/corpus`, `@atlasops/ingest`, `@atlasops/indexing`, `@atlasops/retrieval`, `@atlasops/grounding`, `@atlasops/evalkit` |
 
 ## Groups
 
 | Layer | Group | Owns | May import |
 | --- | --- | --- | --- |
-| 8 runtime | `apps/` | Wiring, transport, configuration, deployment surface | any package, no group |
-| 8 runtime | `exhibits/` | One exhibit's own code, fixtures, datasets, README, evidence | any package, no group |
+| 9 runtime | `apps/` | Wiring, transport, configuration, deployment surface | any package, no group |
+| 9 runtime | `exhibits/` | One exhibit's own code, fixtures, datasets, README, evidence | any package, no group |
 
 ## Provider SDKs
 

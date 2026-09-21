@@ -19,6 +19,7 @@
     "retrieval",
     "grounding",
     "evaluation",
+    "composition",
     "runtime"
   ],
 
@@ -111,20 +112,43 @@
         "@atlasops/grounding",
         "@atlasops/governance"
       ]
+    },
+    "@atlasops/composition": {
+      "$comment": [
+        "The composition root (ADR 0005). It exists because apps/eval-runner must evaluate the",
+        "same answer pipeline apps/api serves, and an application may not import another",
+        "application — so without this the runner would rebuild the pipeline and an evaluation",
+        "could pass while the API served something else."
+      ],
+      "path": "packages/composition",
+      "layer": 8,
+      "owns": "The answer and ingestion pipelines, assembled from ports",
+      "mayImport": [
+        "@atlasops/contracts",
+        "@atlasops/telemetry",
+        "@atlasops/governance",
+        "@atlasops/model-gateway",
+        "@atlasops/corpus",
+        "@atlasops/ingest",
+        "@atlasops/indexing",
+        "@atlasops/retrieval",
+        "@atlasops/grounding",
+        "@atlasops/evalkit"
+      ]
     }
   },
 
   "groups": {
     "apps": {
       "pathPrefix": "apps/",
-      "layer": 8,
+      "layer": 9,
       "owns": "Wiring, transport, configuration, deployment surface",
       "mayImportAnyPackage": true,
       "mayImportGroups": []
     },
     "exhibits": {
       "pathPrefix": "exhibits/",
-      "layer": 8,
+      "layer": 9,
       "owns": "One exhibit's own code, fixtures, datasets, README, evidence",
       "mayImportAnyPackage": true,
       "mayImportGroups": []

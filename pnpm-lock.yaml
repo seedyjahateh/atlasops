@@ -36,6 +36,39 @@ importers:
         specifier: ^3.0.0
         version: 3.2.7(@types/node@24.13.6)(supports-color@7.2.0)(tsx@4.23.13)
 
+  packages/composition:
+    dependencies:
+      '@atlasops/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@atlasops/corpus':
+        specifier: workspace:*
+        version: link:../corpus
+      '@atlasops/evalkit':
+        specifier: workspace:*
+        version: link:../evalkit
+      '@atlasops/governance':
+        specifier: workspace:*
+        version: link:../governance
+      '@atlasops/grounding':
+        specifier: workspace:*
+        version: link:../grounding
+      '@atlasops/indexing':
+        specifier: workspace:*
+        version: link:../indexing
+      '@atlasops/ingest':
+        specifier: workspace:*
+        version: link:../ingest
+      '@atlasops/model-gateway':
+        specifier: workspace:*
+        version: link:../model-gateway
+      '@atlasops/retrieval':
+        specifier: workspace:*
+        version: link:../retrieval
+      '@atlasops/telemetry':
+        specifier: workspace:*
+        version: link:../telemetry
+
   packages/contracts: {}
 
   packages/corpus:

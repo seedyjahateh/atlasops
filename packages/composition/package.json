@@ -1,0 +1,22 @@
+{
+  "name": "@atlasops/composition",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The answer and ingestion pipelines, assembled from ports. Wiring only.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@atlasops/contracts": "workspace:*",
+    "@atlasops/corpus": "workspace:*",
+    "@atlasops/evalkit": "workspace:*",
+    "@atlasops/governance": "workspace:*",
+    "@atlasops/grounding": "workspace:*",
+    "@atlasops/indexing": "workspace:*",
+    "@atlasops/ingest": "workspace:*",
+    "@atlasops/model-gateway": "workspace:*",
+    "@atlasops/retrieval": "workspace:*",
+    "@atlasops/telemetry": "workspace:*"
+  }
+}

@@ -508,7 +508,7 @@ A phase is not done because the code exists. It is done when all of this is true
       changed, so the hash moved, so the version had to. That is P10a's mechanism working on its
       first real edit rather than a nuisance.
 
-- [ ] **P11a — `packages/composition`: the composition root.** The answer pipeline and the
+- [x] **P11a — `packages/composition`: the composition root.** The answer pipeline and the
       ingestion pipeline, assembled from ports, so that the thing the evaluation measures and the
       thing the API serves are the same object. Implements PRD 10's separation of concerns and
       11.2's rule that a shared helper is promoted into a package rather than imported sideways.
@@ -516,6 +516,37 @@ A phase is not done because the code exists. It is done when all of this is true
       `layers.json` with an ADR; the answer pipeline is constructed once and consumed by both the
       API and the evaluation runner; a stalled ingestion job does not degrade answer latency, and
       a test demonstrates that by interleaving a hanging ingestion with answered queries.
+
+      Done. 15 tests, and the first in the repository that run the whole system end to end —
+      ingest a corpus, index it, answer from it, with only the provider boundary faked. The new
+      layer was demonstrated in both directions: `composition` importing `evalkit` is clean, and
+      `evalkit` importing `composition` produced both `forbidden-import` and, independently, a
+      `dependency-cycle` from the checker that had no way to know the first rule existed.
+
+      **`asAnswerSystem` is a rename, not an adapter**, and that is the whole point of ADR 0005. If
+      it had to reshape anything, the evaluated object and the served object would be different
+      objects again — which is the failure that makes PRD 8 worthless, because an evaluation would
+      pass while the API served something subtly different.
+
+      **The stalled-ingestion test says exactly what it shows and no more.** Answers complete, and
+      complete identically, while a crawl that will never return is in flight; and a second test
+      asserts structurally that the answer pipeline exposes no handle through which it could wait
+      on one. It is **not** a latency measurement — nothing here has measured latency, and PRD
+      section 0 does not permit one to be claimed from a run like this. The first version of the
+      test passed for the wrong reason: with the handbook removed there was nothing left to fetch,
+      so the hang never triggered and the crawl completed. It now adds a source the crawl must
+      fetch.
+
+      Two joins live here because this is the only layer allowed to see both sides.
+      `indexingChunkSink` adapts `ingest`'s sink onto `indexing`'s indexes, keeping its own record
+      as well — `indexing` deliberately has no unfiltered accessor (P7), and that decision is worth
+      more than the convenience of reading a row back. `corpusVersionOracle` answers `retrieval`'s
+      "is this current" from the corpus on every call rather than from a cached snapshot, because a
+      cached view is a window during which retrieval cites a superseded revision as current.
+
+      The cost, stated in the ADR: one more layer, and a package permitted to import everything
+      below it is an inviting home for anything two applications happen to share. The mitigation is
+      that it holds assembly and no utilities, opens no connection, and reads no configuration.
 
 - [ ] **P11b — The four applications.** `apps/api`, `apps/ingest-worker`, `apps/eval-runner`,
       `apps/console`. Implements PRD 10. Acceptance: the four run from documented commands;
