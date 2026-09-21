@@ -402,10 +402,36 @@ A phase is not done because the code exists. It is done when all of this is true
       price table ships empty (ADR 0002), recording zero would fabricate a cost and throwing would
       turn a missing price list into an outage.
 
-- [ ] **P10 — `packages/evalkit`.** Harness, dataset loaders, metrics, ablation runner, statistics,
-      reporting. Implements PRD 8. Acceptance: datasets are content-hashed and versioned; a run
-      emits the full 8.2 metric table plus per-query raw results; regression detection is
-      statistical rather than a threshold on a single number.
+- [ ] **P10a — `packages/evalkit`: datasets and the computable metrics.** The four dataset shapes
+      as content-hashed, versioned artefacts with a protected held-out split, and every metric that
+      can be computed without a judge. Implements PRD 8.1, 8.2 (rows 1, 3, 5, 6) and 8.4.
+      Acceptance: a dataset's hash is derived from its items and a declared hash that disagrees is
+      rejected; the held-out split cannot be read by the development path without an explicit,
+      recorded unseal; recall@k, nDCG@10 (graded, not binary), MRR and per-retriever contribution
+      are computed from graded labels; citation precision, citation recall and span-validity are
+      computed against the supporting-chunk set; correct-abstention and over-abstention are
+      computed against the abstention set; leak count and existence-disclosure count are computed
+      against the permission probe set, and leak count is a hard binary gate at zero; per-query
+      scores are retained rather than only aggregates.
+
+- [ ] **P10b — `packages/evalkit`: the harness, statistics and reporting.** The ablation runner,
+      judged metrics with PRD 8.3's three controls, the paired bootstrap, and the report artefact.
+      Implements PRD 8.2 (rows 2, 4, 7), 8.3 and 8.5. Acceptance: the harness runs an answer system
+      across a dataset version and emits the full 8.2 table plus per-query raw results; four
+      ablation arms run over the same dataset version and report deltas; a judged metric carries
+      its judge's model identifier, prompt version and judge-human agreement, and a judged
+      improvement paired with a retrieval regression is reported as a regression; regression
+      detection is a paired bootstrap on per-query deltas with the gate on the confidence
+      interval's lower bound, not the point estimate.
+
+      **Why P10 is split.** The original entry carried five responsibilities across five PRD
+      subsections, and the seam is the same one that made P6's split work: P10a is pure functions
+      over labelled data and recorded outputs, with no ports at all, while P10b is orchestration,
+      a judge dependency, and statistics whose whole point is that they are not a single threshold.
+      They also fail differently — a wrong metric is a silently wrong number, and a wrong gate is a
+      release that should not have shipped — so grading them in one pass means grading neither
+      carefully.
+
 - [ ] **P11 — Applications.** `apps/api`, `apps/ingest-worker`, `apps/eval-runner`, `apps/console`.
       Implements PRD 10. Acceptance: the four components run from documented commands; they
       communicate through the corpus store and indexes rather than direct calls; a stalled
