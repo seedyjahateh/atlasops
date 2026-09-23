@@ -20,22 +20,22 @@ formatting and the module-boundary check.
 What that does not mean: there is still no quality, cost or latency number to quote here. The archive this
 project belongs to forbids inventing metrics, performance results, repository history or external validation, so
 a threshold in the specification stays a target with a measurement method attached until a measurement has been
-taken *and* its evidence is complete. Later phases did produce numbers; `docs/promotion-readiness.md` is where
+taken _and_ its evidence is complete. Later phases did produce numbers; `docs/promotion-readiness.md` is where
 it is written down that none of them may yet be restated as an achievement.
 
 That distinction is load-bearing, and it is why this section says "built" rather than "done".
 
 ## Where to start reading
 
-| Document                                                             | What it is                                             |
-| -------------------------------------------------------------------- | ------------------------------------------------------ |
-| [`docs/promotion-readiness.md`](docs/promotion-readiness.md)         | Why this is not promoted yet, artefact by artefact.    |
-| [`docs/prd/RAG-01-atlasops.md`](docs/prd/RAG-01-atlasops.md)         | The specification. Section 11 is the module layout.    |
-| [`docs/PHASES.md`](docs/PHASES.md)                                   | The build plan, and the bar every phase must meet.     |
-| [`docs/MODULES.md`](docs/MODULES.md)                                 | The generated module table.                            |
-| [`docs/limitations.md`](docs/limitations.md)                         | What this does not do, and what it is not evidence of. |
-| [`docs/threat-model.md`](docs/threat-model.md)                       | What is trusted, and what is assumed hostile.          |
-| [`docs/adr/`](docs/adr/)                                             | Five decisions, each recorded where it was made.       |
+| Document                                                     | What it is                                             |
+| ------------------------------------------------------------ | ------------------------------------------------------ |
+| [`docs/promotion-readiness.md`](docs/promotion-readiness.md) | Why this is not promoted yet, artefact by artefact.    |
+| [`docs/prd/RAG-01-atlasops.md`](docs/prd/RAG-01-atlasops.md) | The specification. Section 11 is the module layout.    |
+| [`docs/PHASES.md`](docs/PHASES.md)                           | The build plan, and the bar every phase must meet.     |
+| [`docs/MODULES.md`](docs/MODULES.md)                         | The generated module table.                            |
+| [`docs/limitations.md`](docs/limitations.md)                 | What this does not do, and what it is not evidence of. |
+| [`docs/threat-model.md`](docs/threat-model.md)               | What is trusted, and what is assumed hostile.          |
+| [`docs/adr/`](docs/adr/)                                     | Five decisions, each recorded where it was made.       |
 
 The specification's canonical copy lives in the portfolio repository at
 `docs/prd/projects/RAG-01-atlasops.md`. The copy here is the working reference; if the two ever
