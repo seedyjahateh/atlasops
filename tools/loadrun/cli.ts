@@ -124,7 +124,7 @@ async function run(argv: readonly string[]): Promise<number> {
 
   process.stdout.write(
     `loadrun: ${String(record.requests)} request(s) at concurrency ${String(concurrency)}\n` +
-      `loadrun: wrote docs/measurements/load-run.json and evidence/cost-and-latency.md\n`,
+      `loadrun: wrote docs/measurements/load-run.json, load-run.spans.jsonl and ${reportPath}\n`,
   );
 
   // The run reports a breach; it does not fail on one. Failing here would make the honest response

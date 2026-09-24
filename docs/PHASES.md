@@ -1212,7 +1212,7 @@ model and inventing one is not available.
       Cost per answer counts **answered** queries only, per PRD 9.3's wording: an abstention costs
       less, and folding it in would lower the figure for a reason unrelated to answering.
 
-- [ ] **P18b — Complete artefacts, from real runs, published.** Every field PRD 12 items 2 and 4
+- [x] **P18b — Complete artefacts, from real runs, published.** Every field PRD 12 items 2 and 4
       name, present in the artefact rather than assumed: the raw per-query result file, seeds, run
       count and prompt versions for the evaluation; the raw span export and the versioned price table
       for the cost and latency report. Then the real runs — `--models openai` for both — with their
@@ -1228,6 +1228,57 @@ model and inventing one is not available.
       export were not recorded anywhere. A verdict generator reading those artefacts would have to
       either fail item 2 and item 4 for missing fields, or be written to overlook them. Completing the
       artefacts first means the verdict phase reads evidence rather than excusing its absence.
+
+      Done. 752 tests across 29 files. The real evaluation is published in `docs/evidence/` citing
+      commit `a76f16b`, and the real load run in `docs/measurements/` citing `dd00811`, each the
+      commit that produced it — the code that writes the artefacts was committed before the runs,
+      so no artefact cites code that did not contain its writer. Both use `text-embedding-3-small`
+      and `gpt-4.1-mini` at price table `openai-2026-09-24`; the reranker and the judge remain
+      stand-ins and every artefact names them as such. The artefacts were checked for key and
+      organisation-id fragments before commit, because this repository is public.
+
+      **Getting to a real run took four fixes, each found by the provider rather than by a test.**
+      The first live call was answered `insufficient_quota` with HTTP 429, which the adapter had
+      classified as a rate limit and would have retried three times — an empty balance is not
+      transient. The first successful call echoed a dated snapshot, `gpt-4.1-mini-2025-04-14`, that
+      no price list names; pricing now goes by the model requested and the snapshot is reported.
+      The first real evaluation died on a transient failure from the answer path, and PRD 9.4's
+      "generation unavailable" degraded mode turned out not to exist — recorded as a limitation, not
+      fixed in an evidence phase. And the first real load run hit a 200,000-tokens-per-minute limit
+      whose response said "try again in 338ms", against a retry schedule that waited 100 ms then
+      200 ms: tuned against a fake that never rate-limits, it could not succeed against any real
+      limit longer than itself. It now honours the provider's requested wait, capped at thirty
+      seconds. Lowering the concurrency until the error went away was the rejected alternative; it
+      would have hidden a real property of the reference profile.
+
+      **The served configuration is the worst fused arm.** With real embeddings, the ablation puts
+      `fused-with-rerank` at nDCG@10 0.71 against 0.87 with reranking bypassed and 0.95 dense-only.
+      The reranker is the unselected stand-in: harmless while everything else was a stand-in, and
+      the weakest link once nothing else was. It was not "fixed" here by changing the served
+      default — choosing a configuration on eleven development items and then quoting those same
+      items would be overfitting presented as a result. It is in `docs/limitations.md` as the first
+      decision anybody promoting this should make, with a held-out run to confirm it.
+
+      **What the real models established that the stand-ins could not.** Correct-abstention 1.0 over
+      4 (0 with the stand-ins), citation precision 0.83 and span-validity 1.0 on the served arm, and
+      zero leaks and zero existence disclosures with real models in the loop. Retrieval metrics
+      reproduced exactly across two real runs.
+
+      **The latency budget holds by the width of the cache.** End-to-end p95 is 2,914 ms against a
+      3,000 ms budget, but 247 of 260 requests hit the retrieval cache; the thirteen misses have a
+      p95 of 3,597 ms — the slowest of thirteen, and over budget. Generation is almost all of it. The
+      record's `caveat` field says which population dominates, and `docs/limitations.md` says the
+      cache-miss number is the one that describes answering a question.
+
+      **Cost is inside budget by a wide margin and qualified.** p50 $0.00082 and p95 $0.00172 per
+      answered query against $0.02 and $0.06, ingestion $0.001 per thousand chunks against $0.50 —
+      every figure excluding reranking, which a selected rerank model would add. Retrieval-only cost
+      reads zero, and that is the cache again: 95% of requests never embedded a query.
+
+      Recorded rather than resolved: 49 abstentions under load where the workload's unanswerable
+      queries account for 40, so nine answerable requests were refused; how many requests waited on
+      the rate limit is not in the export; and time to first token remains unmeasurable without
+      streaming.
 
 - [ ] **P18c — The verdict, and a proposal or a refusal.** Decide each PRD 12 item met or unmet with
       a generator that reads the published artefacts, rather than in prose; rewrite

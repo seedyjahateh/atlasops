@@ -41,46 +41,60 @@ bias; they do not remove it.
 
 ---
 
-## Four more this build actually has
+## What this build actually has, beyond PRD 12's four
 
-**A provider adapter exists, and nothing has run against it.** P13 added an OpenAI embedding and
-generation adapter behind `model-gateway`'s interfaces, with the real price list checked in and
-dated (ADR 0006). No application constructs it, no evaluation run has used it, and no artefact in
-this repository was produced with it — every model identifier still recorded is a stand-in:
-`stand-in-embedder`, `stand-in-reranker`, `stand-in-not-a-model`, `stand-in-judge`. **There is no
-reranker adapter at all**, because OpenAI publishes no first-party rerank model, so PRD 5.3's
-cross-encoder is still unselected rather than merely unwired.
+**Real models have run, and three of the four roles are real.** Since P18b the published
+evaluation (`docs/evidence/run-*.json`) and load run (`docs/measurements/load-run.json`) used
+`text-embedding-3-small` and `gpt-4.1-mini`, priced from the dated table `openai-2026-09-24`. Two
+roles are still stand-ins, and each limits what the numbers mean:
 
-Everything below therefore still holds exactly as it did before the adapter landed.
+- **The reranker is the unselected stand-in, and with real embeddings it makes ranking worse.**
+  OpenAI publishes no rerank model (ADR 0006), so none is selected. With stand-ins everywhere it was
+  harmless; with real embeddings the ablation shows the **served configuration,
+  `fused-with-rerank`, is the worst of the fused arms**: nDCG@10 **0.71**, against **0.87** with
+  reranking bypassed and **0.95** dense-only. The served default was deliberately not changed in the
+  evidence phase — choosing a configuration on eleven development items and then quoting those
+  items would be overfitting — and it is the first decision anybody promoting this should make.
+- **The judge is a stand-in**, so the groundedness rows (supported-claim rate, contradiction rate,
+  judge-human agreement) are not quality evidence, whatever they read. PRD 8.3 does not let a judged
+  metric gate a release alone, and here it cannot inform one either.
 
-Two consequences follow, and they are the most important sentences in this document:
+What the real run established, and which stand-ins never could: **correct-abstention 1.0 over 4**
+(it was 0 with the stand-in generator), citation precision and recall 0.83 on the served arm,
+span-validity 1.0, and **zero leaks and zero existence disclosures with real models in the loop**.
+Each is over a small development split labelled by the author of the corpus, and says so.
+
+**Cost is measured, with two qualifications.** Cost per answered query is p50 **$0.00082** and p95
+**$0.00172**, and ingestion costs $0.001 per thousand chunks — all far inside PRD 9.3. Every figure
+**excludes reranking**, because the reranker is a local stand-in nothing bills for; a selected rerank
+model would add its own price. And the evaluation report's own cost row counts generation only — the
+load run is the whole-request figure, since P18a priced the query embedding on the retrieval span
+and the harness row predates that.
+
+**The answer path is close to its latency budget, and over it without the cache.** End-to-end p95 is
+**2,914 ms** against 3,000 — but 247 of the 260 requests were served from the retrieval cache. The
+thirteen cache misses have a p95 of **3,597 ms, over budget**; with thirteen samples that is the
+slowest one. Generation is almost the whole of it. The run was also throttled by this account's
+rate limit (200,000 tokens per minute) at concurrency 4, and the waits are inside the figures; how
+many requests waited is not in the export.
+
+**A transient generation failure aborts an evaluation rather than degrading.** PRD 9.4 says that with
+generation unavailable the system should return ranked passages and no prose. The first real
+evaluation died mid-run on an error thrown from the answer path (not captured), and an immediate
+retry completed. That degraded mode is not implemented.
+
+**Time to first token is unmeasurable**, because the adapter speaks the non-streaming endpoint
+(ADR 0006).
+
+The stand-ins remain the **default** for every command, and everything below about them still holds
+for any run that uses them:
 
 - **The stand-in embedder has no semantic structure.** It derives a vector from a hash, so cosine
-  similarity between an unrelated query and a passage is noise rather than zero. The dense arm
-  returns candidates for queries the corpus cannot answer, and the API answers almost anything with
-  something. There is a test asserting exactly that (`api.test.ts`), because a limitation with a
-  test is a fact and a limitation in a document is a hope.
-- **Abstention does not work at all as currently wired, and the evaluation says so.** The first run
-  against labels written for this corpus (P14b) scored **correct-abstention 0 over 4** — the system
-  answered every question it should have refused. With a stand-in embedder every passage looks
-  equally relevant, so PRD 7.3's support threshold never decides anything. Whether abstention works
-  with a real model is untested.
-- **The stand-in generator does no language modelling.** It cites the first passage it was shown and
-  quotes its opening. That exercises prompt assembly, citation binding and the verification pass for
-  real, and produces prose nobody should read as an answer.
-
-**No number in this repository is a retrieval-quality result.** Every metric `evalkit` can compute
-has been computed, and every one of them measures stand-ins. The single exception is the governance
-artefact: a leak count measures the permission pre-filter, which is ordinary code with no model in
-it, so that number is about the system that ships.
-
-**Cost is still unmeasured, though it is no longer unpriceable.** The default table ships empty
-(ADR 0002) and an unpriced model throws rather than costing zero, so `ingestionCostPer1kChunks`
-refuses, the audit record carries `costUsd: null`, and the evaluation report's cost row says it
-could not be measured. A reader can tell "this cost nothing" from "nobody knows what this cost"; a
-zero cannot. P13 added a real, dated price table for the OpenAI models (ADR 0006), so a run that
-used them could be priced — but no run has, and the stand-ins remain unpriced by design, because a
-model that costs nothing to call should not acquire a price by inheritance.
+  similarity between an unrelated query and a passage is noise rather than zero. There is a test
+  asserting what that does (`api.test.ts`), because a limitation with a test is a fact and a
+  limitation in a document is a hope.
+- **The stand-in generator does no language modelling**, and with it correct-abstention was 0 over 4:
+  every passage looks equally relevant, so the support threshold never decides anything.
 
 **No persistent storage adapter exists.** The only store profile is `memory`, in-process. Four
 components in four processes therefore cannot share a corpus, which is why the API and the

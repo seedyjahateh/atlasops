@@ -15,7 +15,10 @@ coverage/
 # themselves are content-hashed and DO belong in the repository (PRD 8.1).
 .runs/
 .cache/
-evidence/
+# Anchored to the root. Unanchored, this matched docs/evidence/ too, and the published P18b
+# artefacts — the ones a promotion has to cite by URL — would have been silently left out of the
+# commit that claimed to publish them.
+/evidence/
 
 # Editor / OS
 .DS_Store

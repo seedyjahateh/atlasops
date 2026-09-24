@@ -1,120 +1,121 @@
 {
   "profile": {
-    "id": "local-stand-in-c4",
+    "id": "local-openai-c4",
     "corpusSnapshot": "sha256:f05a2049d6de1bb249071782efe6e5d32e092a7fb39bf65e66af376b5179b8b9",
     "workload": "sha256:e32b75e87ef455fb27c16c47517cd3e02400c44c4d85a24dc4b6c590fcb23c34",
     "models": {
-      "embedder": "stand-in-embedder",
-      "reranker": "stand-in-reranker",
-      "generator": "stand-in-not-a-model"
+      "embedder": "text-embedding-3-small",
+      "generator": "gpt-4.1-mini",
+      "reranker": "stand-in-reranker (unselected: no provider rerank model, ADR 0006)"
     },
     "hardware": "12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process",
     "concurrency": 4
   },
-  "startedAt": "2026-09-24T17:17:13.359Z",
-  "finishedAt": "2026-09-24T17:17:13.400Z",
-  "commit": null,
+  "startedAt": "2026-09-24T18:08:17.108Z",
+  "finishedAt": "2026-09-24T18:10:06.412Z",
+  "commit": "dd00811",
   "requests": 260,
-  "abstentions": 0,
+  "abstentions": 49,
   "chunksIngested": 35,
+  "priceTableVersion": "openai-2026-09-24",
   "retrievalCacheHits": 247,
   "retrievalCacheHitRate": 0.95,
   "latency": [
     {
       "stage": "end-to-end",
-      "p50": 0.23329999999998563,
-      "p95": 1.0670999999999822,
+      "p50": 1390.3907999999938,
+      "p95": 2914.402299999998,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "end-to-end (retrieval cache miss)",
-      "p50": 3.312000000000012,
-      "p95": 13.72479999999996,
+      "p50": 1740.0100000000002,
+      "p95": 3596.541,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "end-to-end (retrieval cache hit)",
-      "p50": 0.22860000000002856,
-      "p95": 0.8822000000000116,
+      "p50": 1386.9853999999996,
+      "p95": 2914.402299999998,
       "samples": 247,
       "p95IsMaximum": false
     },
     {
       "stage": "audit-write",
-      "p50": 0.03880000000003747,
-      "p95": 0.1514999999999418,
+      "p50": 0.046900000001187436,
+      "p95": 0.08460000000013679,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "dense-retrieval",
-      "p50": 0.7794000000000096,
-      "p95": 1.6015999999999622,
+      "p50": 211.60820000000012,
+      "p95": 329.2392,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "fusion",
-      "p50": 0.011999999999943611,
-      "p95": 7.968599999999924,
+      "p50": 0.0316000000002532,
+      "p95": 13.35470000000032,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "generation",
-      "p50": 0.04270000000008167,
-      "p95": 0.38970000000006166,
+      "p50": 1389.7442999999985,
+      "p95": 2914.0637000000024,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "lexical-retrieval",
-      "p50": 0.8119000000000369,
-      "p95": 8.853899999999953,
+      "p50": 0.3969999999999345,
+      "p95": 0.9989000000000487,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "permission-compile",
-      "p50": 0.002399999999965985,
-      "p95": 0.006300000000010186,
+      "p50": 0.011200000008102506,
+      "p95": 0.02289999999993597,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "permission-resolution",
-      "p50": 0.031899999999950523,
-      "p95": 0.14840000000003783,
+      "p50": 0.006100000002334127,
+      "p95": 0.01629999999931897,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "prompt-assembly",
-      "p50": 0.011099999999942156,
-      "p95": 0.024199999999950705,
+      "p50": 0.03170000000318396,
+      "p95": 0.059299999998984276,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "query-normalisation",
-      "p50": 0.004600000000095861,
-      "p95": 0.017099999999913962,
+      "p50": 0.04830000000038126,
+      "p95": 0.07560000000012224,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "reranking",
-      "p50": 0.2586000000000013,
-      "p95": 0.8152000000000044,
+      "p50": 0.24989999999979773,
+      "p95": 1.0613000000003012,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "verification",
-      "p50": 0.0024000000000796717,
-      "p95": 0.008600000000001273,
+      "p50": 0.01959999999962747,
+      "p95": 0.04060000000754371,
       "samples": 260,
       "p95IsMaximum": false
     }
@@ -125,7 +126,7 @@
       "target": 3000,
       "unit": "ms",
       "method": "scripted load run, fixed workload, stated concurrency",
-      "value": 1.0670999999999822,
+      "value": 2914.402299999998,
       "sampleSize": 260,
       "within": true,
       "unmeasured": null,
@@ -147,7 +148,7 @@
       "target": 400,
       "unit": "ms",
       "method": "span aggregation",
-      "value": 10.307099999999991,
+      "value": 329.66579999999976,
       "sampleSize": 13,
       "within": true,
       "unmeasured": null,
@@ -158,7 +159,7 @@
       "target": 500,
       "unit": "ms",
       "method": "span aggregation at fixed candidate depth",
-      "value": 0.8152000000000044,
+      "value": 1.0613000000003012,
       "sampleSize": 13,
       "within": true,
       "unmeasured": null,
@@ -169,7 +170,7 @@
       "target": 50,
       "unit": "ms",
       "method": "span aggregation",
-      "value": 0.17870000000016262,
+      "value": 0.04010000001289882,
       "sampleSize": 260,
       "within": true,
       "unmeasured": null,
@@ -180,7 +181,7 @@
       "target": 100,
       "unit": "ms",
       "method": "span aggregation",
-      "value": 0.008600000000001273,
+      "value": 0.04060000000754371,
       "sampleSize": 260,
       "within": true,
       "unmeasured": null,
@@ -191,44 +192,44 @@
       "target": 0.02,
       "unit": "usd",
       "method": "per-request token accounting x versioned price table",
-      "value": null,
-      "sampleSize": null,
-      "within": null,
-      "unmeasured": "at least one model in this run has no price in the table in force (ADR 0002). Reporting zero would make this budget pass trivially while the real figure surfaced on an invoice",
-      "caveat": null
+      "value": 0.000822,
+      "sampleSize": 211,
+      "within": true,
+      "unmeasured": null,
+      "caveat": "excludes reranking: the reranker is the unselected stand-in, a local function nobody bills for. A selected rerank model would add its own price to every answered query."
     },
     {
       "id": "COST-PER-ANSWER-P95",
       "target": 0.06,
       "unit": "usd",
       "method": "per-request token accounting x versioned price table",
-      "value": null,
-      "sampleSize": null,
-      "within": null,
-      "unmeasured": "at least one model in this run has no price in the table in force (ADR 0002). Reporting zero would make this budget pass trivially while the real figure surfaced on an invoice",
-      "caveat": null
+      "value": 0.0017176,
+      "sampleSize": 211,
+      "within": true,
+      "unmeasured": null,
+      "caveat": "excludes reranking: the reranker is the unselected stand-in, a local function nobody bills for. A selected rerank model would add its own price to every answered query."
     },
     {
       "id": "INGESTION-COST-PER-1K-CHUNKS",
       "target": 0.5,
       "unit": "usd",
       "method": "embedding token accounting over the fixture",
-      "value": null,
-      "sampleSize": null,
-      "within": null,
-      "unmeasured": "at least one model in this run has no price in the table in force (ADR 0002). Reporting zero would make this budget pass trivially while the real figure surfaced on an invoice",
-      "caveat": null
+      "value": 0.0010000000000000002,
+      "sampleSize": 1,
+      "within": true,
+      "unmeasured": null,
+      "caveat": "one ingestion of 35 chunks (1750 embedding tokens), priced at the table in force"
     },
     {
       "id": "RETRIEVAL-ONLY-COST",
       "target": 0.001,
       "unit": "usd",
       "method": "embedding token accounting over the fixture",
-      "value": null,
-      "sampleSize": null,
-      "within": null,
-      "unmeasured": "at least one model in this run has no price in the table in force (ADR 0002). Reporting zero would make this budget pass trivially while the real figure surfaced on an invoice",
-      "caveat": null
+      "value": 0,
+      "sampleSize": 260,
+      "within": true,
+      "unmeasured": null,
+      "caveat": "excludes reranking: the reranker is the unselected stand-in, a local function nobody bills for. A selected rerank model would add its own price to every answered query."
     }
   ]
 }

@@ -13,6 +13,12 @@ docs/MODULES.md
 # and the fix somebody would reach for is to stop running the check.
 examples/corpus.inventory.json
 
+# Published evidence, exactly as the commands that produced it wrote it. A formatter that
+# improved these would make the committed artefact differ from what its run emitted, and a
+# reviewer comparing the two would find a difference that is nobody's measurement.
+docs/evidence/
+docs/measurements/load-run.spans.jsonl
+
 # Mirrored from the portfolio repository; formatting belongs to the canonical copy.
 docs/prd/
 
