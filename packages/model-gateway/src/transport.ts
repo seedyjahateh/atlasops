@@ -27,6 +27,14 @@ export interface HttpRequest {
 export interface HttpResponse {
   readonly status: number;
   readonly body: string;
+  /**
+   * Response headers, names in lower case.
+   *
+   * Carried because a provider's rate-limit response says how long to wait — `retry-after-ms`,
+   * `retry-after` — and a retry schedule that ignores it is guaranteed to fail against any limit
+   * longer than its own backoff. The first real load run found exactly that.
+   */
+  readonly headers: Readonly<Record<string, string>>;
 }
 
 export interface HttpTransport {
@@ -81,13 +89,18 @@ export const fetchTransport: HttpTransport = {
       );
     }
 
-    return { status: response.status, body: await response.text() };
+    const headers: Record<string, string> = {};
+    response.headers.forEach((value, name) => {
+      headers[name.toLowerCase()] = value;
+    });
+    return { status: response.status, body: await response.text(), headers };
   },
 };
 
 export interface RecordedExchange {
   readonly status: number;
   readonly body: string;
+  readonly headers?: Readonly<Record<string, string>>;
 }
 
 export interface RecordingTransport extends HttpTransport {
@@ -122,7 +135,11 @@ export function recordingTransport(
         );
       }
       if (exchange instanceof Error) return Promise.reject(exchange);
-      return Promise.resolve({ status: exchange.status, body: exchange.body });
+      return Promise.resolve({
+        status: exchange.status,
+        body: exchange.body,
+        headers: exchange.headers ?? {},
+      });
     },
     sent: (): readonly HttpRequest[] => [...sent],
   };

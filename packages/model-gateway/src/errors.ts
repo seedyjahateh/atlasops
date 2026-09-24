@@ -33,12 +33,25 @@ export class ModelError extends AtlasOpsError {
   public readonly retryable: boolean;
   /** Which capability failed, so a degraded-mode decision does not have to parse a message. */
   public readonly capability: string;
+  /**
+   * How long the provider asked the caller to wait before trying again, when it said.
+   *
+   * Null when it did not. The retry loop waits at least this long; a fixed backoff shorter than
+   * the provider's requested wait fails every attempt by construction.
+   */
+  public readonly retryAfterMs: number | null;
 
-  public constructor(capability: string, kind: ModelFailureKind, message: string) {
+  public constructor(
+    capability: string,
+    kind: ModelFailureKind,
+    message: string,
+    retryAfterMs: number | null = null,
+  ) {
     super("MODEL_UNAVAILABLE", `${capability} ${kind}: ${message}`);
     this.capability = capability;
     this.kind = kind;
     this.retryable = RETRYABLE.has(kind);
+    this.retryAfterMs = retryAfterMs;
   }
 }
 

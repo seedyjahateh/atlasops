@@ -28,6 +28,7 @@ import {
   openAiGenerator,
   openAiKeyFromEnv,
   redactKey,
+  retryAfterMsOf,
   OPENAI_BASE_URL,
 } from "./openai.js";
 import { UNSELECTED_RERANKER, openAiModelSet, parseModelChoice } from "./model-set.js";
@@ -322,6 +323,36 @@ describe("failures are classified so the existing retry loop keeps working", () 
 
     await expect(gateway.embed(["hello"])).rejects.toThrow(/insufficient_quota/);
     expect(transport.sent()).toHaveLength(1);
+  });
+
+  it("waits at least as long as the provider asks before retrying", async () => {
+    // The first real load run was told "try again in 338ms" and waited 100 ms, then 200 ms, then
+    // gave up. A backoff shorter than the requested wait fails every attempt by construction.
+    const limited = {
+      status: 429,
+      body: '{"error":{"message":"Rate limit reached. Please try again in 338ms.","code":"rate_limit_exceeded"}}',
+    };
+    const transport = recordingTransport([limited, { status: 200, body: embeddingBody([[1, 0]]) }]);
+    const sleeper = recordingSleeper();
+    const gateway = createEmbeddingGateway(
+      openAiEmbedder({
+        apiKey: KEY,
+        model: OPENAI_DEFAULT_EMBEDDING_MODEL,
+        dimension: DIMENSION,
+        transport,
+      }),
+      { sleeper },
+    );
+
+    await gateway.embed(["hello"]);
+    expect(sleeper.delays()).toEqual([338]);
+  });
+
+  it("prefers the retry-after headers to the sentence in the body", () => {
+    expect(retryAfterMsOf({ "retry-after-ms": "1250" }, "try again in 9s")).toBe(1250);
+    expect(retryAfterMsOf({ "retry-after": "2" }, "")).toBe(2000);
+    expect(retryAfterMsOf({}, "Please try again in 1.5s.")).toBe(1500);
+    expect(retryAfterMsOf({}, "no hint at all")).toBeNull();
   });
 
   it("still retries a genuine rate limit", () => {

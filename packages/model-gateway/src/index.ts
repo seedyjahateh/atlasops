@@ -14,6 +14,7 @@ export { MODEL_FAILURE_KINDS, ModelError, isModelError, type ModelFailureKind } 
 
 export {
   DEFAULT_RETRY_POLICY,
+  MAX_REQUESTED_WAIT_MS,
   backoffFor,
   realSleeper,
   recordingSleeper,
@@ -67,6 +68,7 @@ export {
   openAiGenerator,
   openAiKeyFromEnv,
   redactKey,
+  retryAfterMsOf,
   type OpenAiConfig,
   type OpenAiEmbedderConfig,
   type OpenAiGeneratorConfig,

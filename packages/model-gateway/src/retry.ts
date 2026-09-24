@@ -45,6 +45,12 @@ export interface RetryPolicy {
   readonly maxDelayMs: number;
 }
 
+/**
+ * The longest a provider's "retry after" is honoured for. Beyond it the call fails and says so,
+ * because an answer path that sleeps for as long as a provider asks has no latency budget at all.
+ */
+export const MAX_REQUESTED_WAIT_MS = 30_000;
+
 export const DEFAULT_RETRY_POLICY: RetryPolicy = {
   maxAttempts: 3,
   baseDelayMs: 100,
@@ -93,7 +99,16 @@ export async function withRetry<T>(
       const retryable = error instanceof ModelError && error.retryable;
       if (!retryable || attempt === policy.maxAttempts) break;
 
-      await sleeper.sleep(jitter(backoffFor(policy, attempt)));
+      // At least as long as the provider asked, when it asked. The first real load run was told
+      // "try again in 338ms" and waited 100 ms, then 200 ms, then gave up — a schedule that could
+      // not succeed against any limit longer than itself. Capped, so a provider asking for minutes
+      // fails loudly instead of stalling a request for as long as it likes.
+      const requested = error instanceof ModelError ? (error.retryAfterMs ?? 0) : 0;
+      const wait = Math.min(
+        Math.max(backoffFor(policy, attempt), requested),
+        MAX_REQUESTED_WAIT_MS,
+      );
+      await sleeper.sleep(jitter(wait));
     }
   }
 

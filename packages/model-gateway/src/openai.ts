@@ -105,6 +105,33 @@ export function failureKindFor(status: number, body: string): ModelFailureKind {
   return failureKindForStatus(status);
 }
 
+/**
+ * How long the provider asked the caller to wait, in milliseconds, or null.
+ *
+ * The standard headers first — `retry-after-ms`, then `retry-after` in seconds. The body's own
+ * "try again in 338ms" is read only when neither header is present: it is a human sentence, and
+ * parsing prose is a fallback, never the first choice. Anything unparseable is null rather than a
+ * guess, which leaves the ordinary backoff in charge.
+ */
+export function retryAfterMsOf(
+  headers: Readonly<Record<string, string>>,
+  body: string,
+): number | null {
+  const milliseconds = Number(headers["retry-after-ms"]);
+  if (headers["retry-after-ms"] !== undefined && Number.isFinite(milliseconds)) return milliseconds;
+
+  const seconds = Number(headers["retry-after"]);
+  if (headers["retry-after"] !== undefined && Number.isFinite(seconds)) return seconds * 1000;
+
+  const stated = /try again in ([0-9]+(?:\.[0-9]+)?)(ms|s)\b/.exec(body);
+  if (stated?.[1] !== undefined) {
+    const value = Number(stated[1]);
+    return stated[2] === "s" ? value * 1000 : value;
+  }
+
+  return null;
+}
+
 interface CallInput {
   readonly capability: string;
   readonly path: string;
@@ -138,6 +165,7 @@ async function call(input: CallInput): Promise<unknown> {
       input.capability,
       failureKindFor(response.status, response.body),
       `HTTP ${String(response.status)}: ${redactKey(response.body, config.apiKey).slice(0, 400)}`,
+      retryAfterMsOf(response.headers, response.body),
     );
   }
 

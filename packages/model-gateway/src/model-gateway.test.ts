@@ -29,7 +29,13 @@ import {
   rerankWithRetry,
   toModelCall,
 } from "./gateway.js";
-import { DEFAULT_RETRY_POLICY, backoffFor, recordingSleeper, withRetry } from "./retry.js";
+import {
+  DEFAULT_RETRY_POLICY,
+  MAX_REQUESTED_WAIT_MS,
+  backoffFor,
+  recordingSleeper,
+  withRetry,
+} from "./retry.js";
 import { UNPRICED_TABLE, type PriceTable } from "@atlasops/telemetry";
 
 const SYNTHETIC_PRICES: PriceTable = {
@@ -91,6 +97,25 @@ describe("the retry schedule, asserted without waiting", () => {
 
     expect(outcome.attempts).toBe(3);
     expect(sleeper.delays()).toEqual([100, 200]);
+  });
+
+  it("caps a provider's requested wait, so the answer path keeps a latency budget", async () => {
+    const sleeper = recordingSleeper();
+    let calls = 0;
+    const outcome = await withRetry(
+      () => {
+        calls += 1;
+        if (calls === 1) {
+          return Promise.reject(new ModelError("generation", "rate-limited", "slow down", 600_000));
+        }
+        return Promise.resolve("ok");
+      },
+      DEFAULT_RETRY_POLICY,
+      sleeper,
+    );
+
+    expect(outcome.value).toBe("ok");
+    expect(sleeper.delays()).toEqual([MAX_REQUESTED_WAIT_MS]);
   });
 
   it("stops immediately on a non-retryable failure and sleeps not at all", async () => {
