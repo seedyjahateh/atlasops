@@ -17,6 +17,7 @@ import {
   readRunnerConfig,
   runEvaluationSuite,
   runModels,
+  runRecordOf,
   type DatasetsFile,
 } from "./runner.js";
 
@@ -43,6 +44,51 @@ describe("configuration", () => {
     const config = readRunnerConfig(ENV);
     expect(config.outputDir).toBe("evidence");
     expect(config.allowSnapshotMismatch).toBe(true);
+  });
+});
+
+describe("the artefacts carry every field PRD 12 item 2 names (P18b)", () => {
+  // Until P18b, per-query results existed only inside the Markdown, and seeds, run count and the
+  // answering prompt's version were recorded nowhere.
+
+  it("writes a raw per-query file for every arm, one record per line", async () => {
+    const outcome = await runEvaluationSuite(readRunnerConfig(ENV), DATASETS);
+    const files = artefactsFor(outcome);
+
+    for (const run of outcome.runs) {
+      const raw = files.find((file) => file.name === `run-${run.arm}.queries.jsonl`);
+      expect(raw, run.arm).toBeDefined();
+      const lines = (raw?.content ?? "").trim().split("\n");
+      expect(lines).toHaveLength(run.perQuery.length);
+      expect(JSON.parse(lines[0] ?? "{}")).toHaveProperty("itemId");
+    }
+  });
+
+  it("records dataset hashes, snapshot, commit, models, prompt versions, run count and seeds", async () => {
+    const outcome = await runEvaluationSuite(
+      readRunnerConfig(ENV, ["--commit", "abc123"]),
+      DATASETS,
+    );
+    const full = outcome.runs.find((run) => run.arm === "fused-with-rerank");
+    expect(full).toBeDefined();
+    if (full === undefined) return;
+
+    const record = runRecordOf(full, outcome);
+    expect(record.commit).toBe("abc123");
+    expect(record.corpusSnapshot).toMatch(/^sha256:/);
+    expect(record.datasets.every((ref) => ref.includes("sha256:"))).toBe(true);
+    expect(Object.keys(record.models).sort()).toEqual([
+      "embedder",
+      "generator",
+      "judge",
+      "reranker",
+    ]);
+    expect(record.promptVersions.answering).toMatch(/^sha256:[0-9a-f]{12}$/);
+    expect(record.promptVersions.judge).toBe("v1");
+    expect(record.runCount).toBe(1);
+    expect(record.seeds.bootstrap).toBeGreaterThan(0);
+    expect(record.perQueryFile).toBe("run-fused-with-rerank.queries.jsonl");
+    expect(record.metrics.length).toBeGreaterThan(0);
   });
 });
 
@@ -116,15 +162,20 @@ describe("running the suite", () => {
     expect(ablation?.content).toContain("not labelled against this corpus");
   });
 
-  it("writes one artefact per arm, the governance report, and the ablation deltas", async () => {
+  it("writes a report, a raw per-query file and a record per arm, then governance and ablation", async () => {
     const outcome = await runEvaluationSuite(readRunnerConfig(ENV), DATASETS);
     const names = artefactsFor(outcome).map((artefact) => artefact.name);
 
+    const perArm = (arm: string) => [
+      `run-${arm}.md`,
+      `run-${arm}.queries.jsonl`,
+      `run-${arm}.json`,
+    ];
     expect(names).toEqual([
-      "run-dense-only.md",
-      "run-lexical-only.md",
-      "run-fused-no-rerank.md",
-      "run-fused-with-rerank.md",
+      ...perArm("dense-only"),
+      ...perArm("lexical-only"),
+      ...perArm("fused-no-rerank"),
+      ...perArm("fused-with-rerank"),
       "governance.md",
       "ablation.md",
     ]);

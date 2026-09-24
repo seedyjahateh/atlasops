@@ -26,6 +26,7 @@
  * not a gate here.
  */
 
+import { contentHashOf } from "@atlasops/contracts";
 import type { FusedCandidate } from "@atlasops/retrieval";
 
 /** The block delimiters. Neutralised inside passage text — see the file header. */
@@ -58,6 +59,17 @@ export const SYSTEM_PROMPT = [
   "the claim. Do not cite a passage that is not listed below. If the passages do not support an",
   'answer, reply exactly {"abstain":true}.',
 ].join("\n");
+
+/**
+ * The answering prompt's version, derived from its text.
+ *
+ * PRD 12 item 2 requires an evaluation report to record prompt versions, and a hand-maintained
+ * version number is the field somebody forgets to bump — after which two reports claim the same
+ * version for different prompts and a comparison between them means nothing. A hash of the text
+ * cannot drift from the text. The first twelve hex characters are enough to tell prompts apart and
+ * short enough to read in a table.
+ */
+export const PROMPT_VERSION = `sha256:${contentHashOf(SYSTEM_PROMPT).slice("sha256:".length, "sha256:".length + 12)}`;
 
 export function neutraliseDelimiters(text: string): string {
   return text.split(OPEN).join(NEUTRALISED).split(CLOSE).join(NEUTRALISED);

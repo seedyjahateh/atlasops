@@ -35,6 +35,7 @@ import {
 import { inMemoryCorpusStore } from "@atlasops/corpus";
 import {
   ARMS,
+  BOOTSTRAP_DEFAULTS,
   compareArms,
   fixtureJudge,
   loadDataset,
@@ -55,7 +56,7 @@ import {
   staticGroupResolver,
   type AuditRecord,
 } from "@atlasops/governance";
-import { STAND_IN_MODEL_ID, citingStandIn } from "@atlasops/grounding";
+import { PROMPT_VERSION, STAND_IN_MODEL_ID, citingStandIn } from "@atlasops/grounding";
 import { currentSchema, inMemoryLexicalIndex, inMemoryVectorIndex } from "@atlasops/indexing";
 import {
   aclFromManifest,
@@ -391,14 +392,99 @@ export async function runEvaluationSuite(
 }
 
 /** The artefact files a run writes, as name and content. Written by `main.ts`. */
+/**
+ * Everything PRD 12 item 2 names, in one machine-readable record per arm.
+ *
+ * "Dataset versions and hashes, corpus snapshot hash, commit SHA, model identifiers for embedder,
+ * reranker, generator, and judge, prompt versions, run count, seeds, raw per-query result file,
+ * and the full metric table." Until P18b, per-query results existed only inside the Markdown, and
+ * seeds, run count and the answering prompt's version were recorded nowhere — a verdict reading
+ * these artefacts would have had to fail item 2 or overlook the gaps.
+ *
+ * Only what the run produced is recorded. The seed is the bootstrap's, because it is the only
+ * random draw in the pipeline; generation runs at temperature zero and the stand-ins are
+ * deterministic, which is recorded as that rather than as a seed nobody used.
+ */
+export interface RunRecord {
+  readonly runId: string;
+  readonly arm: string;
+  readonly system: string;
+  readonly commit: string | null;
+  readonly measuredAt: string;
+  readonly corpusSnapshot: string;
+  readonly snapshotMatchesDatasets: boolean;
+  readonly datasets: readonly string[];
+  readonly splits: readonly string[];
+  readonly models: Readonly<Record<string, string>>;
+  readonly promptVersions: { readonly answering: string; readonly judge: string | null };
+  readonly runCount: number;
+  readonly seeds: { readonly bootstrap: number };
+  readonly determinism: string;
+  readonly perQueryFile: string;
+  readonly perQueryRecords: number;
+  readonly metrics: readonly {
+    readonly dimension: string;
+    readonly metric: string;
+    readonly value: number;
+    readonly sampleSize: number;
+    readonly aggregation: string;
+  }[];
+  readonly unavailable: readonly { readonly dimension: string; readonly reason: string | null }[];
+}
+
+export function runRecordOf(run: RunReport, outcome: EvaluationOutcome): RunRecord {
+  return {
+    runId: run.runId,
+    arm: run.arm,
+    system: run.system,
+    commit: run.commit,
+    measuredAt: run.measuredAt,
+    corpusSnapshot: outcome.corpusSnapshot,
+    snapshotMatchesDatasets: outcome.snapshotMatchesDatasets,
+    datasets: run.datasets,
+    splits: run.splits,
+    models: run.models,
+    promptVersions: {
+      answering: PROMPT_VERSION,
+      judge: run.judge === null ? null : run.judge.promptVersion,
+    },
+    runCount: 1,
+    seeds: { bootstrap: BOOTSTRAP_DEFAULTS.seed },
+    determinism: "generation at temperature 0; stand-in models are deterministic",
+    perQueryFile: `run-${run.arm}.queries.jsonl`,
+    perQueryRecords: run.perQuery.length,
+    metrics: run.table.flatMap((row) =>
+      row.metrics.map((metric) => ({
+        dimension: row.dimension,
+        metric: metric.metric,
+        value: metric.value,
+        sampleSize: metric.sampleSize,
+        aggregation: metric.aggregation,
+      })),
+    ),
+    unavailable: run.table
+      .filter((row) => row.unavailable !== null)
+      .map((row) => ({ dimension: row.dimension, reason: row.unavailable })),
+  };
+}
+
 export function artefactsFor(outcome: EvaluationOutcome): readonly {
   readonly name: string;
   readonly content: string;
 }[] {
-  const files = outcome.runs.map((run) => ({
-    name: `run-${run.arm}.md`,
-    content: renderRunReport(run),
-  }));
+  const files = outcome.runs.flatMap((run) => [
+    { name: `run-${run.arm}.md`, content: renderRunReport(run) },
+    // PRD 12 item 2's "raw per-query result file". The Markdown report shows these for a reader;
+    // this is the file a reviewer or the P18c verdict can load, one record per line.
+    {
+      name: `run-${run.arm}.queries.jsonl`,
+      content: run.perQuery.map((record) => JSON.stringify(record)).join("\n") + "\n",
+    },
+    {
+      name: `run-${run.arm}.json`,
+      content: `${JSON.stringify(runRecordOf(run, outcome), null, 2)}\n`,
+    },
+  ]);
 
   // PRD 12 item 3. Rendered from the full arm, because that is the configuration a deployment
   // would serve — a leak count from an ablated arm says nothing about the system that ships.

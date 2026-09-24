@@ -68,6 +68,7 @@ function result(
     chunksIngested: 35,
     ingestionEmbeddingTokens: 4200,
     ingestionCostUsd,
+    priceTableVersion: "test-synthetic-1",
     retrievalCacheHits: cacheHits,
   };
 }
@@ -334,6 +335,11 @@ describe("the rendered report", () => {
     "abc123",
   );
   const rendered = renderLoadReport(record);
+
+  it("names the price table every cost came from (PRD 12 item 4)", () => {
+    expect(record.priceTableVersion).toBe("test-synthetic-1");
+    expect(rendered).toContain("**Price table:** test-synthetic-1");
+  });
 
   it("states the profile a reader would need to reproduce it", () => {
     expect(rendered).toContain("test-profile");

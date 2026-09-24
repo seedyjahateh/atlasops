@@ -68,6 +68,8 @@ export interface LoadRunRecord {
   readonly requests: number;
   readonly abstentions: number;
   readonly chunksIngested: number;
+  /** Every cost below came from this table. PRD 12 item 4 requires it on the report. */
+  readonly priceTableVersion: string;
   /**
    * Requests retrieval served from cache, and the rate.
    *
@@ -328,6 +330,7 @@ export function recordOf(result: LoadRunResult, commit: string | null): LoadRunR
     requests: result.samples.length,
     abstentions: result.samples.filter((sample) => sample.abstained).length,
     chunksIngested: result.chunksIngested,
+    priceTableVersion: result.priceTableVersion,
     retrievalCacheHits: result.retrievalCacheHits,
     retrievalCacheHitRate:
       result.samples.length === 0 ? 0 : result.retrievalCacheHits / result.samples.length,

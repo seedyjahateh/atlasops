@@ -208,6 +208,8 @@ export interface LoadRunResult {
   readonly ingestionEmbeddingTokens: number;
   /** What those tokens cost at the table in force. Null when the embedder is unpriced. */
   readonly ingestionCostUsd: number | null;
+  /** The price table every cost in this run came from (PRD 12 item 4: "the versioned price table used"). */
+  readonly priceTableVersion: string;
   /**
    * How many requests retrieval served from its cache.
    *
@@ -446,6 +448,7 @@ export async function runLoad(options: LoadRunOptions): Promise<LoadRunResult> {
     chunksIngested: built.chunksIngested,
     ingestionEmbeddingTokens: built.ingestionEmbeddingTokens,
     ingestionCostUsd: built.ingestionCostUsd,
+    priceTableVersion: built.models.prices.version,
     retrievalCacheHits: ordered.filter((sample) => sample.cacheHit).length,
   };
 }

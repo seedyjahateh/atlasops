@@ -25,6 +25,7 @@ import { renderLoadReport } from "./render.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(here, "..", "..");
 const RECORD_PATH = join(ROOT, "docs", "measurements", "load-run.json");
+const SPANS_PATH = join(ROOT, "docs", "measurements", "load-run.spans.jsonl");
 
 function flag(argv: readonly string[], name: string, fallback: string): string {
   const at = argv.indexOf(`--${name}`);
@@ -107,7 +108,16 @@ async function run(argv: readonly string[]): Promise<number> {
   mkdirSync(dirname(RECORD_PATH), { recursive: true });
   writeFileSync(RECORD_PATH, `${JSON.stringify(record, null, 2)}\n`, "utf8");
 
-  const evidenceDir = join(ROOT, "evidence");
+  // PRD 12 item 4's "raw span export": one line per request, with its stage timings, cache status
+  // and cost. The retrieval half is exported from its spans and the grounding half as the per-stage
+  // breakdown grounding returns — stage-level rather than span-level, and named as such.
+  writeFileSync(
+    SPANS_PATH,
+    result.samples.map((sample) => JSON.stringify(sample)).join("\n") + "\n",
+    "utf8",
+  );
+
+  const evidenceDir = resolve(ROOT, flag(argv, "evidence", "evidence"));
   mkdirSync(evidenceDir, { recursive: true });
   const reportPath = join(evidenceDir, "cost-and-latency.md");
   writeFileSync(reportPath, renderLoadReport(record), "utf8");

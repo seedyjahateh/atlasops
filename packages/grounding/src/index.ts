@@ -12,6 +12,7 @@
  */
 
 export {
+  PROMPT_VERSION,
   SYSTEM_PROMPT,
   assemblePrompt,
   neutraliseDelimiters,

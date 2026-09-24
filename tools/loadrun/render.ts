@@ -40,6 +40,7 @@ export function renderLoadReport(record: LoadRunRecord): string {
     `- **Models:** ${Object.entries(profile.models)
       .map(([role, id]) => `${role}=${id}`)
       .join(", ")}`,
+    `- **Price table:** ${record.priceTableVersion}`,
     `- **Commit:** ${record.commit ?? "not recorded"}`,
     `- **Run:** ${record.startedAt} → ${record.finishedAt}`,
     `- **Requests:** ${String(record.requests)} (${String(record.abstentions)} abstained)`,
