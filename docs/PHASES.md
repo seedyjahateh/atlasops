@@ -646,9 +646,122 @@ A phase is not done because the code exists. It is done when all of this is true
       Two datasets moved version again, for the reason the mechanism exists: the probe set gained
       the injection marker PRD 12 item 3 needs, so its labels changed, so its hash moved.
 
+## Phases added after P12
+
+P0–P12 built the system and then refused to promote it, because `docs/promotion-readiness.md`
+found two of PRD 12's seven artefacts unproducible: item 4 needs a load run and a priced table,
+and item 5 needs two exhibits that do not exist. Those are not defects in the phases already
+done — they are work nobody had scheduled. The phases below schedule it.
+
+They are in dependency order for the same reason the first thirteen were. A load run against
+stand-in models measures the stand-ins; labelled datasets that do not match the corpus they are
+scored against cannot support a quality claim whatever models produced them; and an exhibit
+written before there is a real adapter would be a second consumer of the fake.
+
+**The provider decision is made and is OpenAI for embeddings and generation** — one SDK, one key,
+one published price list. PRD 14 left the embedding model, the reranker and the judge family
+deliberately open, "to be settled by measurement or by ADR rather than by assertion", so P13
+settles the first by ADR and leaves the reranker open, because OpenAI has no first-party rerank
+model and inventing one is not available.
+
+- [ ] **P13 — `packages/model-gateway`: a real provider adapter and a priced table.** An OpenAI
+      embedding adapter and generation adapter behind the existing ports, plus the versioned price
+      table populated for exactly the models used. Implements PRD 5, 9.2 and ADR 0002's unfinished
+      half. Acceptance: the adapters satisfy the existing `Embedder` and `Generator` interfaces with
+      no change to either, so nothing above the gateway can tell a real model from a stand-in except
+      by the model identifier it records; **no test reaches the network** — the transport is a port
+      and tests drive recorded responses; a separate opt-in command performs one live call and is
+      never run by CI; the API key is read from the environment, never a file, and is absent from
+      every error message and span; **every price in the table carries its source URL and the date
+      it was read**, and an unpriced model still throws rather than costing zero; retry, timeout and
+      `MODEL_UNAVAILABLE` behaviour hold against the real adapter, tested through the transport port
+      without sleeping; an ADR records the dependency, the model identifiers chosen, and the fact
+      that the reranker remains unselected rather than quietly dropped.
+
+      **The rule this phase must not break.** A provider SDK is confined to the gateway by a
+      boundary rule keyed on package names. An adapter written with bare `fetch` would evade that
+      rule entirely, because any package can call a URL. Whichever way the adapter is built, the
+      phase adds an enforcement that matches — by package name, by endpoint, or both — and
+      demonstrates it failing before it passes.
+
+- [ ] **P14 — A labelled corpus snapshot.** One fixed corpus with a recorded hash, and the four PRD
+      8.1 datasets labelled against *that* corpus: retrieval labels with graded relevance, grounded
+      answers with supporting chunks, the abstention set, and the permission probes. Implements PRD
+      8.1 and 9.1's "fixed corpus snapshot" half. Acceptance: `app:eval` runs **without**
+      `--allow-snapshot-mismatch` for the first time; the held-out split is sealed and the
+      development split is what selection uses; the corpus construction procedure is written down,
+      as PRD 13 requires, including who labelled it and on what basis; the adversarial
+      subpopulations are the hard cases rather than the convenient ones; a graded label set is not
+      a binary one relabelled.
+
+      **Why this is a phase and not a fixture edit.** Every quality number the build can produce is
+      currently scored against datasets labelled for no corpus, which is why every artefact says on
+      its face that its numbers are not comparable. Fixing that is the difference between an
+      evaluation report that records a run and one that supports a claim. The labels are my
+      judgments and the procedure has to say so — an honest small dataset with a stated method beats
+      a larger one whose provenance is a shrug.
+
+- [ ] **P15 — The reference profile, the load run, and the cost and latency report.** The PRD 9.1
+      profile as a committed artefact, a scripted load run at a stated concurrency, and PRD 12 item
+      4. Implements PRD 9.1, 9.2's aggregate views, and 9.3. Acceptance: the profile records the
+      corpus snapshot hash, the query workload, pinned model identifiers, the hardware, and the
+      concurrency, and every reported number carries it; the report contains the full stage
+      breakdown, the ratio of ingestion to serving cost, cache hit rate per cache, and tail latency
+      by stage; cost comes from per-request token accounting against the versioned price table, not
+      from a dashboard; p95 figures resting on twenty samples or fewer are labelled as the maxima
+      they are; a budget that is missed is reported with its stage breakdown and **is not raised**.
+
+      **CI cannot run this and the phase must say so.** PRD 9.3 wants budgets enforced in CI against
+      the reference profile, but a load run calls a paid API and CI must not. The split this phase
+      makes: the run is a deliberate command whose artefact is committed, and CI enforces the
+      budgets **against that artefact** — so a regression is caught at the next run rather than at
+      the next push, and the artefact's own date says how stale the enforcement is. That is weaker
+      than the PRD's wording and the gap is recorded rather than papered over.
+
+- [ ] **P16 — `exhibits/rag-02-codebase`.** The first exhibit: the Codebase Intelligence Assistant
+      named in `content/projects/RAG-02.json` — index symbols, call graphs and history; answer with
+      line-level citations; respect repository boundaries. Implements PRD 11.2's leaf rule for real.
+      Acceptance: it consumes `packages/*` and imports no application and no other exhibit, and that
+      is demonstrated by a real import failing the checker rather than asserted; it adds no new edge
+      to the layer graph — anything it needs that does not exist is promoted into a package
+      deliberately, with an ADR, or the exhibit does without it; it has its own README, fixtures and
+      dataset; its citations resolve to line ranges in a source version, not to file names.
+
+      **This is the first test of the reuse claim.** The whole argument for the layered structure is
+      that fourteen exhibits can share one ingestion and evaluation stack. Until an exhibit is built
+      on it, that is a design intention. PRD 13 names the failure mode exactly: if the graph check
+      produces more friction than protection here, that is a finding for an ADR, not a rule to
+      quietly stop running.
+
+- [ ] **P17 — `exhibits/rag-03-incident`.** The second exhibit: the Incident Knowledge Assistant
+      from `content/projects/RAG-03.json` — retrieve runbooks, dashboards, deploys and past
+      postmortems; surface evidence and uncertainty; take no autonomous production action.
+      Acceptance: as P16, plus the property only a second exhibit can demonstrate — it imports
+      nothing from `rag-02-codebase`, and where the two need the same helper the helper is promoted
+      into a package rather than imported sideways; `pnpm boundaries:evidence` now reports PRD 12
+      item 5's two-exhibit requirement **met**, from the generated graph rather than by editing the
+      sentence that says it is not.
+
+- [ ] **P18 — Re-evidence, and a promotion proposal.** Regenerate all seven PRD 12 artefacts against
+      the real adapter, the labelled snapshot and the load run; rewrite `docs/promotion-readiness.md`
+      from what the artefacts actually contain. Acceptance: every item is marked met or unmet from a
+      generated artefact rather than from prose; if and only if all seven hold, the phase writes a
+      **proposed** manifest edit into `docs/promotion/` — as a file in this repository, for review —
+      listing every field PRD 12 requires with the value the artefacts support; the portfolio's
+      `content/projects/RAG-01.json` is still not touched from here, and no number is promoted that
+      its artefact does not contain.
+
+      **A refusal remains an acceptable outcome.** If the artefacts do not support `measured`, this
+      phase says so again and the proposal is not written. P12 already established that the
+      honest result of an evidence phase can be "no".
+
 ## What this build does not do
 
 P12 produces the evidence. It does **not** edit `content/projects/RAG-01.json` in the portfolio
 repository. PRD 12 is explicit that promotion is a reviewed human act and that no number from the
 specification may be restated as an achievement until the artefacts exist. The loop stops at the
 evidence.
+
+That still holds through P18. The furthest this repository goes is a proposed manifest edit,
+written here as a file to be read and applied by a person. A project that could promote itself
+would be a project whose proof level means nothing.
