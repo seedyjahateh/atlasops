@@ -21,7 +21,7 @@
  * it — it does not produce a report.
  */
 
-import { contentHashOf } from "@atlasops/contracts";
+import { AtlasOpsError, contentHashOf } from "@atlasops/contracts";
 import type { GroundingResult } from "@atlasops/grounding";
 import type { FusedCandidate, RetrievalConfig, RetrievalResult } from "@atlasops/retrieval";
 import { percentile, type PriceTable } from "@atlasops/telemetry";
@@ -29,7 +29,7 @@ import { percentile, type PriceTable } from "@atlasops/telemetry";
 import { correctAbstentionRate, overAbstentionRate } from "./abstention-metrics.js";
 import { configForArm, type ArmName } from "./arms.js";
 import { citationPrecision, citationRecall, spanValidityRate } from "./citation-metrics.js";
-import { datasetRef, type Dataset } from "./dataset.js";
+import { datasetRef, type Dataset, type Split } from "./dataset.js";
 import { assertNoLeaks, type GovernanceGate } from "./governance-metrics.js";
 import { judgedMetrics, type Judge, type JudgeIdentity, type JudgedOutcome } from "./judge.js";
 import { metricResult, type MetricResult } from "./metric.js";
@@ -148,6 +148,21 @@ export interface RunInput {
   /** Model identifiers by role. See `RunReport.models`. */
   readonly models?: Readonly<Record<string, string>> | undefined;
   readonly commit?: string | undefined;
+  /**
+   * Which splits this run may evaluate. Development only, unless a caller says otherwise.
+   *
+   * The seal in `dataset.ts` governs who can *obtain* held-out items; nothing governed what
+   * happened once a runner held a whole dataset, so an ordinary run read the held-out split every
+   * time and the protection was a comment. PRD 8.1 wants a split "that the development loop may
+   * not read", and a default of development-only is what makes that true of the loop rather than
+   * of one function.
+   *
+   * Reading held-out stays possible, because a final evaluation has to: the caller passes both
+   * splits and the reason travels into the report.
+   */
+  readonly splits?: readonly Split[] | undefined;
+  /** Why the held-out split was read. Required whenever `splits` includes it. */
+  readonly unsealReason?: string | undefined;
   readonly now: () => string;
 }
 
@@ -187,8 +202,32 @@ export async function runEvaluation(input: RunInput): Promise<RunReport> {
   const table: TableRow[] = [];
   const splits = new Set<string>();
 
+  const allowed: readonly Split[] = input.splits ?? ["development"];
+  if (allowed.includes("held-out") && (input.unsealReason ?? "").trim().length === 0) {
+    throw new AtlasOpsError(
+      "VALIDATION",
+      "reading the held-out split requires a stated reason, which travels into the report. A " +
+        "held-out split anybody can read without saying why is a development split with a longer " +
+        "name (PRD 8.1).",
+      "run.unsealReason",
+    );
+  }
+
+  /**
+   * Each dataset, narrowed to the splits this run may read.
+   *
+   * Items are filtered rather than the dataset rebuilt, so the report still cites the file's own
+   * content hash — a run quoting a hash computed over a subset would look like a different dataset
+   * to anything comparing two runs.
+   */
+  const visible = <Item extends { readonly split: Split }>(
+    dataset: { readonly items: readonly Item[] } | undefined,
+  ): readonly Item[] => (dataset?.items ?? []).filter((item) => allowed.includes(item.split));
+
   for (const dataset of [input.relevance, input.grounded, input.abstention, input.probes]) {
-    for (const item of dataset?.items ?? []) splits.add(item.split);
+    for (const item of dataset?.items ?? []) {
+      if (allowed.includes(item.split)) splits.add(item.split);
+    }
   }
 
   const ask = async (
@@ -216,7 +255,7 @@ export async function runEvaluation(input: RunInput): Promise<RunReport> {
     });
   } else {
     datasets.push(datasetRef(input.relevance));
-    const items = input.relevance.items;
+    const items = visible(input.relevance);
     const ranked: { itemId: string; ranked: readonly string[] }[] = [];
     const fused: { itemId: string; candidates: readonly FusedCandidate[] }[] = [];
 
@@ -260,7 +299,7 @@ export async function runEvaluation(input: RunInput): Promise<RunReport> {
     }
   } else {
     datasets.push(datasetRef(input.grounded));
-    const items = input.grounded.items;
+    const items = visible(input.grounded);
     const answers: {
       itemId: string;
       answer: GroundingResult["answer"];
@@ -331,7 +370,7 @@ export async function runEvaluation(input: RunInput): Promise<RunReport> {
     });
   } else {
     datasets.push(datasetRef(input.abstention));
-    const items = input.abstention.items;
+    const items = visible(input.abstention);
     const outcomes: { itemId: string; abstained: boolean }[] = [];
 
     for (const item of items) {
@@ -358,7 +397,7 @@ export async function runEvaluation(input: RunInput): Promise<RunReport> {
     });
   } else {
     datasets.push(datasetRef(input.probes));
-    const items = input.probes.items;
+    const items = visible(input.probes);
     const outcomes: { itemId: string; materialised: readonly string[]; message: string }[] = [];
 
     for (const item of items) {

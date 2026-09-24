@@ -60,6 +60,11 @@ Two consequences follow, and they are the most important sentences in this docum
   returns candidates for queries the corpus cannot answer, and the API answers almost anything with
   something. There is a test asserting exactly that (`api.test.ts`), because a limitation with a
   test is a fact and a limitation in a document is a hope.
+- **Abstention does not work at all as currently wired, and the evaluation says so.** The first run
+  against labels written for this corpus (P14b) scored **correct-abstention 0 over 4** — the system
+  answered every question it should have refused. With a stand-in embedder every passage looks
+  equally relevant, so PRD 7.3's support threshold never decides anything. Whether abstention works
+  with a real model is untested.
 - **The stand-in generator does no language modelling.** It cites the first passage it was shown and
   quotes its opening. That exercises prompt assembly, citation binding and the verification pass for
   real, and produces prose nobody should read as an answer.

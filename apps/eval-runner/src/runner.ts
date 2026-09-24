@@ -42,6 +42,7 @@ import {
   type DatasetInput,
   type PermissionProbeItem,
   type RunReport,
+  type Split,
 } from "@atlasops/evalkit";
 import {
   inMemoryAuditSink,
@@ -93,6 +94,13 @@ export interface RunnerConfig {
   /** A principal-to-groups file, so probes can be run as somebody who must not see a zone. */
   readonly groupMap: string | null;
   /**
+   * The reason for reading the held-out split, or null for an ordinary development run.
+   *
+   * A flag rather than a default, and a reason rather than a boolean. PRD 8.1's held-out split is
+   * only held out if the routine loop does not read it, and the routine loop is this command.
+   */
+  readonly unsealReason: string | null;
+  /**
    * The commit this run was made from.
    *
    * PRD 12 item 2 requires it on the evaluation report. Supplied rather than discovered: shelling
@@ -140,6 +148,7 @@ export function readRunnerConfig(
       argv.includes("--allow-snapshot-mismatch") || env.ATLASOPS_ALLOW_SNAPSHOT_MISMATCH === "1",
     aclManifest: optionalPath(flag(argv, "acl") ?? env.ATLASOPS_ACL_MANIFEST),
     groupMap: optionalPath(flag(argv, "groups") ?? env.ATLASOPS_GROUP_MAP),
+    unsealReason: optionalPath(flag(argv, "final") ?? env.ATLASOPS_UNSEAL_REASON),
     commit: flag(argv, "commit") ?? env.ATLASOPS_COMMIT ?? null,
   };
 }
@@ -290,6 +299,14 @@ export async function runEvaluationSuite(
           generator: STAND_IN_MODEL_ID,
         },
         ...(config.commit === null ? {} : { commit: config.commit }),
+        // Development only unless `--final "<reason>"` says otherwise. The held-out split is only
+        // held out if this command — the routine one — does not read it (PRD 8.1).
+        ...(config.unsealReason === null
+          ? {}
+          : {
+              splits: ["development", "held-out"] satisfies readonly Split[],
+              unsealReason: config.unsealReason,
+            }),
         now: () => new Date().toISOString(),
       }),
     );

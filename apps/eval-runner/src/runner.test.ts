@@ -103,7 +103,9 @@ describe("running the suite", () => {
     const governance = artefactsFor(outcome).find((a) => a.name === "governance.md");
 
     expect(governance?.content).toContain("**Arm:** fused-with-rerank");
-    expect(governance?.content).toContain("permission-probe@1.1.0");
+    expect(governance?.content).toContain("permission-probe@1.2.0");
+    // The injection probe is in the development split, so the routine run exercises it. It was
+    // held out until P14b, which meant the gate that runs on every build never saw an injection.
     expect(governance?.content).toContain("**Injection probes:** 1");
   });
 

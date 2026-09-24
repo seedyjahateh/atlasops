@@ -59,13 +59,64 @@ realism, and no domain expert has read them. Where a document states a policy �
 window, a seven-year retention period — the number is plausible and invented, and nothing anywhere
 in this repository treats those numbers as facts about the world.
 
-## The labels are separate, and later
+## The labels
 
-This document covers the corpus only. The graded relevance judgments, the supporting-chunk sets,
-the abstention cases and the permission probes are P14b, and the procedure for those — who judged
-each item, on what basis, and what "relevant" was taken to mean — belongs with them. They are
-separated because they fail differently: a wrong corpus is a wrong denominator, and a wrong label is
-a quiet bias toward the system being measured.
+`examples/corpus.datasets.json`, added in P14b: 14 graded relevance items, 7 grounded answers, 7
+abstention cases and 7 permission probes, all pinned to the snapshot above.
+
+**Who labelled them.** I did, the same afternoon I wrote the documents, with no second reader. That
+is the single most important caveat on every retrieval number this repository produces: the person
+who wrote the corpus also decided which passage answers which question, and both were done knowing
+what the system does. It is not an independent judgment and no amount of method fixes that.
+
+**The grading scale**, applied to each chunk for the query _and the principal_ named on the item:
+
+| Grade | Meaning                                                                      |
+| ----- | ---------------------------------------------------------------------------- |
+| 3     | Answers the question on its own. A reader could stop here.                   |
+| 2     | Substantially useful — a necessary part of a complete answer, but not alone. |
+| 1     | Related context: names the topic, does not answer it.                        |
+| 0     | Irrelevant. Written as an omission rather than an explicit zero.             |
+
+Graded rather than binary because PRD 8.2 asks for nDCG, and nDCG over binary labels cannot tell a
+run that put the definitive passage first from one that put a passing mention there — which is most
+of what reranking is for.
+
+**Labels are per principal, and never cross a zone.** A relevance judgment names a principal, and
+every chunk it grades above zero is one that principal may read. The mirror rule holds for probes:
+every chunk listed as forbidden is one the principal genuinely cannot read. Both are enforced by
+`pnpm datasets:check` rather than trusted, because both mistakes are invisible downstream — a label
+on unreadable material asks the system to leak and scores the pre-filter as a miss, and a probe that
+forbids readable material turns an ordinary retrieval into a leak and invites somebody to loosen the
+gate.
+
+**Adversarial subpopulations**, per PRD 8.1: `lexical-distractor` (the word appears in a document
+that does not answer the question — "escalation" is in the handbook, the on-call policy and the
+vendor brief, meaning three different things), `cross-zone-vocabulary` (the answer spans the public
+and finance zones for a finance principal, and stops at the public zone for everybody else), and
+`multi-passage` (no single chunk suffices).
+
+**What `humanJudgement` means here**, since it is ambiguous and PRD 8.3 leans on it: on the items
+that carry it, it records _my_ verdict that a correct answer to that question is supported by the
+cited passages and contradicts nothing in them. It is not a judgment of any particular answer the
+system produced, because no answer exists until a run happens. Judge-human agreement computed
+against a stand-in generator is therefore a measure of the stand-in, not a calibration of a judge.
+
+**The held-out split is 3 relevance items, 1 grounded answer and 1 probe.** `pnpm app:eval` reads
+development only; reading held-out needs `--final "<reason>"`, and the reason is printed in the
+artefact. That default arrived in P14b — before it, the routine run read the held-out split every
+time, and the seal was a comment.
+
+## What the first labelled run found
+
+Recorded here because it is a finding about the system rather than about the corpus, and because it
+is the kind of number that is tempting to leave in an artefact nobody re-reads: **correct-abstention
+was 0 over 4 development cases**. The system answered every question it should have refused.
+
+That is a truthful measurement of what is wired today, and it is not a surprise: with a stand-in
+embedder every passage looks equally relevant, so the support threshold PRD 7.3 defines never
+decides anything. It says nothing about whether abstention would work with a real model, and it is
+exactly the row that would have read as "0.0 — fine" if nobody looked.
 
 ## How it is pinned
 

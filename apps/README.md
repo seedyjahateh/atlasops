@@ -45,6 +45,18 @@ Running without `--acl` is still supported and applies one label to the whole co
 right shape for a corpus everybody may read and the wrong one for any corpus a permission probe
 runs against, since nothing in it is forbidden to anybody.
 
+## The evaluation reads the development split only
+
+`pnpm app:eval` runs `examples/corpus.datasets.json`, whose labels are written for this corpus, and
+evaluates **development items only**. The held-out split needs a reason:
+
+```bash
+pnpm app:eval -- --final "final evaluation before promotion"
+```
+
+The reason is printed in the artefact. A held-out split anybody can read without saying why is a
+development split with a longer name — and until P14b the routine run read it every time.
+
 ## What is not installed, and what follows from it
 
 **These processes still run stand-ins, although an adapter now exists.** `model-gateway` gained an

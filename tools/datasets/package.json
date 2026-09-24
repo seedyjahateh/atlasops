@@ -1,0 +1,14 @@
+{
+  "name": "@atlasops/datasets-check",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Checks the labels in examples/corpus.datasets.json against the corpus they claim to describe.",
+  "exports": {
+    ".": "./validate.ts"
+  },
+  "dependencies": {
+    "@atlasops/evalkit": "workspace:*",
+    "@atlasops/governance": "workspace:*"
+  }
+}

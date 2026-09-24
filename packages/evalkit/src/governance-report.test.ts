@@ -126,8 +126,30 @@ describe("the report", () => {
     });
 
     expect(rendered).toContain("permission-probe@9.9.9");
-    expect(rendered).toContain("**Probes:** 2");
+    expect(rendered).toContain("**Probes declared:** 2");
+    // Declared and in-scope are separate numbers on purpose: a run that read development only has
+    // said nothing about the held-out probes, and must not be read as having cleared them.
+    expect(rendered).toContain("**Probes in scope for this run:** 2");
     expect(rendered).toContain("**Commit:** abc123");
+  });
+
+  it("scores only the probes the run was in scope for", () => {
+    // The failure this prevents: a held-out probe that never ran being counted as clean, which
+    // would make the leak gate pass over material it never looked at.
+    const rendered = renderGovernanceReport({
+      run: clean,
+      probes: probeSet([
+        probe("prb-001"),
+        probe("prb-002"),
+        probe("prb-003", { split: "held-out" }),
+      ]),
+      auditSample: auditSample(),
+      commit: null,
+    });
+
+    expect(rendered).toContain("**Probes declared:** 3");
+    expect(rendered).toContain("**Probes in scope for this run:** 2");
+    expect(rendered).toContain("**0**, summed over 2 probes");
   });
 
   it("reports a clean leak count and says why a leak would not have reached this file", () => {

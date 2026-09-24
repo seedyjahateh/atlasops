@@ -266,6 +266,11 @@ async function run(
     probes,
     judge: JUDGE,
     prices: UNPRICED_TABLE,
+    // These fixtures are tiny, and most tests here are about what the harness computes rather than
+    // which split it read — so the helper unseals deliberately, exactly as a final evaluation
+    // would. The default, development only, has its own tests below.
+    splits: ["development", "held-out"],
+    unsealReason: "harness tests exercise both splits",
     now: NOW,
     ...overrides,
   });
@@ -488,6 +493,35 @@ describe("the harness (PRD 8.2)", () => {
   it("records which splits it evaluated", async () => {
     const report = await run(GOOD);
     expect(report.splits).toEqual(["development", "held-out"]);
+  });
+
+  describe("the held-out split is sealed against the routine run (PRD 8.1)", () => {
+    it("evaluates development only when nobody says otherwise", async () => {
+      // The seal in dataset.ts governs who can obtain held-out items. It said nothing about what
+      // happened once a runner held a whole dataset, so an ordinary run read the held-out split
+      // every time and the protection was a comment.
+      const report = await run(GOOD, { splits: undefined, unsealReason: undefined });
+
+      expect(report.splits).toEqual(["development"]);
+      expect(report.perQuery.map((record) => record.itemId)).not.toContain("rel-003");
+    });
+
+    it("refuses to read held-out without a stated reason", async () => {
+      // Not a boolean. A held-out split anybody can read without saying why is a development
+      // split with a longer name, and the reason has to reach the artefact.
+      await expect(
+        run(GOOD, { splits: ["development", "held-out"], unsealReason: "   " }),
+      ).rejects.toThrow(/requires a stated reason/);
+    });
+
+    it("scores only the items it read, rather than the whole file", async () => {
+      // The failure this prevents is quiet: a metric over items that never ran either throws or,
+      // worse, counts them as clean.
+      const sealed = await run(GOOD, { splits: undefined, unsealReason: undefined });
+      const unsealed = await run(GOOD);
+
+      expect(sealed.perQuery.length).toBeLessThan(unsealed.perQuery.length);
+    });
   });
 
   it("says why a dimension is missing rather than omitting the row", async () => {

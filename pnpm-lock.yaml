@@ -313,6 +313,15 @@ importers:
         specifier: workspace:*
         version: link:../../packages/telemetry
 
+  tools/datasets:
+    dependencies:
+      '@atlasops/evalkit':
+        specifier: workspace:*
+        version: link:../../packages/evalkit
+      '@atlasops/governance':
+        specifier: workspace:*
+        version: link:../../packages/governance
+
   tools/smoke:
     dependencies:
       '@atlasops/model-gateway':

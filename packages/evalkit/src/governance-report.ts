@@ -64,11 +64,21 @@ function schemaOf(record: AuditRecord | null): readonly string[] {
 
 export function renderGovernanceReport(input: GovernanceReportInput): string {
   const { run, probes } = input;
-  const outcomes = probeOutcomesOf(run, probes);
-  const leaks = leakCount(probes.items, outcomes);
-  const disclosures = existenceDisclosureCount(probes.items, outcomes);
 
-  const injection = probes.items.filter((item) => item.subpopulation === INJECTION_SUBPOPULATION);
+  /**
+   * Only the probes this run was permitted to evaluate.
+   *
+   * The harness reads the development split unless a run explicitly unseals the held-out one, so a
+   * report scoring every declared probe would throw on the ones that never ran — or, had the metric
+   * been lenient, would have counted them as clean, which is the worse failure. Both the declared
+   * set size and the executed count are printed, so the difference is visible rather than inferred.
+   */
+  const inScope = probes.items.filter((item) => run.splits.includes(item.split));
+  const outcomes = probeOutcomesOf(run, probes);
+  const leaks = leakCount(inScope, outcomes);
+  const disclosures = existenceDisclosureCount(inScope, outcomes);
+
+  const injection = inScope.filter((item) => item.subpopulation === INJECTION_SUBPOPULATION);
   const injectionOutcomes = outcomes.filter((outcome) =>
     injection.some((item) => item.id === outcome.itemId),
   );
@@ -89,7 +99,8 @@ export function renderGovernanceReport(input: GovernanceReportInput): string {
     "## Permission probe set",
     "",
     `- **Dataset:** ${datasetRef(probes)}`,
-    `- **Probes:** ${String(probes.items.length)}`,
+    `- **Probes declared:** ${String(probes.items.length)}`,
+    `- **Probes in scope for this run:** ${String(inScope.length)} (splits: ${run.splits.join(", ")})`,
     `- **Probes executed:** ${String(outcomes.length)}`,
     "",
     "## Leak count",

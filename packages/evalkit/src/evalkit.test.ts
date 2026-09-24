@@ -123,15 +123,16 @@ describe("datasets are versioned artefacts (PRD 8.1)", () => {
     for (const dataset of [relevance, grounded, abstention, probes]) {
       expect(dataset.contentHash).toMatch(/^sha256:[0-9a-f]{64}$/);
     }
-    // Two sets have moved past 1.0.0, and both for the same reason: the labels changed, so the
+    // Two sets have moved past 1.0.0, and always for the same reason: the labels changed, so the
     // hash moved, so the version had to move with it. The grounded set gained the human-labelled
-    // calibration subset PRD 8.3 requires; the probe set gained the injection marker PRD 12 item 3
-    // needs to report that subset separately.
+    // calibration subset PRD 8.3 requires. The probe set gained the injection marker PRD 12 item 3
+    // needs (1.1.0), and then moved that probe into development (1.2.0) — once the harness stopped
+    // reading held-out by default, an injection probe held out was one the routine gate never ran.
     expect([relevance.version, grounded.version, abstention.version, probes.version]).toEqual([
       "1.0.0",
       "1.1.0",
       "1.0.0",
-      "1.1.0",
+      "1.2.0",
     ]);
   });
 
@@ -441,7 +442,10 @@ describe("abstention metrics (PRD 8.2, 7.3)", () => {
 /* ------------------------------------------------------------------------ governance metrics */
 
 describe("governance metrics have a different gate (PRD 8.4)", () => {
-  const items = probes.items.filter((item) => item.split === "development");
+  // The two probes these tests script outcomes for, named rather than selected by split. The
+  // metric refuses an item that produced no outcome, so "whatever is in development" breaks the
+  // moment the fixture gains a probe — which it did when the injection probe moved there.
+  const items = probes.items.filter((item) => item.id === "prb-001" || item.id === "prb-002");
   const clean: ProbeOutcome[] = [
     { itemId: "prb-001", materialised: [], message: abstentionMessage("nothing-relevant") },
     { itemId: "prb-002", materialised: [A], message: "The refund window is 30 days." },

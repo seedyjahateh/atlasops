@@ -796,7 +796,7 @@ model and inventing one is not available.
       nobody enjoys writing: I wrote all eight documents myself, in one pass, no domain expert has
       read them, and every policy number in them is plausible and invented.
 
-- [ ] **P14b — The four labelled datasets.** Graded relevance labels, grounded answers with their
+- [x] **P14b — The four labelled datasets.** Graded relevance labels, grounded answers with their
       supporting chunks and a human calibration subset, the abstention set, and the permission
       probes — all labelled against P14a's snapshot. Implements PRD 8.1. Acceptance: `app:eval` runs
       **without** `--allow-snapshot-mismatch` and the flag comes out of the script; the held-out
@@ -817,6 +817,51 @@ model and inventing one is not available.
       between an evaluation report that records a run and one that supports a claim. The labels are
       my judgments and the procedure has to say so — an honest small dataset with a stated method
       beats a larger one whose provenance is a shrug.
+
+      Done. 35 labelled items — 14 graded relevance, 7 grounded answers, 7 abstention cases, 7
+      permission probes — pinned to `sha256:f05a2049…`, and `app:eval` runs with
+      `--allow-snapshot-mismatch` gone from the script for the first time. 623 tests across 24
+      files.
+
+      **The held-out split was not held out.** The seal in `dataset.ts` governed who could *obtain*
+      held-out items and said nothing about what happened once a runner held a whole dataset — so
+      the routine command read the held-out split on every run, and the protection was a comment.
+      The harness now evaluates development only unless a caller passes both splits **and a
+      reason**, which travels into the artefact; `pnpm app:eval -- --final "<reason>"` is the way
+      in. This was not in the phase's plan; it was found by reading what the first labelled run had
+      actually executed.
+
+      **The injection probe was in the held-out split**, which the previous point turned from
+      harmless into a real gap: the gate that runs on every build would never have exercised
+      injection at all, while PRD 8.4 gates every run on leaks rather than only the final one. Moved
+      to development, with a plain probe taking its place so the seal still has something to refuse.
+      Labels changed, so the hash moved, so the fixture went to 1.2.0 — the mechanism working again.
+
+      **The governance report was counting probes that never ran.** With held-out excluded, the
+      metric threw rather than scoring them, which is the right failure — but the report now
+      separates "probes declared" from "probes in scope for this run", because the alternative
+      reading is that a held-out probe nobody executed was clean.
+
+      **`pnpm datasets:check` checks what `loadDataset` structurally cannot.** `loadDataset`
+      recomputes a content hash and closes PRD 8.1's re-labelling route; it has never seen a corpus.
+      The new check catches four mistakes that are all silent downstream: a stale snapshot pin, a
+      label pointing at a chunk that no longer exists, a probe forbidding a chunk the principal may
+      read, and — the mirror, and the worse one — a relevance label on material the principal may
+      *not* read, which asks the system to leak and scores obedience to PRD 6.2 as a miss.
+      Demonstrated live: repointing one relevance label at a finance chunk produced exactly that
+      complaint and exit 1.
+
+      **The first labelled run found something, which is what evaluation is for.**
+      `correct-abstention` came out **0 over 4** — the system answered every question it should have
+      refused. That is truthful about what is wired today and unsurprising once stated: with a
+      stand-in embedder every passage looks equally relevant, so PRD 7.3's support threshold never
+      decides anything. It is recorded in `docs/limitations.md` and `docs/corpus-procedure.md`
+      rather than left in an artefact nobody re-reads, because a zero in a row named
+      "correct-abstention" reads as a pass at a glance.
+
+      The labelling procedure is published with the part that weakens it: I wrote the corpus and
+      then labelled it myself, the same afternoon, with no second reader, knowing what the system
+      does. No method fixes that, and the retrieval numbers carry it.
 
 - [ ] **P15 — The reference profile, the load run, and the cost and latency report.** The PRD 9.1
       profile as a committed artefact, a scripted load run at a stated concurrency, and PRD 12 item 4. Implements PRD 9.1, 9.2's aggregate views, and 9.3. Acceptance: the profile records the
