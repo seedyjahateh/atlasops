@@ -15,7 +15,14 @@ import { describe, expect, it } from "vitest";
 import { BUDGETS, assertWithinBudget, budgetById, checkBudget } from "./budget.js";
 import { manualClock } from "./clock.js";
 import { percentile, percentileIsMaximumBelow } from "./percentile.js";
-import { UNPRICED_TABLE, canPrice, costOf, totalCost, type PriceTable } from "./prices.js";
+import {
+  UNPRICED_TABLE,
+  canPrice,
+  checkedPriceTable,
+  costOf,
+  totalCost,
+  type PriceTable,
+} from "./prices.js";
 import { measure, type ReferenceProfile } from "./profile.js";
 import {
   cacheHitRate,
@@ -31,8 +38,18 @@ const SYNTHETIC_PRICES: PriceTable = {
   version: "test-synthetic-1",
   currency: "USD",
   models: {
-    "fake-generator": { inputPer1MTokens: 1000, outputPer1MTokens: 2000 },
-    "fake-embedder": { inputPer1MTokens: 100, outputPer1MTokens: 0 },
+    "fake-generator": {
+      inputPer1MTokens: 1000,
+      outputPer1MTokens: 2000,
+      source: "synthetic: invented for this test, not a vendor price",
+      retrievedOn: "2026-01-01",
+    },
+    "fake-embedder": {
+      inputPer1MTokens: 100,
+      outputPer1MTokens: 0,
+      source: "synthetic: invented for this test, not a vendor price",
+      retrievedOn: "2026-01-01",
+    },
   },
 };
 
@@ -164,7 +181,10 @@ describe("cost comes from the versioned table (PRD 9.2)", () => {
     expect(() => costOf(SYNTHETIC_PRICES, "unlisted-model", 10, 10)).toThrow(/no price for model/);
   });
 
-  it("prices nothing at all from the table this repository ships", () => {
+  it("prices nothing at all from the default table", () => {
+    // Still the default everything falls back to. A priced table now exists for the models the
+    // OpenAI adapter uses (ADR 0006), and it is opted into explicitly rather than inherited —
+    // otherwise a stand-in run would quietly acquire the prices of a model it never called.
     expect(UNPRICED_TABLE.models).toEqual({});
     expect(canPrice(UNPRICED_TABLE, "fake-generator")).toBe(false);
     expect(() => costOf(UNPRICED_TABLE, "fake-generator", 1, 1)).toThrow(AtlasOpsError);
@@ -178,6 +198,30 @@ describe("cost comes from the versioned table (PRD 9.2)", () => {
     const a = costOf(SYNTHETIC_PRICES, "fake-generator", 1_000_000, 0);
     const b = costOf(SYNTHETIC_PRICES, "fake-embedder", 1_000_000, 0);
     expect(totalCost([a, b])).toBe(1100);
+  });
+});
+
+describe("a price has to say where it came from", () => {
+  const priced = (source: string, retrievedOn: string): PriceTable => ({
+    version: "under-test",
+    currency: "USD",
+    models: { m: { inputPer1MTokens: 1, outputPer1MTokens: 1, source, retrievedOn } },
+  });
+
+  it("accepts a table whose entries carry a source and an ISO date", () => {
+    expect(checkedPriceTable(priced("https://example.invalid/pricing", "2026-09-24")).version).toBe(
+      "under-test",
+    );
+  });
+
+  it("rejects an empty source, which is what a required field degrades into", () => {
+    expect(() => checkedPriceTable(priced("   ", "2026-09-24"))).toThrow(/has no source/);
+  });
+
+  it("rejects a date it cannot read, because a report has to say how stale a price is", () => {
+    expect(() => checkedPriceTable(priced("https://example.invalid", "last Tuesday"))).toThrow(
+      /expected an ISO date/,
+    );
   });
 });
 

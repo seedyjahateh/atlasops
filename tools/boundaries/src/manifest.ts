@@ -31,12 +31,26 @@ export interface ProviderSdkRule {
   readonly patterns: readonly string[];
 }
 
+/**
+ * The same containment, keyed on the host rather than the package name.
+ *
+ * `providerSdks` catches `import OpenAI from "openai"`. It cannot catch `fetch("https://api.openai
+ * .com/v1/…")`, because that is not an import — so a provider adapter written without an SDK would
+ * leave the gateway boundary enforced against a shape nobody uses. See ADR 0006.
+ */
+export interface ProviderEndpointRule {
+  readonly allowedIn: readonly string[];
+  /** Hosts, matched as substrings of the file's text. */
+  readonly patterns: readonly string[];
+}
+
 export interface Manifest {
   readonly version: number;
   readonly layerNames: readonly string[];
   readonly packages: readonly PackageRule[];
   readonly groups: readonly GroupRule[];
   readonly providerSdks: ProviderSdkRule;
+  readonly providerEndpoints: ProviderEndpointRule;
 }
 
 export class ManifestError extends Error {
@@ -160,7 +174,23 @@ export function parseManifest(source: string): Manifest {
       fail(`providerSdks.allowedIn names "${id}", which is not a declared package`);
   }
 
-  return { version, layerNames, packages, groups, providerSdks };
+  /**
+   * Required, not optional-with-a-default.
+   *
+   * An absent block would mean "no endpoint is restricted", which reads in CI exactly like a
+   * passing rule. A manifest that forgets this has to say so out loud.
+   */
+  const endpointRecord = asRecord(root.providerEndpoints, "providerEndpoints");
+  const providerEndpoints: ProviderEndpointRule = {
+    allowedIn: asStringArray(endpointRecord.allowedIn, "providerEndpoints.allowedIn"),
+    patterns: asStringArray(endpointRecord.patterns, "providerEndpoints.patterns"),
+  };
+  for (const id of providerEndpoints.allowedIn) {
+    if (!known.has(id))
+      fail(`providerEndpoints.allowedIn names "${id}", which is not a declared package`);
+  }
+
+  return { version, layerNames, packages, groups, providerSdks, providerEndpoints };
 }
 
 export function loadManifest(path: string): Manifest {

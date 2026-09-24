@@ -171,5 +171,26 @@
       "replicate",
       "@mistralai/*"
     ]
+  },
+
+  "providerEndpoints": {
+    "$comment": [
+      "The same containment, keyed on the host. providerSdks catches an import; it cannot catch",
+      "fetch(\"https://api.openai.com/...\"), because that is not an import. The OpenAI adapter is",
+      "written without an SDK (ADR 0006), so without this rule the gateway boundary would be",
+      "enforced against a shape nothing in this repository uses."
+    ],
+    "allowedIn": ["@atlasops/model-gateway"],
+    "patterns": [
+      "api.openai.com",
+      "api.anthropic.com",
+      "api.cohere.com",
+      "api.cohere.ai",
+      "generativelanguage.googleapis.com",
+      "api-inference.huggingface.co",
+      "api.replicate.com",
+      "api.mistral.ai",
+      "api.voyageai.com"
+    ]
   }
 }

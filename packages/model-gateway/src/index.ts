@@ -59,6 +59,36 @@ export {
 } from "./fake.js";
 
 export {
+  DEFAULT_TIMEOUT_MS,
+  OPENAI_BASE_URL,
+  failureKindForStatus,
+  openAiEmbedder,
+  openAiGenerator,
+  openAiKeyFromEnv,
+  redactKey,
+  type OpenAiConfig,
+  type OpenAiEmbedderConfig,
+  type OpenAiGeneratorConfig,
+} from "./openai.js";
+
+export {
+  OPENAI_DEFAULT_EMBEDDING_DIMENSION,
+  OPENAI_DEFAULT_EMBEDDING_MODEL,
+  OPENAI_DEFAULT_GENERATION_MODEL,
+  OPENAI_PRICE_TABLE,
+} from "./prices-openai.js";
+
+export {
+  fetchTransport,
+  recordingTransport,
+  type HttpRequest,
+  type HttpResponse,
+  type HttpTransport,
+  type RecordedExchange,
+  type RecordingTransport,
+} from "./transport.js";
+
+export {
   createEmbeddingGateway,
   generateWithRetry,
   rerankWithRetry,

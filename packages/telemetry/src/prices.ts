@@ -18,6 +18,18 @@ import { AtlasOpsError } from "@atlasops/contracts";
 export interface ModelPrice {
   readonly inputPer1MTokens: number;
   readonly outputPer1MTokens: number;
+  /**
+   * Where the figure came from, and when it was read.
+   *
+   * Required, not documentation. A per-token price is a fact about a vendor's published list on a
+   * particular day, and vendors change lists; a number with no source is indistinguishable from a
+   * number somebody remembered, which is exactly what PRD section 0 forbids from reaching a cost
+   * report. A synthetic table used by a test says so here, which also stops a fixture price ever
+   * being mistaken for a real one.
+   */
+  readonly source: string;
+  /** ISO date, `YYYY-MM-DD`, on which `source` showed these figures. */
+  readonly retrievedOn: string;
 }
 
 export interface PriceTable {
@@ -33,6 +45,39 @@ export const UNPRICED_TABLE: PriceTable = {
   currency: "USD",
   models: {},
 };
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Accepts a table only if every price says where it came from.
+ *
+ * The types already require the fields; this catches the empty string, which is what a required
+ * field degrades into when somebody is in a hurry. A table is built once and read for the life of
+ * a report, so the check belongs at construction rather than at every lookup.
+ */
+export function checkedPriceTable(table: PriceTable): PriceTable {
+  for (const [modelId, price] of Object.entries(table.models)) {
+    if (price.source.trim().length === 0) {
+      throw new AtlasOpsError(
+        "VALIDATION",
+        `the price for "${modelId}" in table "${table.version}" has no source. A per-token price ` +
+          `is a fact about a published list on a day, and one without a citation cannot be ` +
+          `defended in a cost report (ADR 0002).`,
+        `models.${modelId}.source`,
+      );
+    }
+    if (!ISO_DATE.test(price.retrievedOn)) {
+      throw new AtlasOpsError(
+        "VALIDATION",
+        `the price for "${modelId}" in table "${table.version}" has retrievedOn ` +
+          `"${price.retrievedOn}"; expected an ISO date such as 2026-09-24. Prices go stale and a ` +
+          `report has to say how stale.`,
+        `models.${modelId}.retrievedOn`,
+      );
+    }
+  }
+  return table;
+}
 
 export interface CostRecord {
   readonly modelId: string;

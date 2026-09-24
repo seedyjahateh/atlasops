@@ -120,8 +120,8 @@ unmitigated.
 ### 7. An honest limitations list — met
 
 `docs/limitations.md`. The four PRD 12 names, four more this build actually has — chiefly that no
-provider adapter is installed and what follows from that — and the scope boundaries that are
-choices rather than gaps.
+run has used a real model and what follows from that — and the scope boundaries that are choices
+rather than gaps.
 
 ---
 
@@ -129,8 +129,11 @@ choices rather than gaps.
 
 In rough order of effort:
 
-1. **A provider adapter behind `model-gateway`'s interfaces**, with a real price table. This unblocks
-   item 4's cost half and makes item 2's numbers mean something.
+1. ~~**A provider adapter behind `model-gateway`'s interfaces**, with a real price table.~~ **Built
+   in P13** (ADR 0006): an OpenAI embedding and generation adapter, and a dated price table for the
+   models it uses. It unblocks item 4's cost half **only once a run actually uses it** — no
+   application constructs it yet, and no artefact here was produced with it, so nothing in this
+   document has changed status because of it. There is still no reranker adapter.
 2. **A load harness** producing a stage breakdown at a stated concurrency on described hardware,
    with the raw span export. This unblocks the rest of item 4.
 3. **Two exhibits** consuming `packages/*` and importing no other exhibit. This unblocks item 5.

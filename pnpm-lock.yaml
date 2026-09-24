@@ -289,6 +289,15 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  tools/smoke:
+    dependencies:
+      '@atlasops/model-gateway':
+        specifier: workspace:*
+        version: link:../../packages/model-gateway
+      '@atlasops/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
+
 packages:
 
   '@ampproject/remapping@2.3.0':

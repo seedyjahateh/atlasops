@@ -17,6 +17,7 @@ export type RuleId =
   | "exhibit-is-a-leaf"
   | "app-is-a-leaf"
   | "provider-sdk-outside-gateway"
+  | "provider-endpoint-outside-gateway"
   | "escapes-the-workspace"
   | "unowned-source"
   | "undeclared-package"
@@ -115,17 +116,61 @@ function findCycle(edges: readonly Edge[]): string[] | null {
   return null;
 }
 
+/**
+ * Provider hosts, found in the text of a file rather than in its imports.
+ *
+ * This reads whole files, comments and string literals alike. That is deliberate and slightly
+ * blunt: a host name sitting in a comment is not a call, but the rule is cheap to satisfy — say
+ * "the provider's API" in prose, or put the constant where it belongs — and the alternative is a
+ * parser that decides which occurrences are load-bearing, which is exactly the kind of judgement
+ * that lets the real one through.
+ */
+function checkProviderEndpoints(
+  manifest: Manifest,
+  sources: ReadonlyMap<string, string>,
+  owners: ReadonlyMap<string, string>,
+): Violation[] {
+  const violations: Violation[] = [];
+  const { allowedIn, patterns } = manifest.providerEndpoints;
+  if (patterns.length === 0) return violations;
+
+  for (const [file, text] of sources) {
+    const owner = owners.get(file);
+    if (owner !== undefined && allowedIn.includes(owner)) continue;
+
+    for (const pattern of patterns) {
+      if (!text.includes(pattern)) continue;
+      violations.push({
+        rule: "provider-endpoint-outside-gateway",
+        file,
+        message:
+          `${owner ?? file} names the provider endpoint "${pattern}". Only ` +
+          `${allowedIn.join(", ")} may reach a provider, and an SDK-free adapter would otherwise ` +
+          `walk straight past provider-sdk-outside-gateway — a bare fetch is not an import. Talk ` +
+          `to the Embedder, Reranker or Generator port instead.`,
+      });
+    }
+  }
+
+  return violations;
+}
+
 export interface CheckInput {
   readonly root: string;
   readonly manifest: Manifest;
   readonly files: readonly string[];
   readonly edges: readonly Edge[];
   readonly owners: ReadonlyMap<string, string>;
+  /** File text, for the rules that cannot be answered from the import graph. */
+  readonly sources: ReadonlyMap<string, string>;
 }
 
 export function check(input: CheckInput): Violation[] {
-  const { root, manifest, files, edges, owners } = input;
-  const violations: Violation[] = [...checkDeclaredPackages(root, manifest)];
+  const { root, manifest, files, edges, owners, sources } = input;
+  const violations: Violation[] = [
+    ...checkDeclaredPackages(root, manifest),
+    ...checkProviderEndpoints(manifest, sources, owners),
+  ];
 
   for (const file of files) {
     if (owners.get(file) === UNOWNED) {

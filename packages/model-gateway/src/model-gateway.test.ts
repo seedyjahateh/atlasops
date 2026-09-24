@@ -36,8 +36,18 @@ const SYNTHETIC_PRICES: PriceTable = {
   version: "test-synthetic-1",
   currency: "USD",
   models: {
-    "fake-embedder": { inputPer1MTokens: 100, outputPer1MTokens: 0 },
-    "fake-generator": { inputPer1MTokens: 1000, outputPer1MTokens: 2000 },
+    "fake-embedder": {
+      inputPer1MTokens: 100,
+      outputPer1MTokens: 0,
+      source: "synthetic: invented for this test, not a vendor price",
+      retrievedOn: "2026-01-01",
+    },
+    "fake-generator": {
+      inputPer1MTokens: 1000,
+      outputPer1MTokens: 2000,
+      source: "synthetic: invented for this test, not a vendor price",
+      retrievedOn: "2026-01-01",
+    },
   },
 };
 

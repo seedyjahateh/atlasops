@@ -664,7 +664,7 @@ deliberately open, "to be settled by measurement or by ADR rather than by assert
 settles the first by ADR and leaves the reranker open, because OpenAI has no first-party rerank
 model and inventing one is not available.
 
-- [ ] **P13 — `packages/model-gateway`: a real provider adapter and a priced table.** An OpenAI
+- [x] **P13 — `packages/model-gateway`: a real provider adapter and a priced table.** An OpenAI
       embedding adapter and generation adapter behind the existing ports, plus the versioned price
       table populated for exactly the models used. Implements PRD 5, 9.2 and ADR 0002's unfinished
       half. Acceptance: the adapters satisfy the existing `Embedder` and `Generator` interfaces with
@@ -684,8 +684,60 @@ model and inventing one is not available.
       phase adds an enforcement that matches — by package name, by endpoint, or both — and
       demonstrates it failing before it passes.
 
+      Done. 35 new tests (589 total across 22 files). **Not one line above `model-gateway`
+      changed**, which is the result this phase was really testing: the ports written in P4 held, so
+      a real model arrives as a constructor swap and every existing test still runs offline.
+
+      **No SDK** (ADR 0006). The adapter speaks the two REST endpoints it needs over an
+      `HttpTransport` port: no dependency to audit or pin, and a wire shape a test can record
+      exactly. The cost is written into the ADR rather than discovered later — request shaping and
+      error mapping are hand-written, and **streaming is not implemented**, which is work P15 needs
+      for PRD 9.3's time-to-first-token and which an SDK would have given away.
+
+      **The endpoint rule is the part that mattered.** `provider-sdk-outside-gateway` matches import
+      specifiers, and `fetch("https://api.openai.com/…")` is not an import — so an SDK-free adapter
+      would have left the gateway boundary enforced against a shape nothing in this repository uses,
+      passing CI while any package talked to the provider directly. `providerEndpoints` is now a
+      required block in `layers.json` (an absent one would read exactly like a passing rule), and
+      the rule was demonstrated in both directions: a real `fetch` to the host in
+      `packages/governance` produced `provider-endpoint-outside-gateway` and exit 1; deleting it
+      returned exit 0. It matches the host in a comment too, which is deliberate — the alternative
+      is deciding which occurrences are load-bearing, and that judgement is what lets the real one
+      through.
+
+      **Prices are facts, so they carry a citation.** `ModelPrice` now requires `source` and
+      `retrievedOn`, which means even a test's synthetic price has to say it is synthetic. The
+      figures were read from the vendor's published list on 2026-09-24 and the table version is that
+      date rather than a sequence number, so a cost record stamped with it can be re-derived. The
+      default table stays empty: a stand-in that costs nothing to call must not acquire a price by
+      inheritance.
+
+      **Two guards against the standing bar being broken by accident.** `fetchTransport` throws if
+      it is called under the test runner, so an adapter constructed without a transport fails loudly
+      instead of quietly spending money; and the recorded transport refuses to invent a reply it was
+      not given, so a test cannot assert two calls when one happened.
+
+      The adapter's failure tests are the ones worth reading: a provider can hand back something
+      entirely plausible and wrong. Vectors are ordered by the response's `index` field rather than
+      by array position, because a mispaired embedding is invisible — it retrieves confidently wrong
+      passages instead of failing. A short batch, a wrong-width vector, a truncated answer and a
+      response with no token usage each stop the call rather than degrading it; missing usage in
+      particular cannot default to zero, because zero is a real number that prices to nothing.
+
+      **What this phase did not do, and the documents now say so.** No application constructs the
+      adapter, no evaluation run has used it, and no artefact here was produced with it, so
+      `docs/limitations.md` and `docs/promotion-readiness.md` were corrected to state that an
+      adapter exists and nothing has run against it — the opposite error (a repository claiming real
+      models because a file exists) is exactly what PRD section 0 is for. **`pnpm smoke:openai` has
+      never been run**: it needs a key this machine does not have, and it is the only thing that can
+      prove the recorded wire shape is still the live one.
+
+      Still unselected: the reranker. OpenAI publishes no first-party rerank model, so PRD 5.3's
+      cross-encoder has no adapter and the reranker stays bypassable, named as unselected rather
+      than filled in with an invented identifier.
+
 - [ ] **P14 — A labelled corpus snapshot.** One fixed corpus with a recorded hash, and the four PRD
-      8.1 datasets labelled against *that* corpus: retrieval labels with graded relevance, grounded
+      8.1 datasets labelled against _that_ corpus: retrieval labels with graded relevance, grounded
       answers with supporting chunks, the abstention set, and the permission probes. Implements PRD
       8.1 and 9.1's "fixed corpus snapshot" half. Acceptance: `app:eval` runs **without**
       `--allow-snapshot-mismatch` for the first time; the held-out split is sealed and the
@@ -702,8 +754,7 @@ model and inventing one is not available.
       a larger one whose provenance is a shrug.
 
 - [ ] **P15 — The reference profile, the load run, and the cost and latency report.** The PRD 9.1
-      profile as a committed artefact, a scripted load run at a stated concurrency, and PRD 12 item
-      4. Implements PRD 9.1, 9.2's aggregate views, and 9.3. Acceptance: the profile records the
+      profile as a committed artefact, a scripted load run at a stated concurrency, and PRD 12 item 4. Implements PRD 9.1, 9.2's aggregate views, and 9.3. Acceptance: the profile records the
       corpus snapshot hash, the query workload, pinned model identifiers, the hardware, and the
       concurrency, and every reported number carries it; the report contains the full stage
       breakdown, the ratio of ingestion to serving cost, cache hit rate per cache, and tail latency

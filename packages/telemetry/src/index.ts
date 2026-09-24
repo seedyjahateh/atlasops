@@ -14,6 +14,7 @@ export { percentile, percentileIsMaximumBelow } from "./percentile.js";
 export {
   UNPRICED_TABLE,
   canPrice,
+  checkedPriceTable,
   costOf,
   totalCost,
   type CostRecord,

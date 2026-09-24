@@ -33,6 +33,7 @@ const MANIFEST: Manifest = {
   ],
   groups: [],
   providerSdks: { allowedIn: [], patterns: [] },
+  providerEndpoints: { allowedIn: [], patterns: [] },
 };
 
 function edge(fromOwner: string, toOwner: string): Edge {

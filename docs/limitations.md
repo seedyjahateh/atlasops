@@ -43,10 +43,15 @@ bias; they do not remove it.
 
 ## Four more this build actually has
 
-**No provider adapter is installed.** PRD 5 puts embedding, reranking and generation behind
-`model-gateway`'s interfaces. The interfaces exist and so do deterministic in-repo stand-ins; no
-adapter for any vendor does. Every model identifier these processes record says so —
-`stand-in-embedder`, `stand-in-reranker`, `stand-in-not-a-model`, `stand-in-judge`.
+**A provider adapter exists, and nothing has run against it.** P13 added an OpenAI embedding and
+generation adapter behind `model-gateway`'s interfaces, with the real price list checked in and
+dated (ADR 0006). No application constructs it, no evaluation run has used it, and no artefact in
+this repository was produced with it — every model identifier still recorded is a stand-in:
+`stand-in-embedder`, `stand-in-reranker`, `stand-in-not-a-model`, `stand-in-judge`. **There is no
+reranker adapter at all**, because OpenAI publishes no first-party rerank model, so PRD 5.3's
+cross-encoder is still unselected rather than merely unwired.
+
+Everything below therefore still holds exactly as it did before the adapter landed.
 
 Two consequences follow, and they are the most important sentences in this document:
 
@@ -64,11 +69,13 @@ has been computed, and every one of them measures stand-ins. The single exceptio
 artefact: a leak count measures the permission pre-filter, which is ordinary code with no model in
 it, so that number is about the system that ships.
 
-**Cost is unmeasurable, not zero.** The price table ships empty (ADR 0002), because real vendor
-prices are facts this repository does not hold. An unpriced model throws rather than costing zero,
-so `ingestionCostPer1kChunks` refuses, the audit record carries `costUsd: null`, and the evaluation
-report's cost row says it could not be measured. A reader can tell "this cost nothing" from "nobody
-knows what this cost"; a zero cannot.
+**Cost is still unmeasured, though it is no longer unpriceable.** The default table ships empty
+(ADR 0002) and an unpriced model throws rather than costing zero, so `ingestionCostPer1kChunks`
+refuses, the audit record carries `costUsd: null`, and the evaluation report's cost row says it
+could not be measured. A reader can tell "this cost nothing" from "nobody knows what this cost"; a
+zero cannot. P13 added a real, dated price table for the OpenAI models (ADR 0006), so a run that
+used them could be priced — but no run has, and the stand-ins remain unpriced by design, because a
+model that costs nothing to call should not acquire a price by inheritance.
 
 **No persistent storage adapter exists.** The only store profile is `memory`, in-process. Four
 components in four processes therefore cannot share a corpus, which is why the API and the

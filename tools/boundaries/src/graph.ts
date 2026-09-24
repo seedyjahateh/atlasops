@@ -125,13 +125,27 @@ export function ownerOfSpecifier(manifest: Manifest, fromFile: string, specifier
   return EXTERNAL;
 }
 
-export function readEdges(root: string, manifest: Manifest, files: readonly string[]): Edge[] {
-  const edges: Edge[] = [];
-
+/**
+ * File text, read once.
+ *
+ * Two rules now need it — the import graph, and the endpoint rule that has no import to look at —
+ * and reading every source twice to answer them separately is the kind of waste that eventually
+ * makes somebody skip the check.
+ */
+export function readSources(root: string, files: readonly string[]): Map<string, string> {
+  const sources = new Map<string, string>();
   for (const file of files) {
     const absolute = resolve(root, file);
     if (!statSync(absolute).isFile()) continue;
-    const text = readFileSync(absolute, "utf8");
+    sources.set(file, readFileSync(absolute, "utf8"));
+  }
+  return sources;
+}
+
+export function edgesFrom(manifest: Manifest, sources: ReadonlyMap<string, string>): Edge[] {
+  const edges: Edge[] = [];
+
+  for (const [file, text] of sources) {
     const scanned = ts.preProcessFile(text, true, true);
     const fromOwner = ownerOfFile(manifest, file);
 
@@ -146,6 +160,10 @@ export function readEdges(root: string, manifest: Manifest, files: readonly stri
   }
 
   return edges;
+}
+
+export function readEdges(root: string, manifest: Manifest, files: readonly string[]): Edge[] {
+  return edgesFrom(manifest, readSources(root, files));
 }
 
 export function edgeIsProviderSdk(manifest: Manifest, edge: Edge): boolean {

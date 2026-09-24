@@ -54,6 +54,10 @@ const MANIFEST_SOURCE = JSON.stringify({
     },
   },
   providerSdks: { allowedIn: ["@atlasops/model-gateway"], patterns: ["openai", "@anthropic-ai/*"] },
+  providerEndpoints: {
+    allowedIn: ["@atlasops/model-gateway"],
+    patterns: ["api.openai.com"],
+  },
 });
 
 const manifest: Manifest = parseManifest(MANIFEST_SOURCE);
@@ -62,9 +66,13 @@ function edge(fromFile: string, fromOwner: string, specifier: string, toOwner: s
   return { fromFile, fromOwner, specifier, toOwner };
 }
 
-function run(edges: readonly Edge[], files: readonly string[] = []): Violation[] {
+function run(
+  edges: readonly Edge[],
+  files: readonly string[] = [],
+  sources: ReadonlyMap<string, string> = new Map(),
+): Violation[] {
   const owners = new Map(files.map((file) => [file, ownerOfFile(manifest, file)]));
-  return check({ root: "/nowhere", manifest, files, edges, owners });
+  return check({ root: "/nowhere", manifest, files, edges, owners, sources });
 }
 
 describe("manifest validation", () => {
@@ -88,6 +96,7 @@ describe("manifest validation", () => {
       },
       groups: {},
       providerSdks: { allowedIn: [], patterns: [] },
+      providerEndpoints: { allowedIn: [], patterns: [] },
     });
     expect(() => parseManifest(source)).toThrow(/strictly downward/);
   });
@@ -226,6 +235,42 @@ describe("check", () => {
   it("reports an unowned source file", () => {
     const violations = run([], ["packages/stray/src/index.ts"]);
     expect(violations[0]?.rule).toBe("unowned-source");
+  });
+
+  /**
+   * The rule that exists because the adapter has no SDK to key on (ADR 0006).
+   *
+   * `provider-sdk-outside-gateway` watches imports. A bare `fetch("https://api.openai.com/…")` is
+   * not an import, so without this the gateway boundary would be enforced against a shape nothing
+   * in this repository uses — passing CI while any package talked to the provider directly.
+   */
+  describe("a provider endpoint is confined to the gateway too", () => {
+    const file = "packages/governance/src/acl.ts";
+
+    it("flags the host outside the gateway", () => {
+      const sources = new Map([[file, 'await fetch("https://api.openai.com/v1/embeddings");']]);
+      const violations = run([], [file], sources);
+      expect(violations[0]?.rule).toBe("provider-endpoint-outside-gateway");
+      expect(violations[0]?.message).toMatch(/bare fetch is not an import/);
+    });
+
+    it("permits it in the gateway, which is the one module that may reach a provider", () => {
+      const inside = "packages/model-gateway/src/openai.ts";
+      const sources = new Map([[inside, 'const BASE = "https://api.openai.com/v1";']]);
+      expect(run([], [inside], sources)).toEqual([]);
+    });
+
+    it("flags it in a comment as well, and that is deliberate", () => {
+      // Blunt on purpose: the alternative is deciding which occurrences are load-bearing, which is
+      // the judgement that lets the real one through. Saying "the provider's API" satisfies it.
+      const sources = new Map([[file, "// see api.openai.com for the response shape"]]);
+      expect(run([], [file], sources)).toHaveLength(1);
+    });
+
+    it("says nothing about a file that names no provider", () => {
+      const sources = new Map([[file, "export const x = 1;"]]);
+      expect(run([], [file], sources)).toEqual([]);
+    });
   });
 
   it("detects a cycle between group members", () => {

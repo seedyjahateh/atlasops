@@ -25,10 +25,13 @@ curl -s localhost:8080/answer \
 
 ## What is not installed, and what follows from it
 
-**No provider adapter exists.** PRD 5 puts embedding, reranking and generation behind
-`model-gateway`'s interfaces, and this repository implements the interfaces and the deterministic
-in-repo stand-ins — not an adapter for any vendor. Every model identifier these processes record
-says so: `stand-in-embedder`, `stand-in-reranker`, `stand-in-not-a-model`.
+**These processes still run stand-ins, although an adapter now exists.** `model-gateway` gained an
+OpenAI embedding and generation adapter in P13 (ADR 0006), but no application is wired to it: these
+four construct the deterministic in-repo stand-ins, and every model identifier they record says so —
+`stand-in-embedder`, `stand-in-reranker`, `stand-in-not-a-model`. Wiring an application to the real
+adapter is P15's work, and until a run has actually used it, nothing here is evidence about a real
+model. There is no adapter for reranking at all: OpenAI publishes no first-party rerank model, so
+PRD 5.3's cross-encoder remains unselected.
 
 Two consequences worth stating before somebody runs this and draws a conclusion:
 

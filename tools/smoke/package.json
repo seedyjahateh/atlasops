@@ -1,0 +1,14 @@
+{
+  "name": "@atlasops/smoke",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "One live call per capability, run deliberately. Never part of the test suite or CI.",
+  "exports": {
+    ".": "./openai.ts"
+  },
+  "dependencies": {
+    "@atlasops/model-gateway": "workspace:*",
+    "@atlasops/telemetry": "workspace:*"
+  }
+}

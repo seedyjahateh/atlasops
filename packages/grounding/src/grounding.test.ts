@@ -447,7 +447,14 @@ describe("the answer path", () => {
     const prices: PriceTable = {
       version: "test-synthetic-1",
       currency: "USD",
-      models: { "fake-generator": { inputPer1MTokens: 1000, outputPer1MTokens: 2000 } },
+      models: {
+        "fake-generator": {
+          inputPer1MTokens: 1000,
+          outputPer1MTokens: 2000,
+          source: "synthetic: invented for this test, not a vendor price",
+          retrievedOn: "2026-01-01",
+        },
+      },
     };
 
     const result = await groundAnswer(ports(citingGenerator(REFUND), { prices }), {
