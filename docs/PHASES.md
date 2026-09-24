@@ -1041,14 +1041,35 @@ model and inventing one is not available.
       the README: no commit history (there is no version-control connector, and a fake one would be
       worse than the gap), and call edges are syntactic — an edge can be missing, never invented.
 
-- [ ] **P17 — `exhibits/rag-03-incident`.** The second exhibit: the Incident Knowledge Assistant
+- [ ] **P17a — `packages/sandbox`: the platform constructed in memory, promoted once.** The
+      in-memory construction of stores, indexes, stand-in models and both pipelines that six places
+      currently copy, promoted into one package with a defined contract. Implements PRD 11.2's rule
+      that a helper two consumers need is "promoted into a package with a defined contract — a
+      deliberate, reviewed act". Acceptance: a new package at a new layer between `composition`
+      and the runtime groups, declared in `layers.json` with an ADR; it uses `model-gateway`'s
+      existing `fakeEmbedder` rather than becoming a seventh copy of the stand-in; `rag-02-codebase`
+      moves onto it, so the promotion has a consumer on the day it lands rather than a promise of
+      one; it is named for what it is — never for a deployment — and a test says so.
+
+- [ ] **P17b — `exhibits/rag-03-incident`.** The second exhibit: the Incident Knowledge Assistant
       from `content/projects/RAG-03.json` — retrieve runbooks, dashboards, deploys and past
       postmortems; surface evidence and uncertainty; take no autonomous production action.
       Acceptance: as P16, plus the property only a second exhibit can demonstrate — it imports
-      nothing from `rag-02-codebase`, and where the two need the same helper the helper is promoted
-      into a package rather than imported sideways; `pnpm boundaries:evidence` now reports PRD 12
-      item 5's two-exhibit requirement **met**, from the generated graph rather than by editing the
-      sentence that says it is not.
+      nothing from `rag-02-codebase`, demonstrated by a real import failing, and the helper both
+      need comes from `packages/sandbox` rather than sideways; `pnpm boundaries:evidence` now
+      reports PRD 12 item 5's two-exhibit requirement **met**, from the generated graph rather than
+      by editing the sentence that says it is not.
+
+      **Why P17 is split.** The acceptance asked for a helper both exhibits need to be promoted
+      rather than copied, and there is one: the in-memory construction of the whole platform, which
+      six places already copy — the API, the worker, the evaluation runner, the load run, the corpus
+      inventory and RAG-02 — each with its own identical stand-in embedder, while `model-gateway`
+      exports `fakeEmbedder`, which does the same thing. The obvious home is `composition`, and its
+      own charter rules it out: "this package assembles; it does not construct" (ADR 0005). That
+      rule is what stops the one package allowed to import everything from absorbing everything, so
+      the promotion needs a package of its own, at a layer of its own, with an ADR — which is a
+      boundary change, and a boundary change should not be buried in a commit that also adds an
+      exhibit.
 
 - [ ] **P18 — Re-evidence, and a promotion proposal.** Regenerate all seven PRD 12 artefacts against
       the real adapter, the labelled snapshot and the load run; rewrite `docs/promotion-readiness.md`
