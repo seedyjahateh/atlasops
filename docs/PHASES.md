@@ -1212,8 +1212,25 @@ model and inventing one is not available.
       Cost per answer counts **answered** queries only, per PRD 9.3's wording: an abstention costs
       less, and folding it in would lower the figure for a reason unrelated to answering.
 
-- [ ] **P18b — Re-evidence, and a promotion proposal.** Regenerate all seven PRD 12 artefacts; decide
-      each item met or unmet with a generator that reads the artefacts, rather than in prose; rewrite
+- [ ] **P18b — Complete artefacts, from real runs, published.** Every field PRD 12 items 2 and 4
+      name, present in the artefact rather than assumed: the raw per-query result file, seeds, run
+      count and prompt versions for the evaluation; the raw span export and the versioned price table
+      for the cost and latency report. Then the real runs — `--models openai` for both — with their
+      artefacts published to a committed directory, because a promotion needs evidence a reviewer can
+      open by URL and `evidence/` is a gitignored working directory. Acceptance: each required field
+      is present in a machine-readable artefact and a test asserts the writer emits it; nothing is
+      recorded that the run did not produce; the real-run findings — including the ones that do not
+      flatter — are written where they will be read.
+
+      **Why P18b is split again.** The first real evaluation showed its artefacts were incomplete
+      against PRD 12's own list: per-query results existed only inside a Markdown report, and seeds,
+      run count, the answering prompt's version, the load run's price table version and its raw span
+      export were not recorded anywhere. A verdict generator reading those artefacts would have to
+      either fail item 2 and item 4 for missing fields, or be written to overlook them. Completing the
+      artefacts first means the verdict phase reads evidence rather than excusing its absence.
+
+- [ ] **P18c — The verdict, and a proposal or a refusal.** Decide each PRD 12 item met or unmet with
+      a generator that reads the published artefacts, rather than in prose; rewrite
       `docs/promotion-readiness.md` from its output. Acceptance: the verdict for every item comes
       from a generated artefact; if and only if all seven hold, the phase writes a **proposed**
       manifest edit into `docs/promotion/` — as a file in this repository, for review — listing every
