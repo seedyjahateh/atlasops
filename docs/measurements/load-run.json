@@ -1,0 +1,234 @@
+{
+  "profile": {
+    "id": "local-standin-c4",
+    "corpusSnapshot": "sha256:f05a2049d6de1bb249071782efe6e5d32e092a7fb39bf65e66af376b5179b8b9",
+    "workload": "sha256:e32b75e87ef455fb27c16c47517cd3e02400c44c4d85a24dc4b6c590fcb23c34",
+    "models": {
+      "embedder": "stand-in-embedder",
+      "reranker": "stand-in-reranker",
+      "generator": "stand-in-not-a-model"
+    },
+    "hardware": "12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process",
+    "concurrency": 4
+  },
+  "startedAt": "2026-09-24T14:56:46.772Z",
+  "finishedAt": "2026-09-24T14:56:46.813Z",
+  "commit": "923a09a",
+  "requests": 260,
+  "abstentions": 0,
+  "chunksIngested": 35,
+  "retrievalCacheHits": 247,
+  "retrievalCacheHitRate": 0.95,
+  "latency": [
+    {
+      "stage": "end-to-end",
+      "p50": 0.19360000000000355,
+      "p95": 1.051900000000046,
+      "samples": 260,
+      "p95IsMaximum": false
+    },
+    {
+      "stage": "end-to-end (retrieval cache miss)",
+      "p50": 3.064799999999991,
+      "p95": 15.437199999999962,
+      "samples": 13,
+      "p95IsMaximum": true
+    },
+    {
+      "stage": "end-to-end (retrieval cache hit)",
+      "p50": 0.19240000000002055,
+      "p95": 0.720799999999997,
+      "samples": 247,
+      "p95IsMaximum": false
+    },
+    {
+      "stage": "audit-write",
+      "p50": 0.03469999999998663,
+      "p95": 0.13269999999999982,
+      "samples": 260,
+      "p95IsMaximum": false
+    },
+    {
+      "stage": "dense-retrieval",
+      "p50": 1.248299999999972,
+      "p95": 2.1464999999999463,
+      "samples": 13,
+      "p95IsMaximum": true
+    },
+    {
+      "stage": "fusion",
+      "p50": 0.009999999999990905,
+      "p95": 8.613200000000006,
+      "samples": 13,
+      "p95IsMaximum": true
+    },
+    {
+      "stage": "generation",
+      "p50": 0.03820000000001755,
+      "p95": 0.3172000000000139,
+      "samples": 260,
+      "p95IsMaximum": false
+    },
+    {
+      "stage": "lexical-retrieval",
+      "p50": 1.3898000000000366,
+      "p95": 9.98320000000001,
+      "samples": 13,
+      "p95IsMaximum": true
+    },
+    {
+      "stage": "permission-compile",
+      "p50": 0.002200000000016189,
+      "p95": 0.007599999999968077,
+      "samples": 260,
+      "p95IsMaximum": false
+    },
+    {
+      "stage": "permission-resolution",
+      "p50": 0.028799999999989723,
+      "p95": 0.09969999999998436,
+      "samples": 260,
+      "p95IsMaximum": false
+    },
+    {
+      "stage": "prompt-assembly",
+      "p50": 0.010300000000029286,
+      "p95": 0.028900000000021464,
+      "samples": 260,
+      "p95IsMaximum": false
+    },
+    {
+      "stage": "query-normalisation",
+      "p50": 0.004099999999993997,
+      "p95": 0.012600000000020373,
+      "samples": 260,
+      "p95IsMaximum": false
+    },
+    {
+      "stage": "reranking",
+      "p50": 0.2617999999999938,
+      "p95": 0.8129999999999882,
+      "samples": 13,
+      "p95IsMaximum": true
+    },
+    {
+      "stage": "verification",
+      "p50": 0.002299999999991087,
+      "p95": 0.008300000000019736,
+      "samples": 260,
+      "p95IsMaximum": false
+    }
+  ],
+  "budgets": [
+    {
+      "id": "ANSWER-LATENCY-P95",
+      "target": 3000,
+      "unit": "ms",
+      "method": "scripted load run, fixed workload, stated concurrency",
+      "value": 1.051900000000046,
+      "sampleSize": 260,
+      "within": true,
+      "unmeasured": null,
+      "caveat": "247 of 260 requests were served from the retrieval cache, so this figure is mostly the cost of a cache lookup rather than of an answer. The cache-miss row in the latency table is the one to read for the answer path."
+    },
+    {
+      "id": "TIME-TO-FIRST-TOKEN-P95",
+      "target": 1200,
+      "unit": "ms",
+      "method": "streaming instrumentation on the same run",
+      "value": null,
+      "sampleSize": null,
+      "within": null,
+      "unmeasured": "no streaming instrumentation exists. The OpenAI adapter speaks the non-streaming endpoint (ADR 0006), and a first-token time cannot be inferred from a whole-response latency",
+      "caveat": null
+    },
+    {
+      "id": "RETRIEVAL-STAGE-P95",
+      "target": 400,
+      "unit": "ms",
+      "method": "span aggregation",
+      "value": 12.082299999999918,
+      "sampleSize": 13,
+      "within": true,
+      "unmeasured": null,
+      "caveat": null
+    },
+    {
+      "id": "RERANK-STAGE-P95",
+      "target": 500,
+      "unit": "ms",
+      "method": "span aggregation at fixed candidate depth",
+      "value": 0.8129999999999882,
+      "sampleSize": 13,
+      "within": true,
+      "unmeasured": null,
+      "caveat": null
+    },
+    {
+      "id": "PERMISSION-P95",
+      "target": 50,
+      "unit": "ms",
+      "method": "span aggregation",
+      "value": 0.10199999999997544,
+      "sampleSize": 260,
+      "within": true,
+      "unmeasured": null,
+      "caveat": null
+    },
+    {
+      "id": "VERIFICATION-P95",
+      "target": 100,
+      "unit": "ms",
+      "method": "span aggregation",
+      "value": 0.008300000000019736,
+      "sampleSize": 260,
+      "within": true,
+      "unmeasured": null,
+      "caveat": null
+    },
+    {
+      "id": "COST-PER-ANSWER-P50",
+      "target": 0.02,
+      "unit": "usd",
+      "method": "per-request token accounting x versioned price table",
+      "value": null,
+      "sampleSize": null,
+      "within": null,
+      "unmeasured": "every model in this run is a stand-in and a stand-in has no price (ADR 0002). Reporting zero would make this budget pass trivially while the real figure surfaced on an invoice",
+      "caveat": null
+    },
+    {
+      "id": "COST-PER-ANSWER-P95",
+      "target": 0.06,
+      "unit": "usd",
+      "method": "per-request token accounting x versioned price table",
+      "value": null,
+      "sampleSize": null,
+      "within": null,
+      "unmeasured": "every model in this run is a stand-in and a stand-in has no price (ADR 0002). Reporting zero would make this budget pass trivially while the real figure surfaced on an invoice",
+      "caveat": null
+    },
+    {
+      "id": "INGESTION-COST-PER-1K-CHUNKS",
+      "target": 0.5,
+      "unit": "usd",
+      "method": "embedding token accounting over the fixture",
+      "value": null,
+      "sampleSize": null,
+      "within": null,
+      "unmeasured": "token counts exist for this run; a price for the model that produced them does not (ADR 0002). The denominator is real and the rate is not",
+      "caveat": null
+    },
+    {
+      "id": "RETRIEVAL-ONLY-COST",
+      "target": 0.001,
+      "unit": "usd",
+      "method": "embedding token accounting over the fixture",
+      "value": null,
+      "sampleSize": null,
+      "within": null,
+      "unmeasured": "token counts exist for this run; a price for the model that produced them does not (ADR 0002). The denominator is real and the rate is not",
+      "caveat": null
+    }
+  ]
+}

@@ -81,18 +81,37 @@ PRD 12 item 4 requires "a scripted load run against the reference profile of 9.1
 stage breakdown, the concurrency level, the hardware description, the versioned price table used,
 and the raw span export."
 
-Two independent blockers:
+**The report now exists** — `pnpm loadrun` writes `evidence/cost-and-latency.md` from the committed
+record in `docs/measurements/load-run.json`, over a stated workload, at a stated concurrency, on
+described hardware, with the stage breakdown and the sample size behind every figure. That is most
+of the artefact, and the half that was missing when P12 wrote this section.
 
-- **No load run has been performed.** There is no scripted load harness, no concurrency level has
-  been exercised, and no hardware has been described. Every latency number this repository can
-  produce comes from a manual clock in a unit test.
-- **Cost is unmeasurable.** The price table ships empty (ADR 0002) because real vendor prices are
-  facts this repository does not hold. `ingestionCostPer1kChunks` throws against it, the audit
-  record carries `costUsd: null`, and the evaluation report's cost row says so. Returning zero would
-  make every cost budget in PRD 9.3 pass trivially while the error surfaced on an invoice.
+It is still **not met**, for a reason no amount of harness fixes:
 
-Producing this artefact requires a real provider adapter, a real price table, and a load harness.
-None of the three exists, and writing this report without them would be inventing evidence.
+- **No model in the run is real.** The embedder, reranker and generator are the in-repo stand-ins,
+  so no request leaves the machine and the generation stage is a local function call. The latencies
+  for permission, retrieval and verification are the code that ships; the end-to-end figure omits
+  the largest component a deployed system has. It is a floor, not an estimate, and PRD 12 item 4
+  asks for a run against the reference profile — which pins model identifiers precisely so that a
+  run against stand-ins cannot be read as one against models.
+- **Cost stays unmeasurable.** A price table for the OpenAI models exists since P13, but nothing in
+  this run used them, and a stand-in has no price (ADR 0002). Four of the ten budgets therefore
+  report themselves unmeasured rather than zero: returning zero would make every cost budget in
+  PRD 9.3 pass trivially while the real figure surfaced on an invoice.
+- **Time to first token is unmeasurable too**, for a third reason: the adapter speaks the
+  non-streaming endpoint (ADR 0006), and a first-token time cannot be inferred from a whole-response
+  latency.
+
+Five of the ten budgets are measured and within target. Naming them here would be the exact mistake
+PRD section 0 forbids, because "within target" on this run means "within target when no model is
+called". The artefact says so on its own face, and so does this line.
+
+**What CI enforces, and the gap that leaves.** PRD 9.3 wants budgets enforced in CI against the
+reference profile. A load run cannot go in CI — against real models it costs money on every push,
+and against stand-ins it would measure the runner. So `pnpm loadrun:check` enforces the budgets
+against the committed record and fails the build on a breach, which was demonstrated rather than
+asserted. A regression therefore surfaces at the next deliberate run rather than at the next push,
+and between runs the enforcement is only as current as the record's date — which the check prints.
 
 ### 5. A boundary-enforcement artefact — not met
 
@@ -134,8 +153,11 @@ In rough order of effort:
    models it uses. It unblocks item 4's cost half **only once a run actually uses it** — no
    application constructs it yet, and no artefact here was produced with it, so nothing in this
    document has changed status because of it. There is still no reranker adapter.
-2. **A load harness** producing a stage breakdown at a stated concurrency on described hardware,
-   with the raw span export. This unblocks the rest of item 4.
+2. ~~**A load harness** producing a stage breakdown at a stated concurrency on described hardware.~~
+   **Built in P15b.** `pnpm loadrun` produces it and `pnpm loadrun:check` enforces the budgets in
+   CI against the committed record. Item 4 stays unmet because the run used no real model, not
+   because the harness is missing: **the same command against a configured provider is what closes
+   it.**
 3. **Two exhibits** consuming `packages/*` and importing no other exhibit. This unblocks item 5.
 4. **A re-run of the evaluation** against a corpus the datasets are actually labelled for, so the
    snapshot matches and `--allow-snapshot-mismatch` is not needed.

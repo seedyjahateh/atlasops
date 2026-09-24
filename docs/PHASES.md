@@ -922,7 +922,7 @@ model and inventing one is not available.
       permission resolution produced no measurable stage, and recording a duration for work that did
       not complete would put it into a percentile.
 
-- [ ] **P15b — The reference profile, the load run, and the cost and latency report.** The PRD 9.1
+- [x] **P15b — The reference profile, the load run, and the cost and latency report.** The PRD 9.1
       profile as a committed record, a scripted load run at a stated concurrency, and PRD 12 item 4.
       Implements PRD 9.1, 9.2's aggregate views, and 9.3. Acceptance: the profile records the corpus
       snapshot hash, the query workload, pinned model identifiers, the hardware, and the
@@ -934,6 +934,42 @@ model and inventing one is not available.
       **and the report distinguishes the requests that were served from the retrieval cache from
       the ones that were not** — the first run of the harness put 247 of 260 requests through the
       cache, so its end-to-end p95 was a measurement of a cache hit wearing the name of an answer.
+
+      Done. 662 tests across 26 files. `pnpm loadrun` runs the workload at a stated concurrency and
+      writes two things: `docs/measurements/load-run.json`, which is committed and is what CI reads,
+      and `evidence/cost-and-latency.md`, which is rendered from it. Five of the ten budgets are
+      measured; the other five say why they are not.
+
+      **The cache split is the finding this phase was reorganised around.** Over 260 requests, 247
+      were served from the retrieval cache. Combined end-to-end p95 is 2.6 ms, the cache-hit
+      population 2.0 ms, and the cache-miss population **53.3 ms** — twenty-five times the figure
+      the combined row reports, and the only one of the three that describes answering a question.
+      All three are in the table, and the end-to-end budget row carries a machine-readable `caveat`
+      field saying which population dominates it, so the warning survives being copied out of the
+      prose into something that quotes the number.
+
+      **Five budgets report themselves unmeasured, and each says why.** Time to first token needs
+      streaming the adapter does not do (ADR 0006); the four cost rows need a priced model and every
+      model here is a stand-in (ADR 0002). Zero would have made all four pass trivially. A stage
+      with no spans is reported the same way rather than as zero, which has a test.
+
+      **CI enforces the budgets against the committed record**, because a load run cannot go in CI —
+      against real models it costs money on every push, against stand-ins it measures the runner.
+      `pnpm loadrun:check` fails the build on a breach, demonstrated by editing the record's
+      end-to-end figure to 4,200 ms and watching it exit 1 with the "the target is not raised"
+      wording from PRD 9.3. The gap this leaves is stated rather than papered over: a regression
+      surfaces at the next deliberate run rather than the next push, and the check prints the
+      record's age so its currency is visible.
+
+      **`runPool` is exported so the concurrency claim can be tested.** `Promise.all` over the
+      schedule would put the whole workload in flight at once — a spike of N rather than a sustained
+      level of C, whose p95 is a queueing artefact. A test asserts the pool never exceeds its size.
+
+      **Item 4 of PRD 12 is still not met, and the reason moved.** It was blocked by the absence of
+      a harness; it is now blocked only by the absence of a real model, which is a configured key
+      away rather than a phase away. `docs/promotion-readiness.md` says which of the two it is, and
+      deliberately does not list the five measured figures — "within target" on this run means
+      "within target when no model is called".
 
       **CI cannot run this and the phase must say so.** PRD 9.3 wants budgets enforced in CI against
       the reference profile, but a load run calls a paid API and CI must not. The split this phase

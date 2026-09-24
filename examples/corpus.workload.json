@@ -1,0 +1,33 @@
+{
+  "$comment": [
+    "The fixed query workload PRD 9.1 requires a reference profile to name. Its content hash goes",
+    "into every measurement, so changing a query here changes the profile and the numbers stop",
+    "being comparable to the previous run — which is the point.",
+    "",
+    "It is drawn from the labelled datasets rather than invented separately: these are queries the",
+    "corpus can answer for the principal who asks, plus two that it cannot, because a latency",
+    "profile made only of hits misses the abstention path entirely.",
+    "",
+    "Principals are the ones examples/corpus.groups.json declares. A workload that asked every",
+    "question as the same principal would exercise one permission predicate and one posting list."
+  ],
+  "id": "corpus-mixed-v1",
+  "queries": [
+    { "principal": "prn_reader", "query": "what is the refund window" },
+    { "principal": "prn_reader", "query": "how long are support conversations kept" },
+    { "principal": "prn_reader", "query": "who handles an escalation with the freight vendor" },
+    { "principal": "prn_reader", "query": "is a missed collection credited" },
+    { "principal": "prn_alice", "query": "checkout is failing, what do I check first" },
+    { "principal": "prn_alice", "query": "when should an incident be escalated and to whom" },
+    { "principal": "prn_alice", "query": "what makes a page justified rather than a ticket" },
+    { "principal": "prn_alice", "query": "how long is a request trace retained" },
+    { "principal": "prn_frank", "query": "when does the ledger cut off at quarter end" },
+    { "principal": "prn_frank", "query": "what happens to an accrual in the following quarter" },
+    { "principal": "prn_frank", "query": "what is the refund window" },
+    { "principal": "prn_reader", "query": "what is the wifi password in the Leeds depot" },
+    {
+      "principal": "prn_alice",
+      "query": "what percentage of revenue is held in the refund reserve"
+    }
+  ]
+}
