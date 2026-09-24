@@ -170,6 +170,24 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  exhibits/rag-03-incident:
+    dependencies:
+      '@atlasops/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@atlasops/evalkit':
+        specifier: workspace:*
+        version: link:../../packages/evalkit
+      '@atlasops/governance':
+        specifier: workspace:*
+        version: link:../../packages/governance
+      '@atlasops/ingest':
+        specifier: workspace:*
+        version: link:../../packages/ingest
+      '@atlasops/sandbox':
+        specifier: workspace:*
+        version: link:../../packages/sandbox
+
   packages/composition:
     dependencies:
       '@atlasops/contracts':

@@ -9,7 +9,13 @@
 import { describe, expect, it } from "vitest";
 
 import { EXTERNAL, UNOWNED, type Edge } from "./graph.js";
-import { exhibitCount, moduleGraph, renderEvidence } from "./evidence.js";
+import {
+  exhibitCount,
+  exhibitFindings,
+  itemFiveMet,
+  moduleGraph,
+  renderEvidence,
+} from "./evidence.js";
 import type { Manifest } from "./manifest.js";
 
 const MANIFEST: Manifest = {
@@ -94,26 +100,82 @@ describe("the artefact", () => {
     expect(rendered).toContain("**Commit:** abc123");
   });
 
-  it("says the two-exhibit requirement is not met", () => {
+  it("says the two-exhibit requirement is not met when there are no exhibits", () => {
     // The flattering version of this artefact renders the passing check and the graph and stops.
     const rendered = renderEvidence(BASE);
     expect(rendered).toContain("**no exhibits**");
-    expect(rendered).toContain("**not met**");
+    expect(rendered).toContain("**Not met.**");
     expect(rendered).toContain("promotion-readiness.md");
   });
 
-  it("names the count when exhibits do exist but the rest is unchanged", () => {
+  it("is not met with one exhibit", () => {
     const rendered = renderEvidence({
       ...BASE,
       files: [...BASE.files, "exhibits/rag-02/src/a.ts"],
+      edges: [...BASE.edges, edge("exhibits/rag-02", "@atlasops/contracts")],
     });
     expect(rendered).toContain("**1**");
-    expect(rendered).toContain("**not met**");
+    expect(rendered).toContain("**Not met.**");
   });
 
-  it("does not claim the rule is unenforced", () => {
-    // It is enforced and tested; what is missing is the demonstration across real exhibits.
-    const rendered = renderEvidence(BASE);
-    expect(rendered).toContain("`exhibit-is-a-leaf` is implemented");
+  it("names both import forms the rule is enforced against", () => {
+    // Until P16 only the relative-path form was caught, and the artefact said the rule held.
+    expect(renderEvidence(BASE)).toContain("workspace");
+  });
+});
+
+describe("item 5 is decided from the graph (P17b)", () => {
+  // The generator used to say "not met" unconditionally. A verdict that cannot change is not
+  // evidence, so these assert it changes exactly when the graph does.
+  const twoExhibits = {
+    ...BASE,
+    files: [...BASE.files, "exhibits/rag-02/src/a.ts", "exhibits/rag-03/src/a.ts"],
+    edges: [
+      ...BASE.edges,
+      edge("exhibits/rag-02", "@atlasops/contracts"),
+      edge("exhibits/rag-03", "@atlasops/telemetry"),
+    ],
+  };
+
+  it("is met by two exhibits that consume packages and import no other exhibit", () => {
+    const findings = exhibitFindings(twoExhibits);
+    expect(itemFiveMet(findings)).toBe(true);
+    expect(renderEvidence(twoExhibits)).toContain("**Met.**");
+  });
+
+  it("is not met when one exhibit imports the other", () => {
+    const leaking = {
+      ...twoExhibits,
+      edges: [...twoExhibits.edges, edge("exhibits/rag-03", "exhibits/rag-02")],
+    };
+    const findings = exhibitFindings(leaking);
+
+    expect(findings.find((finding) => finding.exhibit === "exhibits/rag-03")?.leaks).toEqual([
+      "exhibits/rag-02",
+    ]);
+    expect(itemFiveMet(findings)).toBe(false);
+    expect(renderEvidence(leaking)).toContain("imports another exhibit or an application");
+  });
+
+  it("is not met when an exhibit imports an application", () => {
+    const leaking = {
+      ...twoExhibits,
+      edges: [...twoExhibits.edges, edge("exhibits/rag-02", "apps/api")],
+    };
+    expect(itemFiveMet(exhibitFindings(leaking))).toBe(false);
+  });
+
+  it("does not count an exhibit that consumes no package", () => {
+    // "Consuming packages/*" is half the requirement. A directory under exhibits/ that imports
+    // nothing from the platform demonstrates nothing about the platform.
+    const idle = {
+      ...twoExhibits,
+      edges: [...BASE.edges, edge("exhibits/rag-02", "@atlasops/contracts")],
+    };
+    expect(itemFiveMet(exhibitFindings(idle))).toBe(false);
+  });
+
+  it("is not met when the check did not pass, whatever the graph shows", () => {
+    expect(renderEvidence({ ...twoExhibits, violations: 1 })).toContain("**Not met.**");
   });
 });

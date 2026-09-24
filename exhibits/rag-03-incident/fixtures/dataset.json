@@ -1,0 +1,89 @@
+{
+  "$comment": [
+    "Relevance labels for the RAG-03 fixture, keyed by document and section rather than by chunk id.",
+    "A responder's question is answered by a section of a runbook or a postmortem, and a label keyed",
+    "on it survives an edit elsewhere in the document. Resolved to chunk identifiers after ingestion;",
+    "a label naming a section that no longer exists fails the evaluation rather than scoring zero.",
+    "",
+    "Grades as in docs/corpus-procedure.md. Labelled by the author of the fixture.",
+    "",
+    "i-006 is i-005's question asked by a principal who may not read the security postmortem. It has",
+    "no relevant section they can see, and is reported as unscorable rather than folded into recall."
+  ],
+  "id": "rag-03-incident",
+  "version": "1.0.0",
+  "items": [
+    {
+      "id": "i-001",
+      "principal": "prn_oncall",
+      "query": "checkout is returning 502s, what do I check first",
+      "relevant": [
+        { "path": "runbooks/checkout-errors.md", "section": "First checks", "grade": 3 },
+        { "path": "runbooks/checkout-errors.md", "section": "Symptoms", "grade": 2 },
+        { "path": "dashboards/checkout.md", "section": "Reading it during an incident", "grade": 1 }
+      ]
+    },
+    {
+      "id": "i-002",
+      "principal": "prn_oncall",
+      "query": "has checkout timed out like this before",
+      "relevant": [
+        {
+          "path": "postmortems/2026-08-12-checkout-timeouts.md",
+          "section": "What happened",
+          "grade": 3
+        },
+        {
+          "path": "postmortems/2026-08-12-checkout-timeouts.md",
+          "section": "Contributing factors",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "i-003",
+      "principal": "prn_oncall",
+      "query": "how do I fail over the orders database safely",
+      "relevant": [
+        { "path": "runbooks/database-failover.md", "section": "Before failing over", "grade": 3 },
+        { "path": "runbooks/database-failover.md", "section": "Failover", "grade": 2 }
+      ]
+    },
+    {
+      "id": "i-004",
+      "principal": "prn_oncall",
+      "query": "what does the checkout latency panel tell me during an incident",
+      "relevant": [
+        {
+          "path": "dashboards/checkout.md",
+          "section": "Reading it during an incident",
+          "grade": 3
+        },
+        { "path": "dashboards/checkout.md", "section": "Panels", "grade": 2 }
+      ]
+    },
+    {
+      "id": "i-005",
+      "principal": "prn_security",
+      "query": "was a credential ever exposed during a checkout incident",
+      "relevant": [
+        {
+          "path": "postmortems/2026-07-03-credential-exposure.md",
+          "section": "What happened",
+          "grade": 3
+        },
+        {
+          "path": "postmortems/2026-07-03-credential-exposure.md",
+          "section": "Contributing factors",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "i-006",
+      "principal": "prn_oncall",
+      "query": "was a credential ever exposed during a checkout incident",
+      "relevant": []
+    }
+  ]
+}

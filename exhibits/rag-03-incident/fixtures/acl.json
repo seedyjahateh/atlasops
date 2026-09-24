@@ -1,0 +1,22 @@
+{
+  "$comment": [
+    "Two zones. Everything an on-call engineer needs is readable by on-call; the security",
+    "postmortem is readable by the security group only. It shares vocabulary with the rest -",
+    "'checkout incident', 'payment gateway' - on purpose, so a question an on-call engineer may",
+    "legitimately ask has something tempting and forbidden next to the answer.",
+    "No default rule: a document added without one fails its own fetch."
+  ],
+  "rules": [
+    { "prefix": "runbooks/", "label": { "readableBy": ["grp_oncall"], "existence": "visible" } },
+    {
+      "prefix": "postmortems/2026-08-12-checkout-timeouts.md",
+      "label": { "readableBy": ["grp_oncall"], "existence": "visible" }
+    },
+    {
+      "prefix": "postmortems/2026-07-03-credential-exposure.md",
+      "label": { "readableBy": ["grp_security"], "existence": "visible" }
+    },
+    { "prefix": "deploys/", "label": { "readableBy": ["grp_oncall"], "existence": "visible" } },
+    { "prefix": "dashboards/", "label": { "readableBy": ["grp_oncall"], "existence": "visible" } }
+  ]
+}

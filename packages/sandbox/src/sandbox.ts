@@ -30,9 +30,12 @@ import {
 } from "@atlasops/composition";
 import {
   formatGroupId,
+  formatSourceVersionId,
   parsePrincipalId,
   type ContentHash,
   type EmbeddingModelRef,
+  type SourceId,
+  type SourceVersionId,
 } from "@atlasops/contracts";
 import { inMemoryCorpusStore, type CorpusStore } from "@atlasops/corpus";
 import {
@@ -43,6 +46,7 @@ import {
 import { STAND_IN_MODEL_ID, citingStandIn } from "@atlasops/grounding";
 import { currentSchema, inMemoryLexicalIndex, inMemoryVectorIndex } from "@atlasops/indexing";
 import type { ChunkSink, Connector } from "@atlasops/ingest";
+
 import {
   createEmbeddingGateway,
   fakeEmbedder,
@@ -102,6 +106,18 @@ export interface Sandbox {
   /** The corpus snapshot hash, computed the same way the evaluation runner computes it. */
   readonly snapshot: () => ContentHash;
   readonly models: typeof STAND_IN_MODELS;
+  /**
+   * The exact text of a version this sandbox ingested, or null.
+   *
+   * Captured as the connector returned it rather than re-read from disk, so it is the bytes that
+   * were indexed and not the bytes that happen to be there now. **It is unfiltered**, like
+   * `chunks.all()`: it answers for any version, readable by the asker or not. An exhibit may use it
+   * only to annotate a result the permission pre-filter already returned — looking up the version of
+   * a candidate the principal received — and never to answer a principal directly.
+   */
+  readonly sourceText: (
+    version: SourceVersionId,
+  ) => { readonly sourceId: SourceId; readonly text: string } | null;
 }
 
 export function createSandbox(options: SandboxOptions): Sandbox {
@@ -120,6 +136,22 @@ export function createSandbox(options: SandboxOptions): Sandbox {
   const audit = inMemoryAuditSink();
   const ingestedBy = options.ingestedBy ?? "prn_sandbox_ingest";
 
+  // Every fetched text, by the version its bytes produce. See `Sandbox.sourceText`.
+  const texts = new Map<SourceVersionId, { sourceId: SourceId; text: string }>();
+  const recording: Connector = {
+    name: options.connector.name,
+    strategy: options.connector.strategy,
+    list: () => options.connector.list(),
+    fetch: async (sourceId) => {
+      const fetched = await options.connector.fetch(sourceId);
+      texts.set(formatSourceVersionId(fetched.observation.contentHash), {
+        sourceId,
+        text: fetched.text,
+      });
+      return fetched;
+    },
+  };
+
   const ingestion = createIngestionPipeline(
     {
       store,
@@ -128,7 +160,7 @@ export function createSandbox(options: SandboxOptions): Sandbox {
       embeddings,
       sleeper: realSleeper,
       clock: systemClock,
-      connector: options.connector,
+      connector: recording,
       chunks,
       embeddingCache,
     },
@@ -164,5 +196,6 @@ export function createSandbox(options: SandboxOptions): Sandbox {
     audit,
     snapshot: () => corpusSnapshotOf(store),
     models: STAND_IN_MODELS,
+    sourceText: (version) => texts.get(version) ?? null,
   };
 }

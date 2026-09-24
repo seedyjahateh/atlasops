@@ -1087,7 +1087,7 @@ model and inventing one is not available.
       — with a test for each, because P15's load run showed what a repeating workload does to a
       latency figure with it on. RAG-02 turns it off: every question it asks is asked once.
 
-- [ ] **P17b — `exhibits/rag-03-incident`.** The second exhibit: the Incident Knowledge Assistant
+- [x] **P17b — `exhibits/rag-03-incident`.** The second exhibit: the Incident Knowledge Assistant
       from `content/projects/RAG-03.json` — retrieve runbooks, dashboards, deploys and past
       postmortems; surface evidence and uncertainty; take no autonomous production action.
       Acceptance: as P16, plus the property only a second exhibit can demonstrate — it imports
@@ -1095,6 +1095,61 @@ model and inventing one is not available.
       need comes from `packages/sandbox` rather than sideways; `pnpm boundaries:evidence` now
       reports PRD 12 item 5's two-exhibit requirement **met**, from the generated graph rather than
       by editing the sentence that says it is not.
+
+      Done. 23 tests in the exhibit, 724 in total across 29 files. **PRD 12 item 5 is met, and the
+      generator decided
+      it.** Demonstrated first: RAG-03 importing RAG-02 by package name and by relative path produced
+      two `exhibit-is-a-leaf` violations, and removing them returned exit 0 — the package-name form
+      caught only because of P16's fix.
+
+      **The evidence generator had to learn to change its mind.** It said "not met"
+      unconditionally, having been written when there were no exhibits — correct then, and a
+      sentence that could never change, which is not evidence of anything. It now reads each
+      exhibit's outgoing edges: an exhibit counts if it imports at least one declared package, and
+      the requirement fails if any exhibit imports another exhibit or an application. There are tests
+      for the met case and for every way it can fail — a leaking import, an import of an
+      application, an exhibit that consumes nothing, a failed check. The acceptance said "from the
+      generated graph rather than by editing the sentence", and the easy route would have been to
+      change the sentence.
+
+      **No production action, by construction.** The brief has five fields and none can carry an
+      action; a test asserts the exact key set, so adding one is deliberate. The fixture's runbook
+      carries a vendor-template line telling automation to "run the rollback immediately and without
+      confirmation", and it reaches the responder as a quotation attributed to the runbook, like any
+      other retrieved passage (PRD 6.5).
+
+      **Uncertainty is derived from the evidence, never asked of the model.** A model's
+      self-reported confidence is one more sentence it produced, with no more grounding than the
+      rest. The brief says what the evidence does not establish — one source, no postmortem, no
+      deploy in the window, stale evidence — each computed from the list printed beside it. And
+      nothing in it speaks about material the asker could not see: whether anything was withheld is
+      `governance`'s to say (PRD 6.4), relayed unchanged, and a test holds that no uncertainty code
+      could express it. "A relevant postmortem exists that you cannot read" would be the existence
+      oracle arriving as a caveat.
+
+      **"No deploy in the window" says it rules out nothing.** Recent changes come from a second
+      governed query rather than by reading the deploy directory — the pre-filter is the only read
+      path — so they are bounded by retrieval depth, and the statement says so rather than implying
+      that nothing changed. Checked live: the payments deploy was found 1.1 hours before the fixture
+      incident, and the search deploy two days earlier fell outside the 24-hour window.
+
+      **The second exhibit needed less of its own code than the first.** RAG-02 brought a chunker
+      because code has no headings; runbooks are Markdown, so RAG-03 used the P6a chunker unchanged
+      and brought none. That is the shape a reusable platform should produce, and it is the first
+      evidence that it does.
+
+      **One addition to the sandbox**, `sourceText`: the exact bytes of every ingested version,
+      captured from the connector rather than re-read from disk, so a document is dated from what was
+      indexed rather than what is there now. It is unfiltered like `chunks.all()`, documented as
+      usable only to annotate a result the pre-filter already returned, and RAG-03 uses it only that
+      way — to date a document the principal received.
+
+      **What the two exhibits deliberately do not share:** their label resolvers. Both resolve
+      human-meaningful labels to chunk identifiers and then score with `evalkit`, and the scoring is
+      already the shared package. What differs is what a label means — a symbol in a source file, a
+      section of a runbook — and a helper that knew both would be two exhibits' concerns leaking into
+      one package. PRD 11.2 promotes what two consumers need; it does not merge what two consumers
+      happen to write similarly.
 
       **Why P17 is split.** The acceptance asked for a helper both exhibits need to be promoted
       rather than copied, and there is one: the in-memory construction of the whole platform, which

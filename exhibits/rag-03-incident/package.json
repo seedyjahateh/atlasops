@@ -1,0 +1,17 @@
+{
+  "name": "@atlasops/exhibit-rag-03-incident",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "RAG-03, the Incident Knowledge Assistant: evidence by kind, recent changes and derived uncertainty, with no channel through which to take a production action. Built on packages/* without changing them.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@atlasops/contracts": "workspace:*",
+    "@atlasops/evalkit": "workspace:*",
+    "@atlasops/governance": "workspace:*",
+    "@atlasops/ingest": "workspace:*",
+    "@atlasops/sandbox": "workspace:*"
+  }
+}

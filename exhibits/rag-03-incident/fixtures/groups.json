@@ -1,0 +1,9 @@
+{
+  "$comment": [
+    "prn_oncall reads everything an on-call engineer uses. prn_security also reads the security",
+    "postmortem. The interesting principal is prn_oncall asking about a checkout incident: the",
+    "security postmortem is about one, and must not appear in their brief."
+  ],
+  "prn_oncall": ["grp_oncall"],
+  "prn_security": ["grp_oncall", "grp_security"]
+}

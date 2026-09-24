@@ -113,7 +113,17 @@ against the committed record and fails the build on a breach, which was demonstr
 asserted. A regression therefore surfaces at the next deliberate run rather than at the next push,
 and between runs the enforcement is only as current as the record's date — which the check prints.
 
-### 5. A boundary-enforcement artefact — not met
+### 5. A boundary-enforcement artefact — met
+
+**Met as of P17b, and decided by the generator rather than by this document.** `pnpm
+boundaries:evidence` now reads each exhibit's outgoing edges and reports that
+`exhibits/rag-02-codebase` and `exhibits/rag-03-incident` each consume declared packages and neither
+imports another exhibit or an application. Demonstrated: RAG-03 importing RAG-02 — by package name and
+by relative path — produced two `exhibit-is-a-leaf` violations, and removing the imports returned
+exit 0. The generator previously said "not met" unconditionally; a verdict that cannot change is not
+evidence, so it now computes one, with tests for each way it can fail.
+
+The history below is kept because the correction in it matters.
 
 `pnpm boundaries:evidence` writes `evidence/boundaries.md`: the check result over every declared
 module, and the module dependency graph as a sorted edge list. Both halves are real.
@@ -163,7 +173,8 @@ In rough order of effort:
    CI against the committed record. Item 4 stays unmet because the run used no real model, not
    because the harness is missing: **the same command against a configured provider is what closes
    it.**
-3. **Two exhibits** consuming `packages/*` and importing no other exhibit. This unblocks item 5.
+3. ~~**Two exhibits** consuming `packages/*` and importing no other exhibit.~~ **Built in P16 and
+   P17b**, with the shared construction promoted into `packages/sandbox` in P17a. Item 5 is met.
 4. **A re-run of the evaluation** against a corpus the datasets are actually labelled for, so the
    snapshot matches and `--allow-snapshot-mismatch` is not needed.
 5. **Selection of the unselected numbers** — `k`, the retriever depths, the support threshold, the
