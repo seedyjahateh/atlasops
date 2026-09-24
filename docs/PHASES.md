@@ -736,22 +736,40 @@ model and inventing one is not available.
       cross-encoder has no adapter and the reranker stays bypassable, named as unselected rather
       than filled in with an invented identifier.
 
-- [ ] **P14 — A labelled corpus snapshot.** One fixed corpus with a recorded hash, and the four PRD
-      8.1 datasets labelled against _that_ corpus: retrieval labels with graded relevance, grounded
-      answers with supporting chunks, the abstention set, and the permission probes. Implements PRD
-      8.1 and 9.1's "fixed corpus snapshot" half. Acceptance: `app:eval` runs **without**
-      `--allow-snapshot-mismatch` for the first time; the held-out split is sealed and the
-      development split is what selection uses; the corpus construction procedure is written down,
-      as PRD 13 requires, including who labelled it and on what basis; the adversarial
-      subpopulations are the hard cases rather than the convenient ones; a graded label set is not
-      a binary one relabelled.
+- [ ] **P14a — The corpus, its access zones, and a pinned inventory.** The fixed corpus the labels
+      will point at: documents across several ACL zones including a `hidden` source and the PRD 6.5
+      injection passages, a connector that can express per-source labels, and a committed inventory
+      of every chunk identifier the corpus produces. Implements PRD 9.1's "fixed corpus snapshot"
+      half and the corpus half of 8.1. Acceptance: `filesystemConnector` resolves an ACL per path
+      and **fails closed** on a path the manifest does not cover, because a default label is how
+      "unknown" becomes "public" (PRD 6.1); the corpus contains material at least one principal must
+      not read, or the permission probes in P14b would be vacuous; the snapshot hash is computed by
+      one function that both the evaluation runner and the inventory tool call, asserted equal — two
+      implementations that drift make every dataset pin wrong; the inventory is generated rather
+      than hand-maintained, and a stale one fails `pnpm verify`; the construction procedure is
+      written down as PRD 13 requires.
 
-      **Why this is a phase and not a fixture edit.** Every quality number the build can produce is
-      currently scored against datasets labelled for no corpus, which is why every artefact says on
-      its face that its numbers are not comparable. Fixing that is the difference between an
-      evaluation report that records a run and one that supports a claim. The labels are my
-      judgments and the procedure has to say so — an honest small dataset with a stated method beats
-      a larger one whose provenance is a shrug.
+- [ ] **P14b — The four labelled datasets.** Graded relevance labels, grounded answers with their
+      supporting chunks and a human calibration subset, the abstention set, and the permission
+      probes — all labelled against P14a's snapshot. Implements PRD 8.1. Acceptance: `app:eval` runs
+      **without** `--allow-snapshot-mismatch` and the flag comes out of the script; the held-out
+      split is sealed and selection uses the development split; the adversarial subpopulations are
+      the hard cases rather than the convenient ones; a graded label set is not a binary one
+      relabelled; the procedure records who labelled each item and on what basis.
+
+      **Why P14 is split.** The seam is the one that made P6, P10 and P11 work: P14a is the thing
+      labels point at, P14b is the labels, and P14a's output — a chunk inventory — is literally
+      P14b's input. They also fail differently. A wrong corpus is a wrong denominator that makes
+      every metric mean something else; a wrong label is a quiet bias toward the system that
+      produced it. Grading both in one pass means grading neither carefully, and the label work is
+      where the temptation to flatter lives.
+
+      **Why this is a phase at all and not a fixture edit.** Every quality number the build can
+      produce is currently scored against datasets labelled for no corpus, which is why every
+      artefact says on its face that its numbers are not comparable. Fixing that is the difference
+      between an evaluation report that records a run and one that supports a claim. The labels are
+      my judgments and the procedure has to say so — an honest small dataset with a stated method
+      beats a larger one whose provenance is a shrug.
 
 - [ ] **P15 — The reference profile, the load run, and the cost and latency report.** The PRD 9.1
       profile as a committed artefact, a scripted load run at a stated concurrency, and PRD 12 item 4. Implements PRD 9.1, 9.2's aggregate views, and 9.3. Acceptance: the profile records the
