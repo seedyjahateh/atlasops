@@ -18,60 +18,25 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
 import {
-  corpusVersionOracle,
-  createAnswerPipeline,
-  createIngestionPipeline,
-  indexingChunkSink,
-  type AnswerPipeline,
-} from "@atlasops/composition";
-import {
   contentHashOf,
-  formatGroupId,
   formatRequestId,
   formatSourceVersionId,
   parsePrincipalId,
   type Answer,
   type SourceVersionId,
 } from "@atlasops/contracts";
-import { inMemoryCorpusStore } from "@atlasops/corpus";
-import { inMemoryAuditSink, parseGroupMap, staticGroupResolver } from "@atlasops/governance";
-import { citingStandIn } from "@atlasops/grounding";
-import { currentSchema, inMemoryLexicalIndex, inMemoryVectorIndex } from "@atlasops/indexing";
+import { parseGroupMap, staticGroupResolver } from "@atlasops/governance";
 import {
   aclFromManifest,
   filesystemConnector,
   loadAclManifest,
-  type ChunkSink,
   type StoredChunk,
 } from "@atlasops/ingest";
-import {
-  createEmbeddingGateway,
-  deterministicVector,
-  fakeReranker,
-  inMemoryEmbeddingCache,
-  realSleeper,
-  type EmbedRequest,
-  type EmbedResult,
-  type Embedder,
-} from "@atlasops/model-gateway";
-import { systemClock } from "@atlasops/telemetry";
+import { createSandbox } from "@atlasops/sandbox";
 
 import { buildCallGraph, type CallGraph, type SourceFile, type SymbolRef } from "./callgraph.js";
 import { linesInVersion, renderLines, type LineRange } from "./lines.js";
 import { symbolAware } from "./strategy.js";
-
-const EMBEDDING = { id: "stand-in-embedder", dimension: 64 };
-
-/** Named, as everywhere else, so no artefact mistakes these vectors for a model's. */
-const standInEmbedder: Embedder = {
-  model: EMBEDDING,
-  embed: (request: EmbedRequest): Promise<EmbedResult> =>
-    Promise.resolve({
-      model: EMBEDDING,
-      vectors: request.texts.map((text) => deterministicVector(text, EMBEDDING.dimension)),
-      usage: { inputTokens: request.texts.length, outputTokens: 0 },
-    }),
-};
 
 /** A chunk budget sized for a function rather than a page. Unselected, like every other. */
 export const CODE_CHUNK_TOKENS = 200;
@@ -146,37 +111,30 @@ function symbolNamesOf(chunk: StoredChunk): readonly string[] {
 }
 
 export async function createAssistant(options: AssistantOptions): Promise<Assistant> {
-  const store = inMemoryCorpusStore();
-  const schema = currentSchema(EMBEDDING);
-  const lexical = inMemoryLexicalIndex(schema);
-  const vector = inMemoryVectorIndex(schema);
-  const cache = inMemoryEmbeddingCache();
-  const embeddings = createEmbeddingGateway(standInEmbedder, { sleeper: realSleeper, cache });
-  const sink: ChunkSink = indexingChunkSink(lexical, vector);
-  const group = formatGroupId("rag-02-ingest");
-
-  const ingestion = createIngestionPipeline(
-    {
-      store,
-      lexical,
-      vector,
-      embeddings,
-      sleeper: realSleeper,
-      clock: systemClock,
-      connector: filesystemConnector({
-        root: options.repositoryRoot,
-        strategy: symbolAware({ maxTokens: CODE_CHUNK_TOKENS }),
-        aclFor: aclFromManifest(loadAclManifest(options.aclManifest)),
-        extensions: [".ts"],
-        now: () => new Date().toISOString(),
-      }),
-      chunks: sink,
-      embeddingCache: cache,
-    },
-    { orderedBy: { id: parsePrincipalId("prn_rag02_ingest", "rag-02"), groups: [group] } },
+  const memberships = parseGroupMap(
+    JSON.parse(readFileSync(options.groupMap, "utf8")),
+    options.groupMap,
   );
 
-  const report = await ingestion.run();
+  // The platform, constructed by `packages/sandbox` rather than by hand. This exhibit built the
+  // same fifty lines itself in P16; the second exhibit needing them too is what promoted them
+  // (ADR 0008). What remains here is only what is RAG-02's: the code chunker and the connector.
+  const sandbox = createSandbox({
+    connector: filesystemConnector({
+      root: options.repositoryRoot,
+      strategy: symbolAware({ maxTokens: CODE_CHUNK_TOKENS }),
+      aclFor: aclFromManifest(loadAclManifest(options.aclManifest)),
+      extensions: [".ts"],
+      now: () => new Date().toISOString(),
+    }),
+    groups: staticGroupResolver(memberships),
+    ingestedBy: "prn_rag02_ingest",
+    // Off: every question is asked once, and a cached answer would describe the cache.
+    retrievalCache: false,
+  });
+  const sink = sandbox.chunks;
+
+  const report = await sandbox.ingestion.run();
   if (report.failures.length > 0) {
     throw new Error(
       `${String(report.failures.length)} file(s) failed to ingest: ` +
@@ -192,25 +150,7 @@ export async function createAssistant(options: AssistantOptions): Promise<Assist
   for (const file of files) byVersion.set(formatSourceVersionId(contentHashOf(file.text)), file);
 
   const graph = buildCallGraph(files);
-  const memberships = parseGroupMap(
-    JSON.parse(readFileSync(options.groupMap, "utf8")),
-    options.groupMap,
-  );
-
-  const pipeline: AnswerPipeline = createAnswerPipeline({
-    store,
-    lexical,
-    vector,
-    embeddings,
-    sleeper: realSleeper,
-    clock: systemClock,
-    reranker: fakeReranker("stand-in-reranker"),
-    generator: citingStandIn(),
-    groups: staticGroupResolver(memberships),
-    audit: inMemoryAuditSink(),
-    oracle: corpusVersionOracle(store),
-    now: () => new Date().toISOString(),
-  });
+  const pipeline = sandbox.answering;
 
   let counter = 0;
 

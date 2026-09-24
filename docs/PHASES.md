@@ -1041,7 +1041,7 @@ model and inventing one is not available.
       the README: no commit history (there is no version-control connector, and a fake one would be
       worse than the gap), and call edges are syntactic — an edge can be missing, never invented.
 
-- [ ] **P17a — `packages/sandbox`: the platform constructed in memory, promoted once.** The
+- [x] **P17a — `packages/sandbox`: the platform constructed in memory, promoted once.** The
       in-memory construction of stores, indexes, stand-in models and both pipelines that six places
       currently copy, promoted into one package with a defined contract. Implements PRD 11.2's rule
       that a helper two consumers need is "promoted into a package with a defined contract — a
@@ -1050,6 +1050,42 @@ model and inventing one is not available.
       existing `fakeEmbedder` rather than becoming a seventh copy of the stand-in; `rag-02-codebase`
       moves onto it, so the promotion has a consumer on the day it lands rather than a promise of
       one; it is named for what it is — never for a deployment — and a test says so.
+
+      Done. 9 tests in the package, and RAG-02's 22 unchanged. The boundary was demonstrated in the
+      direction that matters: `composition` importing the sandbox produced `forbidden-import` and a
+      `dependency-cycle`, and removing it returned exit 0. ADR 0008 records the new layer.
+
+      **The obvious home was ruled out by a sentence I wrote.** Composition's charter is "this
+      package assembles; it does not construct", and that sentence is the one thing stopping the
+      only package allowed to import everything from absorbing everything. Loosening it would have
+      been one line in a comment, and it would have been the decay ADR 0005 exists to prevent, done
+      by its own author one phase later. A package that constructs and a package that assembles
+      fail differently — a wrong object against two right objects wired wrongly — and keeping them
+      apart keeps each reviewable.
+
+      **It ends a seventh copy before it starts, and uses the one that already existed.** Six places
+      had written out the same stand-in embedder while `model-gateway` exported `fakeEmbedder`,
+      which is that embedder. The sandbox uses `fakeEmbedder`.
+
+      **RAG-02 moved onto it in the same change**, losing about fifty lines, and came back with
+      identical tests and an identical evaluation — recall@5 0.80, MRR 0.7667. A promotion with no
+      consumer is a guess about what the next consumer will need; this one had its first on the
+      day it landed.
+
+      **Named so nobody mistakes it for a deployment.** Every model identifier it records begins
+      `stand-in`, and there are tests on the audit record and the chunk embedding reference as well
+      as on the constant. The failure the name guards against is the quiet one: a convenience
+      package somebody points at a real model one day, after which its numbers get quoted.
+
+      **Five copies remain, recorded as debt rather than fixed.** The API, the worker, the
+      evaluation runner, the load run and the corpus inventory still construct the platform
+      themselves. The applications are deployment surfaces whose construction should move towards
+      real adapters, not towards a sandbox; the tools can migrate when next touched. Doing it here
+      would have hidden a boundary move inside a refactor.
+
+      The retrieval cache is **on by default**, as a deployment has it, and a caller can turn it off
+      — with a test for each, because P15's load run showed what a repeating workload does to a
+      latency figure with it on. RAG-02 turns it off: every question it asks is asked once.
 
 - [ ] **P17b — `exhibits/rag-03-incident`.** The second exhibit: the Incident Knowledge Assistant
       from `content/projects/RAG-03.json` — retrieve runbooks, dashboards, deploys and past

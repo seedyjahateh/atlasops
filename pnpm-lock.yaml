@@ -160,6 +160,9 @@ importers:
       '@atlasops/model-gateway':
         specifier: workspace:*
         version: link:../../packages/model-gateway
+      '@atlasops/sandbox':
+        specifier: workspace:*
+        version: link:../../packages/sandbox
       '@atlasops/telemetry':
         specifier: workspace:*
         version: link:../../packages/telemetry
@@ -309,6 +312,39 @@ importers:
       '@atlasops/model-gateway':
         specifier: workspace:*
         version: link:../model-gateway
+      '@atlasops/telemetry':
+        specifier: workspace:*
+        version: link:../telemetry
+
+  packages/sandbox:
+    dependencies:
+      '@atlasops/composition':
+        specifier: workspace:*
+        version: link:../composition
+      '@atlasops/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@atlasops/corpus':
+        specifier: workspace:*
+        version: link:../corpus
+      '@atlasops/governance':
+        specifier: workspace:*
+        version: link:../governance
+      '@atlasops/grounding':
+        specifier: workspace:*
+        version: link:../grounding
+      '@atlasops/indexing':
+        specifier: workspace:*
+        version: link:../indexing
+      '@atlasops/ingest':
+        specifier: workspace:*
+        version: link:../ingest
+      '@atlasops/model-gateway':
+        specifier: workspace:*
+        version: link:../model-gateway
+      '@atlasops/retrieval':
+        specifier: workspace:*
+        version: link:../retrieval
       '@atlasops/telemetry':
         specifier: workspace:*
         version: link:../telemetry

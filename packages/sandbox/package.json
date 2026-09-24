@@ -1,9 +1,9 @@
 {
-  "name": "@atlasops/exhibit-rag-02-codebase",
+  "name": "@atlasops/sandbox",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "RAG-02, the Codebase Intelligence Assistant: symbol-aware chunking, line-level citations and a call graph that never crosses a repository boundary, built on packages/* without changing them.",
+  "description": "The whole platform constructed in memory with stand-in models, for exhibits and demonstrations. Never for a deployment.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -11,14 +11,12 @@
     "@atlasops/composition": "workspace:*",
     "@atlasops/contracts": "workspace:*",
     "@atlasops/corpus": "workspace:*",
-    "@atlasops/evalkit": "workspace:*",
     "@atlasops/governance": "workspace:*",
     "@atlasops/grounding": "workspace:*",
     "@atlasops/indexing": "workspace:*",
     "@atlasops/ingest": "workspace:*",
     "@atlasops/model-gateway": "workspace:*",
-    "@atlasops/sandbox": "workspace:*",
-    "@atlasops/telemetry": "workspace:*",
-    "typescript": "^5.9.0"
+    "@atlasops/retrieval": "workspace:*",
+    "@atlasops/telemetry": "workspace:*"
   }
 }

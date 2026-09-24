@@ -21,13 +21,14 @@ fact and not the one that decides whether a boundary held.
 | 6 grounding | `@atlasops/grounding` | Prompt assembly, answer schema, citation binding, verification, abstention | `@atlasops/contracts`, `@atlasops/telemetry`, `@atlasops/retrieval`, `@atlasops/governance`, `@atlasops/model-gateway` |
 | 7 evaluation | `@atlasops/evalkit` | Harness, dataset loaders, metrics, ablation runner, statistics, reporting | `@atlasops/contracts`, `@atlasops/telemetry`, `@atlasops/retrieval`, `@atlasops/grounding`, `@atlasops/governance` |
 | 8 composition | `@atlasops/composition` | The answer and ingestion pipelines, assembled from ports | `@atlasops/contracts`, `@atlasops/telemetry`, `@atlasops/governance`, `@atlasops/model-gateway`, `@atlasops/corpus`, `@atlasops/ingest`, `@atlasops/indexing`, `@atlasops/retrieval`, `@atlasops/grounding`, `@atlasops/evalkit` |
+| 9 sandbox | `@atlasops/sandbox` | In-memory construction of the platform with stand-in models, for exhibits and demonstrations | `@atlasops/contracts`, `@atlasops/telemetry`, `@atlasops/governance`, `@atlasops/model-gateway`, `@atlasops/corpus`, `@atlasops/ingest`, `@atlasops/indexing`, `@atlasops/retrieval`, `@atlasops/grounding`, `@atlasops/composition` |
 
 ## Groups
 
 | Layer | Group | Owns | May import |
 | --- | --- | --- | --- |
-| 9 runtime | `apps/` | Wiring, transport, configuration, deployment surface | any package, no group |
-| 9 runtime | `exhibits/` | One exhibit's own code, fixtures, datasets, README, evidence | any package, no group |
+| 10 runtime | `apps/` | Wiring, transport, configuration, deployment surface | any package, no group |
+| 10 runtime | `exhibits/` | One exhibit's own code, fixtures, datasets, README, evidence | any package, no group |
 
 ## Provider SDKs
 

@@ -20,6 +20,7 @@
     "grounding",
     "evaluation",
     "composition",
+    "sandbox",
     "runtime"
   ],
 
@@ -135,20 +136,43 @@
         "@atlasops/grounding",
         "@atlasops/evalkit"
       ]
+    },
+    "@atlasops/sandbox": {
+      "$comment": [
+        "The platform constructed in memory with stand-in models (ADR 0008). Six places copied",
+        "this construction by hand before it existed. It is not in composition because composition",
+        "assembles and does not construct (ADR 0005) — that rule is what stops the one package that",
+        "may import everything from absorbing everything. Never for a deployment."
+      ],
+      "path": "packages/sandbox",
+      "layer": 9,
+      "owns": "In-memory construction of the platform with stand-in models, for exhibits and demonstrations",
+      "mayImport": [
+        "@atlasops/contracts",
+        "@atlasops/telemetry",
+        "@atlasops/governance",
+        "@atlasops/model-gateway",
+        "@atlasops/corpus",
+        "@atlasops/ingest",
+        "@atlasops/indexing",
+        "@atlasops/retrieval",
+        "@atlasops/grounding",
+        "@atlasops/composition"
+      ]
     }
   },
 
   "groups": {
     "apps": {
       "pathPrefix": "apps/",
-      "layer": 9,
+      "layer": 10,
       "owns": "Wiring, transport, configuration, deployment surface",
       "mayImportAnyPackage": true,
       "mayImportGroups": []
     },
     "exhibits": {
       "pathPrefix": "exhibits/",
-      "layer": 9,
+      "layer": 10,
       "owns": "One exhibit's own code, fixtures, datasets, README, evidence",
       "mayImportAnyPackage": true,
       "mayImportGroups": []
