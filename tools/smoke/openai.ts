@@ -72,15 +72,20 @@ async function main(): Promise<number> {
     system: "Answer in one short sentence. Do not add anything the question did not ask for.",
     user: "What is retrieval-augmented generation?",
   });
+  // Priced by the model *requested*, which is what the published price list names and what is
+  // billed. The response echoes the dated snapshot that served it — `gpt-4.1-mini-2025-04-14` for
+  // `gpt-4.1-mini` — and the first live run of this script priced by that, found nothing in the
+  // table, and correctly refused to call it free. The snapshot is still reported: it is the precise
+  // pin PRD 9.1 wants, and it is not a key a price list uses.
   const generationCost = costOf(
     OPENAI_PRICE_TABLE,
-    generated.modelId,
+    generator.modelId,
     generated.usage.inputTokens,
     generated.usage.outputTokens,
   );
 
   process.stdout.write(
-    `generation: model "${generated.modelId}", ` +
+    `generation: requested "${generator.modelId}", served "${generated.modelId}", ` +
       `${String(generated.usage.inputTokens)} in / ${String(generated.usage.outputTokens)} out, ` +
       `$${generationCost.amountUsd.toFixed(8)}\n` +
       `  ${generated.text.replaceAll("\n", " ").slice(0, 200)}\n\n`,
