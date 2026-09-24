@@ -18,6 +18,7 @@
     "corpus:check": "tsx tools/corpus/cli.ts --check",
     "datasets:hash": "tsx tools/datasets/cli.ts",
     "datasets:check": "tsx tools/datasets/cli.ts --check",
+    "loadrun": "tsx tools/loadrun/cli.ts",
     "boundaries:table": "tsx tools/boundaries/src/cli.ts table --write",
     "boundaries:evidence": "tsx tools/boundaries/src/cli.ts evidence",
     "evidence": "pnpm boundaries:evidence && pnpm app:eval",

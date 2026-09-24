@@ -863,14 +863,35 @@ model and inventing one is not available.
       then labelled it myself, the same afternoon, with no second reader, knowing what the system
       does. No method fixes that, and the retrieval numbers carry it.
 
-- [ ] **P15 — The reference profile, the load run, and the cost and latency report.** The PRD 9.1
-      profile as a committed artefact, a scripted load run at a stated concurrency, and PRD 12 item 4. Implements PRD 9.1, 9.2's aggregate views, and 9.3. Acceptance: the profile records the
-      corpus snapshot hash, the query workload, pinned model identifiers, the hardware, and the
+- [ ] **P15a — Instrument the stages the budgets name.** A span per stage across the whole request,
+      not only the retrieval half. Implements PRD 9.2's "every request carries a trace with a span
+      per stage". Acceptance: `permission-resolution`, `permission-compile`, `prompt-assembly`,
+      `generation`, `verification` and `audit-write` all produce spans on an ordinary answer; the
+      audit record carries the **request's** breakdown rather than a copy of the retrieval trace's;
+      a model-calling span records its model identifier, tokens, cost and retry count as PRD 9.2
+      requires; the trace is assembled in one place rather than three, and a stage missing from a
+      trace is visible rather than silently absent from an aggregate.
+
+      **Why P15 is split.** The load harness was built first and immediately reported four of PRD
+      9.3's six latency budgets as "not measured": nothing anywhere opens a span for permission
+      resolution, prompt assembly, generation, verification or the audit write. It also showed that
+      `groundAnswer` seals the audit with `stageBreakdown(retrieval.trace)` — the audit has been
+      recording the retrieval stages under the name of the whole request's timings since P9. A
+      report cannot be honest about stages nothing measures, so the instrumentation is its own
+      phase and the report follows it.
+
+- [ ] **P15b — The reference profile, the load run, and the cost and latency report.** The PRD 9.1
+      profile as a committed record, a scripted load run at a stated concurrency, and PRD 12 item 4.
+      Implements PRD 9.1, 9.2's aggregate views, and 9.3. Acceptance: the profile records the corpus
+      snapshot hash, the query workload, pinned model identifiers, the hardware, and the
       concurrency, and every reported number carries it; the report contains the full stage
       breakdown, the ratio of ingestion to serving cost, cache hit rate per cache, and tail latency
       by stage; cost comes from per-request token accounting against the versioned price table, not
       from a dashboard; p95 figures resting on twenty samples or fewer are labelled as the maxima
-      they are; a budget that is missed is reported with its stage breakdown and **is not raised**.
+      they are; a budget that is missed is reported with its stage breakdown and **is not raised**;
+      **and the report distinguishes the requests that were served from the retrieval cache from
+      the ones that were not** — the first run of the harness put 247 of 260 requests through the
+      cache, so its end-to-end p95 was a measurement of a cache hit wearing the name of an answer.
 
       **CI cannot run this and the phase must say so.** PRD 9.3 wants budgets enforced in CI against
       the reference profile, but a load run calls a paid API and CI must not. The split this phase
