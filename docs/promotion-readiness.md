@@ -119,12 +119,17 @@ and between runs the enforcement is only as current as the record's date — whi
 module, and the module dependency graph as a sorted edge list. Both halves are real.
 
 The third clause is not met. PRD 12 item 5 requires the graph to demonstrate **at least two exhibits
-consuming `packages/*` and importing no other exhibit**, and this repository contains **no
-exhibits**. The rule itself is enforced — `exhibit-is-a-leaf` is implemented, tested against a
-deliberately introduced violation, and would fail CI today — but an enforced rule with nothing to
-enforce it against is a weaker claim than a rule two independent exhibits have had to live with.
-PRD 11 calls this artefact "what converts section 11 from a plan into a fact", and on that standard
-it is still a plan.
+consuming `packages/*` and importing no other exhibit**, and this repository contains **one**:
+`exhibits/rag-02-codebase`, added in P16. The second is P17.
+
+**A correction to what this section said before P16.** It stated that `exhibit-is-a-leaf` "would fail
+CI today". That was true only for an import written as a relative path. The first exhibit showed the
+normal form — importing a workspace package by its name, `@atlasops/exhibit-rag-02-codebase` — passed
+the checker as though it were an npm dependency, because the checker knew only the names of declared
+packages. It now reads every application's and exhibit's package name, and a package importing an
+exhibit by name was demonstrated failing. The rule had been tested against the one form nobody
+would use, which is the argument PRD 11 makes for needing real exhibits: an enforced rule with
+nothing to enforce it against is a weaker claim than it looks, and this one was weaker than stated.
 
 The generator says so in the file it writes rather than rendering the half it can and letting the
 absence pass unremarked.

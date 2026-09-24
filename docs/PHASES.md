@@ -978,7 +978,7 @@ model and inventing one is not available.
       the next push, and the artefact's own date says how stale the enforcement is. That is weaker
       than the PRD's wording and the gap is recorded rather than papered over.
 
-- [ ] **P16 — `exhibits/rag-02-codebase`.** The first exhibit: the Codebase Intelligence Assistant
+- [x] **P16 — `exhibits/rag-02-codebase`.** The first exhibit: the Codebase Intelligence Assistant
       named in `content/projects/RAG-02.json` — index symbols, call graphs and history; answer with
       line-level citations; respect repository boundaries. Implements PRD 11.2's leaf rule for real.
       Acceptance: it consumes `packages/*` and imports no application and no other exhibit, and that
@@ -992,6 +992,54 @@ model and inventing one is not available.
       on it, that is a design intention. PRD 13 names the failure mode exactly: if the graph check
       produces more friction than protection here, that is a finding for an ADR, not a rule to
       quietly stop running.
+
+      Done. 22 tests in the exhibit, 687 in total across 27 files. **No package changed.** The one
+      thing a codebase needed that prose did not — a chunker that knows where a declaration starts
+      — plugged into `ingest` through the `ChunkStrategy` interface that already existed, and the
+      rest came from `packages/*` as they were: ingestion, the access manifest and pre-filter,
+      hybrid retrieval, grounding, verification, the audit, and `evalkit`'s own recall and MRR.
+      PRD 13 predicted that the graph check might produce more friction than protection once a real
+      exhibit arrived. It produced none — and it caught something, below.
+
+      **The leaf rule had a hole, and only a real exhibit could have found it.** `exhibit-is-a-leaf`
+      had been demonstrated since P0 against an import written as a relative path. The normal way
+      to import a workspace package is by its name, and `@atlasops/exhibit-rag-02-codebase`
+      resolved to EXTERNAL, so a package importing the exhibit by name passed the checker as though
+      it were an npm dependency. Demonstrated: with both a relative exhibit-to-app import and a
+      named package-to-exhibit import in place, the checker reported one violation, not two. It now
+      reads every application's and exhibit's package name; the same two imports produce
+      `app-is-a-leaf`, `exhibit-is-a-leaf` and the dependency cycle between them, and removing them
+      returns exit 0. P12 had written that the rule "would fail CI today" — true only for the form
+      nobody writes — and `docs/promotion-readiness.md` now says so.
+
+      **Citations are line ranges in a version**, `platform/retry.ts:17-18 @ sv_…`, computed from
+      the exact bytes of that version after hashing them and comparing with the version identifier.
+      Line numbers computed against today's file for yesterday's citation point at plausible, wrong
+      code, and nothing about a wrong line number looks wrong — so a mismatch refuses rather than
+      answering. A citation also says whether it was resolved to the cited span or widened to the
+      whole chunk, because a wide citation that looks precise is its own small dishonesty.
+
+      **The call graph respects repository boundaries by construction.** Payments calls into
+      platform, so "who calls `withRetry`" has an answer a platform-only principal may not see.
+      Filtering at query time would have needed `canRead`, which `governance` deliberately does not
+      export — so the graph never records an edge that crosses a repository, and every edge it holds
+      joins two symbols in one access zone. The cost is stated and counted: the fixture's two real
+      cross-repository calls are dropped for everybody, including a principal entitled to both
+      sides, and `crossRepositoryCalls` reports it.
+
+      **The compiler attaches a file's header comment to the first declaration**, found on the first
+      run when an interface was cited from line 1. A doc comment separated from its declaration by a
+      blank line now belongs to nothing, which matches how people write them and has a test.
+
+      **Labels are keyed by symbol and resolved after ingestion**, because chunk identifiers derive
+      from bytes and a reformat moves them all. That claim was tested by accident and held: Prettier
+      reformatted the fixtures mid-phase, every version identifier changed, and the evaluation and
+      the citations came back identical. A label naming a symbol that no longer exists throws rather
+      than scoring zero.
+
+      ADR 0007 records the `typescript` dependency, confined to this exhibit. Not done, and said in
+      the README: no commit history (there is no version-control connector, and a fake one would be
+      worse than the gap), and call edges are syntactic — an edge can be missing, never invented.
 
 - [ ] **P17 — `exhibits/rag-03-incident`.** The second exhibit: the Incident Knowledge Assistant
       from `content/projects/RAG-03.json` — retrieve runbooks, dashboards, deploys and past

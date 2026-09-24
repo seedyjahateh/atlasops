@@ -108,7 +108,12 @@ function isProviderSdk(manifest: Manifest, specifier: string): boolean {
  * a boundary violation dressed as a local import, and a checker that only inspected bare specifiers
  * would wave it through.
  */
-export function ownerOfSpecifier(manifest: Manifest, fromFile: string, specifier: string): string {
+export function ownerOfSpecifier(
+  manifest: Manifest,
+  fromFile: string,
+  specifier: string,
+  workspaceNames: ReadonlyMap<string, string> = new Map(),
+): string {
   if (specifier.startsWith(".")) {
     const fromDirectory = posix.dirname(fromFile);
     const resolved = posix.normalize(posix.join(fromDirectory, specifier));
@@ -122,7 +127,48 @@ export function ownerOfSpecifier(manifest: Manifest, fromFile: string, specifier
     if (specifier === pkg.id || specifier.startsWith(`${pkg.id}/`)) return pkg.id;
   }
 
+  // An application or an exhibit imported by its workspace package name. Before P16 this fell
+  // through to EXTERNAL, so `import … from "@atlasops/exhibit-rag-02-codebase"` passed the checker
+  // as though it were an npm dependency — and the leaf rules held only against relative-path
+  // imports, which is the unusual way to import a workspace package rather than the normal one.
+  for (const [name, owner] of workspaceNames) {
+    if (specifier === name || specifier.startsWith(`${name}/`)) return owner;
+  }
+
   return EXTERNAL;
+}
+
+/**
+ * The workspace package name of every application and exhibit, mapped to the member that owns it.
+ *
+ * Read from each member's `package.json` rather than inferred from its directory name, because the
+ * name is what an import statement uses and nothing requires the two to match.
+ */
+export function workspacePackageNames(root: string, manifest: Manifest): Map<string, string> {
+  const names = new Map<string, string>();
+
+  for (const group of manifest.groups) {
+    const directory = resolve(root, group.pathPrefix);
+    let entries;
+    try {
+      entries = readdirSync(directory, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const manifestPath = join(directory, entry.name, "package.json");
+      let name: unknown;
+      try {
+        name = (JSON.parse(readFileSync(manifestPath, "utf8")) as { name?: unknown }).name;
+      } catch {
+        continue;
+      }
+      if (typeof name === "string") names.set(name, `${toPosix(group.pathPrefix)}${entry.name}`);
+    }
+  }
+
+  return names;
 }
 
 /**
@@ -142,7 +188,11 @@ export function readSources(root: string, files: readonly string[]): Map<string,
   return sources;
 }
 
-export function edgesFrom(manifest: Manifest, sources: ReadonlyMap<string, string>): Edge[] {
+export function edgesFrom(
+  manifest: Manifest,
+  sources: ReadonlyMap<string, string>,
+  workspaceNames: ReadonlyMap<string, string>,
+): Edge[] {
   const edges: Edge[] = [];
 
   for (const [file, text] of sources) {
@@ -154,7 +204,7 @@ export function edgesFrom(manifest: Manifest, sources: ReadonlyMap<string, strin
         fromFile: file,
         fromOwner,
         specifier: reference.fileName,
-        toOwner: ownerOfSpecifier(manifest, file, reference.fileName),
+        toOwner: ownerOfSpecifier(manifest, file, reference.fileName, workspaceNames),
       });
     }
   }
@@ -163,7 +213,7 @@ export function edgesFrom(manifest: Manifest, sources: ReadonlyMap<string, strin
 }
 
 export function readEdges(root: string, manifest: Manifest, files: readonly string[]): Edge[] {
-  return edgesFrom(manifest, readSources(root, files));
+  return edgesFrom(manifest, readSources(root, files), workspacePackageNames(root, manifest));
 }
 
 export function edgeIsProviderSdk(manifest: Manifest, edge: Edge): boolean {

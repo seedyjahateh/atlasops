@@ -1,0 +1,77 @@
+{
+  "$comment": [
+    "Relevance labels for the RAG-02 fixture, keyed by symbol rather than by chunk identifier.",
+    "",
+    "Chunk identifiers derive from a file's bytes, so reformatting a file moves every identifier in",
+    "it. A symbol is what a question about code is actually answered by — 'the answer is in",
+    "withinWindow' — and a label keyed on it survives an edit that does not change which declaration",
+    "answers the question. They are resolved to chunk identifiers after ingestion, and a label naming",
+    "a symbol that no longer exists fails the evaluation instead of silently scoring zero.",
+    "",
+    "Grades follow docs/corpus-procedure.md: 3 answers the question alone, 2 is necessary context,",
+    "1 is related. Labelled by the author of the fixture, who also wrote the code. That is the same",
+    "caveat the main corpus carries and it applies here for the same reason.",
+    "",
+    "Every label is readable by the principal who asks. p-dev-003 asks a payments question as",
+    "prn_dev, who cannot read payments: it has no relevant symbols, and the correct outcome is an",
+    "answer drawn only from platform, or none."
+  ],
+  "id": "rag-02-codebase",
+  "version": "1.0.0",
+  "items": [
+    {
+      "id": "p-dev-001",
+      "principal": "prn_dev",
+      "query": "how is the retry backoff delay computed",
+      "relevant": [
+        { "path": "platform/retry.ts", "symbol": "backoffDelay", "grade": 3 },
+        { "path": "platform/retry.ts", "symbol": "withRetry", "grade": 1 }
+      ]
+    },
+    {
+      "id": "p-dev-002",
+      "principal": "prn_dev",
+      "query": "which errors does withRetry retry",
+      "relevant": [
+        { "path": "platform/retry.ts", "symbol": "isRetryable", "grade": 3 },
+        { "path": "platform/retry.ts", "symbol": "withRetry", "grade": 2 },
+        { "path": "platform/http.ts", "symbol": "retryableFailure", "grade": 1 }
+      ]
+    },
+    {
+      "id": "p-dev-003",
+      "principal": "prn_dev",
+      "query": "how is the refund window checked",
+      "relevant": []
+    },
+    {
+      "id": "p-pay-001",
+      "principal": "prn_payments",
+      "query": "how is the refund window checked",
+      "relevant": [
+        { "path": "payments/refunds.ts", "symbol": "withinWindow", "grade": 3 },
+        { "path": "payments/refunds.ts", "symbol": "REFUND_WINDOW_DAYS", "grade": 2 },
+        { "path": "payments/refunds.ts", "symbol": "issueRefund", "grade": 1 }
+      ]
+    },
+    {
+      "id": "p-pay-002",
+      "principal": "prn_payments",
+      "query": "how is the refund reserve rate calculated",
+      "relevant": [
+        { "path": "payments/reserve.ts", "symbol": "reserveRate", "grade": 3 },
+        { "path": "payments/reserve.ts", "symbol": "reserveFor", "grade": 1 }
+      ]
+    },
+    {
+      "id": "p-pay-003",
+      "principal": "prn_payments",
+      "query": "what happens when a refund is outside the window",
+      "relevant": [
+        { "path": "payments/refunds.ts", "symbol": "issueRefund", "grade": 3 },
+        { "path": "payments/refunds.ts", "symbol": "withinWindow", "grade": 2 },
+        { "path": "payments/refunds.ts", "symbol": "recordRefund", "grade": 1 }
+      ]
+    }
+  ]
+}

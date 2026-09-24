@@ -232,6 +232,58 @@ describe("check", () => {
     expect(violations[0]?.rule).toBe("provider-sdk-outside-gateway");
   });
 
+  describe("an exhibit or application imported by its package name (P16)", () => {
+    // Found by building the first exhibit: the leaf rules had only ever been demonstrated against
+    // relative-path imports. A workspace package imported by its name resolved to EXTERNAL and
+    // passed as though it were an npm dependency — which is the normal way to import one.
+    const names = new Map([
+      ["@atlasops/exhibit-rag-02-codebase", "exhibits/rag-02-codebase"],
+      ["@atlasops/api", "apps/api"],
+    ]);
+
+    it("resolves the name to the member that owns it", () => {
+      expect(
+        ownerOfSpecifier(
+          manifest,
+          "packages/governance/src/a.ts",
+          "@atlasops/exhibit-rag-02-codebase",
+          names,
+        ),
+      ).toBe("exhibits/rag-02-codebase");
+      expect(
+        ownerOfSpecifier(
+          manifest,
+          "packages/governance/src/a.ts",
+          "@atlasops/api/src/config.js",
+          names,
+        ),
+      ).toBe("apps/api");
+    });
+
+    it("fails a package importing an exhibit by name", () => {
+      const violations = run([
+        edge(
+          "packages/governance/src/a.ts",
+          "@atlasops/governance",
+          "@atlasops/exhibit-rag-02-codebase",
+          ownerOfSpecifier(
+            manifest,
+            "packages/governance/src/a.ts",
+            "@atlasops/exhibit-rag-02-codebase",
+            names,
+          ),
+        ),
+      ]);
+      expect(violations[0]?.rule).toBe("exhibit-is-a-leaf");
+    });
+
+    it("still treats a genuine npm package as external", () => {
+      expect(ownerOfSpecifier(manifest, "packages/governance/src/a.ts", "typescript", names)).toBe(
+        EXTERNAL,
+      );
+    });
+  });
+
   it("reports an unowned source file", () => {
     const violations = run([], ["packages/stray/src/index.ts"]);
     expect(violations[0]?.rule).toBe("unowned-source");

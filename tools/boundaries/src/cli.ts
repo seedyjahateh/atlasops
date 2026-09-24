@@ -11,7 +11,13 @@ import { fileURLToPath } from "node:url";
 
 import { check } from "./check.js";
 import { renderEvidence } from "./evidence.js";
-import { edgesFrom, listSourceFiles, ownerOfFile, readSources } from "./graph.js";
+import {
+  edgesFrom,
+  listSourceFiles,
+  ownerOfFile,
+  readSources,
+  workspacePackageNames,
+} from "./graph.js";
 import { loadManifest, ManifestError } from "./manifest.js";
 import { renderTable } from "./table.js";
 
@@ -40,7 +46,7 @@ function runCheck(): number {
   const files = collectFiles();
   const owners = new Map(files.map((file) => [file, ownerOfFile(manifest, file)]));
   const sources = readSources(REPOSITORY_ROOT, files);
-  const edges = edgesFrom(manifest, sources);
+  const edges = edgesFrom(manifest, sources, workspacePackageNames(REPOSITORY_ROOT, manifest));
   const violations = check({ root: REPOSITORY_ROOT, manifest, files, edges, owners, sources });
 
   if (violations.length > 0) {
@@ -98,7 +104,7 @@ function runEvidence(argv: readonly string[], outputDir: string): number {
   const files = collectFiles();
   const owners = new Map(files.map((file) => [file, ownerOfFile(manifest, file)]));
   const sources = readSources(REPOSITORY_ROOT, files);
-  const edges = edgesFrom(manifest, sources);
+  const edges = edgesFrom(manifest, sources, workspacePackageNames(REPOSITORY_ROOT, manifest));
   const violations = check({ root: REPOSITORY_ROOT, manifest, files, edges, owners, sources });
 
   if (violations.length > 0) {

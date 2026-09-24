@@ -1,0 +1,18 @@
+{
+  "$comment": [
+    "One rule per repository. A repository is the access boundary this exhibit respects: whoever may",
+    "read a repository may read every symbol in it, and nobody else may read any of them. The same",
+    "manifest format as examples/corpus.acl.json, parsed by the same ingest code — no default rule,",
+    "so a repository added without one fails its own fetch rather than becoming readable."
+  ],
+  "rules": [
+    {
+      "prefix": "platform/",
+      "label": { "readableBy": ["grp_engineering"], "existence": "visible" }
+    },
+    {
+      "prefix": "payments/",
+      "label": { "readableBy": ["grp_payments"], "existence": "visible" }
+    }
+  ]
+}

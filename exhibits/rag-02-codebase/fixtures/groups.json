@@ -1,0 +1,9 @@
+{
+  "$comment": [
+    "prn_dev reads the platform repository only. prn_payments reads both. The interesting principal is",
+    "prn_dev: payments calls into platform, so 'who calls withRetry' has an answer in a repository",
+    "prn_dev may not read — and the call graph must not give it to them."
+  ],
+  "prn_dev": ["grp_engineering"],
+  "prn_payments": ["grp_engineering", "grp_payments"]
+}

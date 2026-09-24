@@ -28,7 +28,8 @@
     "app:ingest": "tsx apps/ingest-worker/src/main.ts --corpus examples/corpus --acl examples/corpus.acl.json",
     "app:eval": "tsx apps/eval-runner/src/main.ts --corpus examples/corpus --acl examples/corpus.acl.json --groups examples/corpus.groups.json --datasets examples/corpus.datasets.json",
     "app:console": "tsx apps/console/src/main.ts",
-    "smoke:openai": "tsx tools/smoke/openai.ts"
+    "smoke:openai": "tsx tools/smoke/openai.ts",
+    "exhibit:rag-02": "tsx exhibits/rag-02-codebase/src/cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
