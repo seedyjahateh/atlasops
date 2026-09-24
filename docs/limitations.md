@@ -43,7 +43,7 @@ bias; they do not remove it.
 
 ## What this build actually has, beyond PRD 12's four
 
-**Real models have run, and three of the four roles are real.** Since P18b the published
+**Real models have run, in two of the four roles.** Since P18b the published
 evaluation (`docs/evidence/run-*.json`) and load run (`docs/measurements/load-run.json`) used
 `text-embedding-3-small` and `gpt-4.1-mini`, priced from the dated table `openai-2026-09-24`. Two
 roles are still stand-ins, and each limits what the numbers mean:

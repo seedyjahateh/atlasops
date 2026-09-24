@@ -455,6 +455,10 @@ describe("the price table", () => {
 
   it("names the date in its version, so a cost record can be re-derived", () => {
     expect(OPENAI_PRICE_TABLE.version).toMatch(/^openai-\d{4}-\d{2}-\d{2}$/);
+    // The version is a literal so that a search finds it; this keeps the literal honest.
+    for (const [modelId, price] of Object.entries(OPENAI_PRICE_TABLE.models)) {
+      expect(OPENAI_PRICE_TABLE.version, modelId).toBe(`openai-${price.retrievedOn}`);
+    }
   });
 
   it("computes a cost that a reader can check by hand", () => {

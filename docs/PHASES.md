@@ -1280,7 +1280,7 @@ model and inventing one is not available.
       the rate limit is not in the export; and time to first token remains unmeasurable without
       streaming.
 
-- [ ] **P18c — The verdict, and a proposal or a refusal.** Decide each PRD 12 item met or unmet with
+- [x] **P18c — The verdict, and a proposal or a refusal.** Decide each PRD 12 item met or unmet with
       a generator that reads the published artefacts, rather than in prose; rewrite
       `docs/promotion-readiness.md` from its output. Acceptance: the verdict for every item comes
       from a generated artefact; if and only if all seven hold, the phase writes a **proposed**
@@ -1292,6 +1292,26 @@ model and inventing one is not available.
       **A refusal remains an acceptable outcome.** If the artefacts do not support `measured`, this
       phase says so again and the proposal is not written. P12 already established that the
       honest result of an evidence phase can be "no".
+
+      Done (ADR 0009). 798 tests across 30 files. `tools/readiness` decides all seven items from the
+      committed artefacts, imports nothing but Node built-ins and its own files (checked by a test
+      that reads its sources), and `pnpm readiness:check` joins `pnpm verify`, re-rendering both
+      outputs and failing on any difference — demonstrated against a hand edit and a deleted
+      proposal. **All seven items are met**, so `docs/promotion/RAG-01.proposed.json` exists: status
+      `in-progress` (the limitations list records PRD 9.4's degraded mode as unimplemented),
+      `proofLevel: measured`, 18 metrics each with a JSON pointer into its artefact, 7 evidence
+      entries, and every excluded metric listed with its reason. **Nothing is promoted**: the
+      portfolio manifest was not touched, and `integrity.reviewedBy` is left for a person.
+
+      The generator's first run failed two items, and both findings were real. The threat model
+      cited a test that does not exist; the price-table version was a template literal no search
+      could find. Both were fixed at the source, not by loosening the check. A third defect, found
+      by reading the proposal: the limitations list called three model roles real, and two are.
+
+      Recorded, not fixed: `docs/evidence/governance.md` still ends by saying PRD 12's other
+      artefacts "remain outstanding" — template text from before P18b. It is a published artefact
+      committed byte for byte, and correcting the template without a new paid run would make the
+      artefact and its generator disagree.
 
       **Why P18 is split.** Its acceptance asked for the artefacts "against the real adapter", and
       the real adapter from P13 is wired into nothing that produces an artefact: the evaluation

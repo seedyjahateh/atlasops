@@ -44,7 +44,10 @@ function published(
  * call, not by the table.
  */
 export const OPENAI_PRICE_TABLE: PriceTable = checkedPriceTable({
-  version: `openai-${READ_ON}`,
+  // A literal rather than `openai-${READ_ON}`, so that searching the repository for the version a
+  // published cost record is stamped with finds the table that priced it. The readiness verdict
+  // does exactly that search. The model-gateway test keeps it equal to the date every line cites.
+  version: "openai-2026-09-24",
   currency: "USD",
   models: {
     "text-embedding-3-small": published(0.02, 0),

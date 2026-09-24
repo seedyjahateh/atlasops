@@ -445,6 +445,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/telemetry
 
+  tools/readiness: {}
+
   tools/smoke:
     dependencies:
       '@atlasops/model-gateway':

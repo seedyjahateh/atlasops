@@ -1,0 +1,11 @@
+{
+  "name": "@atlasops/readiness",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Decides PRD 12's seven promotion items from the published artefacts, and proposes a manifest edit only when all seven hold.",
+  "exports": {
+    ".": "./verdict.ts",
+    "./proposal": "./proposal.ts"
+  }
+}
