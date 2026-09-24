@@ -87,6 +87,24 @@ export function failureKindForStatus(status: number): ModelFailureKind {
   return "invalid-request";
 }
 
+/**
+ * A 429 that is not a rate limit.
+ *
+ * OpenAI returns HTTP 429 for two different conditions: too many requests, which passes, and an
+ * account with no credit, which does not. The first version of this adapter read the status alone,
+ * so an empty balance was classified as a rate limit and retried three times with backoff — found
+ * by the first live call this repository ever made, which was answered with exactly that. Retrying
+ * cannot fix billing, and it delays the one message a person needs to read.
+ */
+const EXHAUSTED_QUOTA = ["insufficient_quota", "credit_balance_exhausted"];
+
+export function failureKindFor(status: number, body: string): ModelFailureKind {
+  if (status === 429 && EXHAUSTED_QUOTA.some((marker) => body.includes(marker))) {
+    return "invalid-request";
+  }
+  return failureKindForStatus(status);
+}
+
 interface CallInput {
   readonly capability: string;
   readonly path: string;
@@ -118,7 +136,7 @@ async function call(input: CallInput): Promise<unknown> {
   if (response.status < 200 || response.status >= 300) {
     throw new ModelError(
       input.capability,
-      failureKindForStatus(response.status),
+      failureKindFor(response.status, response.body),
       `HTTP ${String(response.status)}: ${redactKey(response.body, config.apiKey).slice(0, 400)}`,
     );
   }

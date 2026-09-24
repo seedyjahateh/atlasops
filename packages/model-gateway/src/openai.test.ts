@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 import { isModelError, ModelError } from "./errors.js";
 import { createEmbeddingGateway } from "./gateway.js";
 import {
+  failureKindFor,
   failureKindForStatus,
   openAiEmbedder,
   openAiGenerator,
@@ -294,6 +295,39 @@ describe("failures are classified so the existing retry loop keeps working", () 
     expect(outcome.attempts).toBe(2);
     expect(sleeper.delays()).toEqual([100]);
     expect(transport.sent()).toHaveLength(2);
+  });
+
+  it("does not retry an account with no credit, although it arrives as a 429", async () => {
+    // The first live call this repository made got exactly this response. Read by status alone it
+    // is a rate limit and gets retried three times with backoff; retrying cannot fix billing.
+    const body = JSON.stringify({
+      error: {
+        message: "You have no credits remaining.",
+        type: "insufficient_quota",
+        code: "credit_balance_exhausted",
+      },
+    });
+    expect(failureKindFor(429, body)).toBe("invalid-request");
+
+    const transport = recordingTransport([{ status: 429, body }]);
+    const gateway = createEmbeddingGateway(
+      openAiEmbedder({
+        apiKey: KEY,
+        model: OPENAI_DEFAULT_EMBEDDING_MODEL,
+        dimension: DIMENSION,
+        transport,
+      }),
+      { sleeper: recordingSleeper() },
+    );
+
+    await expect(gateway.embed(["hello"])).rejects.toThrow(/insufficient_quota/);
+    expect(transport.sent()).toHaveLength(1);
+  });
+
+  it("still retries a genuine rate limit", () => {
+    expect(failureKindFor(429, '{"error":{"type":"requests","code":"rate_limit_exceeded"}}')).toBe(
+      "rate-limited",
+    );
   });
 
   it("does not retry a malformed request", async () => {

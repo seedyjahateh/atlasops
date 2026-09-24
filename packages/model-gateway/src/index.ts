@@ -61,6 +61,7 @@ export {
 export {
   DEFAULT_TIMEOUT_MS,
   OPENAI_BASE_URL,
+  failureKindFor,
   failureKindForStatus,
   openAiEmbedder,
   openAiGenerator,
