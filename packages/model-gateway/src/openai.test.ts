@@ -29,6 +29,7 @@ import {
   redactKey,
   OPENAI_BASE_URL,
 } from "./openai.js";
+import { UNSELECTED_RERANKER, openAiModelSet, parseModelChoice } from "./model-set.js";
 import {
   OPENAI_DEFAULT_EMBEDDING_DIMENSION,
   OPENAI_DEFAULT_EMBEDDING_MODEL,
@@ -326,6 +327,48 @@ describe("the recorded transport", () => {
     await expect(
       transport.send({ url: "u", method: "POST", headers: {}, body: "{}", timeoutMs: 1 }),
     ).rejects.toThrow(/1 recorded exchange\(s\) and was called 2/);
+  });
+});
+
+describe("choosing a model set (P18a)", () => {
+  it("defaults to the stand-ins, so nothing spends money unless asked", () => {
+    expect(parseModelChoice(undefined)).toBe("stand-in");
+    expect(parseModelChoice("")).toBe("stand-in");
+  });
+
+  it("refuses a set this build does not have, naming the ones it does", () => {
+    expect(() => parseModelChoice("anthropic")).toThrow(/Installed: stand-in, openai/);
+  });
+
+  it("refuses to build the OpenAI set without a key, naming the variable", () => {
+    expect(() => openAiModelSet({})).toThrow(/OPENAI_API_KEY is not set/);
+  });
+
+  it("builds embedder and generator with the dated price table", () => {
+    const set = openAiModelSet({ OPENAI_API_KEY: KEY }, { transport: recordingTransport([]) });
+
+    expect(set.identifiers.embedder).toBe(OPENAI_DEFAULT_EMBEDDING_MODEL);
+    expect(set.identifiers.generator).toBe(OPENAI_DEFAULT_GENERATION_MODEL);
+    expect(set.prices).toBe(OPENAI_PRICE_TABLE);
+    expect(set.embedding.dimension).toBe(OPENAI_DEFAULT_EMBEDDING_DIMENSION);
+  });
+
+  it("records the reranker as unselected rather than inventing one", () => {
+    const set = openAiModelSet({ OPENAI_API_KEY: KEY }, { transport: recordingTransport([]) });
+    expect(set.identifiers.reranker).toBe(UNSELECTED_RERANKER);
+    expect(set.identifiers.reranker).toMatch(/unselected/);
+  });
+
+  it("asks the generator for JSON mode, so a code fence cannot fail every answer", async () => {
+    const transport = recordingTransport([{ status: 200, body: chatBody('{"abstain":true}') }]);
+    const set = openAiModelSet({ OPENAI_API_KEY: KEY }, { transport });
+
+    await set.generator.generate({ system: "Answer with a JSON object.", user: "q" });
+
+    const payload = JSON.parse(transport.sent()[0]?.body ?? "{}") as {
+      response_format?: { type: string };
+    };
+    expect(payload.response_format).toEqual({ type: "json_object" });
   });
 });
 

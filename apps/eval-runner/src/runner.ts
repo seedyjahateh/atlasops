@@ -18,7 +18,12 @@
 
 import { readFileSync } from "node:fs";
 
-import { formatGroupId, parsePrincipalId, type GroupId } from "@atlasops/contracts";
+import {
+  formatGroupId,
+  parsePrincipalId,
+  type EmbeddingModelRef,
+  type GroupId,
+} from "@atlasops/contracts";
 import {
   CORPUS_CHUNKING,
   corpusSnapshotOf,
@@ -63,13 +68,17 @@ import {
   deterministicVector,
   fakeReranker,
   inMemoryEmbeddingCache,
+  openAiModelSet,
+  parseModelChoice,
   realSleeper,
   type EmbedRequest,
   type EmbedResult,
   type Embedder,
+  type Generator,
+  type ModelChoice,
 } from "@atlasops/model-gateway";
 import { RETRIEVAL_DEFAULTS } from "@atlasops/retrieval";
-import { UNPRICED_TABLE, systemClock } from "@atlasops/telemetry";
+import { UNPRICED_TABLE, systemClock, type PriceTable } from "@atlasops/telemetry";
 
 export class ConfigError extends Error {
   public override readonly name = "ConfigError";
@@ -100,6 +109,13 @@ export interface RunnerConfig {
    * only held out if the routine loop does not read it, and the routine loop is this command.
    */
   readonly unsealReason: string | null;
+  /**
+   * Which models answer: the stand-ins, or the OpenAI adapter (P13).
+   *
+   * The stand-ins are the default so that nothing spends money because a flag was forgotten. The
+   * real set refuses to start without `OPENAI_API_KEY`, and every artefact names the set it used.
+   */
+  readonly models: ModelChoice;
   /**
    * The commit this run was made from.
    *
@@ -149,11 +165,61 @@ export function readRunnerConfig(
     aclManifest: optionalPath(flag(argv, "acl") ?? env.ATLASOPS_ACL_MANIFEST),
     groupMap: optionalPath(flag(argv, "groups") ?? env.ATLASOPS_GROUP_MAP),
     unsealReason: optionalPath(flag(argv, "final") ?? env.ATLASOPS_UNSEAL_REASON),
+    models: modelChoiceFrom(flag(argv, "models") ?? env.ATLASOPS_MODELS),
     commit: flag(argv, "commit") ?? env.ATLASOPS_COMMIT ?? null,
   };
 }
 
+function modelChoiceFrom(value: string | undefined): ModelChoice {
+  try {
+    return parseModelChoice(value);
+  } catch (error) {
+    throw new ConfigError(
+      `ATLASOPS_MODELS: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 const EMBEDDING = { id: "stand-in-embedder", dimension: 64 };
+
+interface RunModels {
+  readonly embedder: Embedder;
+  readonly embedding: EmbeddingModelRef;
+  readonly generator: Generator;
+  readonly prices: PriceTable;
+  readonly identifiers: Readonly<Record<string, string>>;
+}
+
+/**
+ * The models this run answers with.
+ *
+ * The OpenAI set comes from `model-gateway`, which is the only place a provider may enter; the
+ * stand-in generator comes from `grounding`, because it emits the answer structure grounding owns.
+ * The reranker is the stand-in in both, and the identifiers say it is unselected.
+ */
+export function runModels(
+  choice: ModelChoice,
+  env: Readonly<Record<string, string | undefined>>,
+): RunModels {
+  if (choice === "openai") {
+    try {
+      return openAiModelSet(env);
+    } catch (error) {
+      throw new ConfigError(error instanceof Error ? error.message : String(error));
+    }
+  }
+  return {
+    embedder: standInEmbedder,
+    embedding: EMBEDDING,
+    generator: citingStandIn(),
+    prices: UNPRICED_TABLE,
+    identifiers: {
+      embedder: EMBEDDING.id,
+      reranker: "stand-in-reranker",
+      generator: STAND_IN_MODEL_ID,
+    },
+  };
+}
 
 const standInEmbedder: Embedder = {
   model: EMBEDDING,
@@ -188,14 +254,18 @@ export interface EvaluationOutcome {
 export async function runEvaluationSuite(
   config: RunnerConfig,
   datasets: DatasetsFile,
+  env: Readonly<Record<string, string | undefined>> = process.env,
 ): Promise<EvaluationOutcome> {
+  // Chosen before anything is built, so a missing key stops the run before it ingests a byte.
+  const models = runModels(config.models, env);
+
   const store = inMemoryCorpusStore();
-  const schema = currentSchema(EMBEDDING);
+  const schema = currentSchema(models.embedding);
   const lexical = inMemoryLexicalIndex(schema);
   const vector = inMemoryVectorIndex(schema);
   const group: GroupId = formatGroupId(config.corpusGroup);
   const cache = inMemoryEmbeddingCache();
-  const embeddings = createEmbeddingGateway(standInEmbedder, { sleeper: realSleeper, cache });
+  const embeddings = createEmbeddingGateway(models.embedder, { sleeper: realSleeper, cache });
 
   const ingestion = createIngestionPipeline(
     {
@@ -270,7 +340,8 @@ export async function runEvaluationSuite(
     sleeper: realSleeper,
     clock: systemClock,
     reranker: fakeReranker("stand-in-reranker"),
-    generator: citingStandIn(),
+    generator: models.generator,
+    prices: models.prices,
     groups: staticGroupResolver(
       config.groupMap === null
         ? { prn_alice: [group], prn_reader: [group] }
@@ -290,14 +361,10 @@ export async function runEvaluationSuite(
         baseConfig: RETRIEVAL_DEFAULTS,
         ...loaded,
         judge: fixtureJudge({ modelId: "stand-in-judge", promptVersion: "v1" }),
-        prices: UNPRICED_TABLE,
-        // PRD 12 item 2. Every one of these is a stand-in, and naming them is how a reader of the
-        // artefact can tell that without being told.
-        models: {
-          embedder: EMBEDDING.id,
-          reranker: "stand-in-reranker",
-          generator: STAND_IN_MODEL_ID,
-        },
+        prices: models.prices,
+        // PRD 12 item 2: the identifiers of the models that actually answered, by role. A stand-in
+        // says so in its name, and an unselected reranker says so in its entry.
+        models: models.identifiers,
         ...(config.commit === null ? {} : { commit: config.commit }),
         // Development only unless `--final "<reason>"` says otherwise. The held-out split is only
         // held out if this command — the routine one — does not read it (PRD 8.1).

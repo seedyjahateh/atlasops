@@ -12,7 +12,13 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { artefactsFor, readRunnerConfig, runEvaluationSuite, type DatasetsFile } from "./runner.js";
+import {
+  artefactsFor,
+  readRunnerConfig,
+  runEvaluationSuite,
+  runModels,
+  type DatasetsFile,
+} from "./runner.js";
 
 const CORPUS = fileURLToPath(new URL("../../../examples/corpus", import.meta.url));
 const DATASETS_PATH = fileURLToPath(
@@ -37,6 +43,33 @@ describe("configuration", () => {
     const config = readRunnerConfig(ENV);
     expect(config.outputDir).toBe("evidence");
     expect(config.allowSnapshotMismatch).toBe(true);
+  });
+});
+
+describe("which models answer (P18a)", () => {
+  it("defaults to the stand-ins", () => {
+    // A command that spends money must not do so because somebody forgot a flag.
+    expect(readRunnerConfig(ENV).models).toBe("stand-in");
+  });
+
+  it("takes the OpenAI set only when asked", () => {
+    expect(readRunnerConfig(ENV, ["--models", "openai"]).models).toBe("openai");
+  });
+
+  it("refuses a model set it does not have", () => {
+    expect(() => readRunnerConfig(ENV, ["--models", "gpt-9"])).toThrow(/ATLASOPS_MODELS/);
+  });
+
+  it("refuses to run the OpenAI set without a key, before ingesting anything", async () => {
+    // The key is checked first, so a missing one costs nothing and names the variable.
+    await expect(
+      runEvaluationSuite(readRunnerConfig(ENV, ["--models", "openai"]), DATASETS, {}),
+    ).rejects.toThrow(/OPENAI_API_KEY is not set/);
+  });
+
+  it("records the stand-ins by name when they answered", () => {
+    const models = runModels("stand-in", {});
+    expect(Object.values(models.identifiers).every((id) => id.startsWith("stand-in"))).toBe(true);
   });
 });
 

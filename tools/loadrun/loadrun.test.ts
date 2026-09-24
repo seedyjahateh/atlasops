@@ -15,7 +15,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  LOCAL_RERANKER,
   parseWorkload,
+  requestCost,
   runPool,
   workloadHash,
   type LoadRunResult,
@@ -46,20 +48,26 @@ function sample(overrides: Partial<RequestSample> = {}): RequestSample {
       { stage: "verification", inclusiveMs: 2, selfMs: 2, count: 1 },
     ],
     costUsd: null,
+    retrievalCostUsd: null,
     inputTokens: 10,
     outputTokens: 5,
     ...overrides,
   };
 }
 
-function result(samples: readonly RequestSample[], cacheHits = 0): LoadRunResult {
+function result(
+  samples: readonly RequestSample[],
+  cacheHits = 0,
+  ingestionCostUsd: number | null = null,
+): LoadRunResult {
   return {
     profile: PROFILE,
     samples,
     startedAt: "2026-09-24T00:00:00.000Z",
     finishedAt: "2026-09-24T00:01:00.000Z",
     chunksIngested: 35,
-    ingestionEmbeddingTokens: 35,
+    ingestionEmbeddingTokens: 4200,
+    ingestionCostUsd,
     retrievalCacheHits: cacheHits,
   };
 }
@@ -187,6 +195,121 @@ describe("the record", () => {
 
     expect(rerank?.value).toBeNull();
     expect(rerank?.unmeasured).toMatch(/no span/);
+  });
+});
+
+describe("cost, when every model call is priced (P18a)", () => {
+  // Synthetic costs, in round numbers, so nobody reads them as measurements.
+  const priced = [
+    sample({ index: 0, costUsd: 0.001, retrievalCostUsd: 0.0001 }),
+    sample({ index: 1, costUsd: 0.002, retrievalCostUsd: 0.0001 }),
+    sample({ index: 2, costUsd: 0.003, retrievalCostUsd: 0.0001 }),
+    sample({ index: 3, costUsd: 0.0001, retrievalCostUsd: 0.0001, abstained: true }),
+  ];
+
+  it("measures cost per answer at the percentile each budget names", () => {
+    // p50 and p95 are different budgets. The first version took p95 of everything, which would
+    // have reported the tail under the name of the median.
+    const record = recordOf(result(priced), null);
+    const p50 = record.budgets.find((row) => row.id === "COST-PER-ANSWER-P50");
+    const p95 = record.budgets.find((row) => row.id === "COST-PER-ANSWER-P95");
+
+    expect(p50?.value).toBe(0.002);
+    expect(p95?.value).toBe(0.003);
+  });
+
+  it("prices answered queries only", () => {
+    // "Per answered query": the abstention's cheaper cost must not pull the figure down.
+    const record = recordOf(result(priced), null);
+    expect(record.budgets.find((row) => row.id === "COST-PER-ANSWER-P50")?.sampleSize).toBe(3);
+  });
+
+  it("says every cost figure excludes the unselected reranker", () => {
+    const record = recordOf(result(priced), null);
+    for (const id of ["COST-PER-ANSWER-P50", "COST-PER-ANSWER-P95", "RETRIEVAL-ONLY-COST"]) {
+      expect(record.budgets.find((row) => row.id === id)?.caveat, id).toMatch(/excludes reranking/);
+    }
+  });
+
+  it("reports ingestion cost per thousand chunks from the embedder's own token count", () => {
+    const record = recordOf(result(priced, 0, 0.0035), null);
+    const row = record.budgets.find((entry) => entry.id === "INGESTION-COST-PER-1K-CHUNKS");
+
+    // 0.0035 over 35 chunks is 0.0001 per chunk, 0.1 per thousand.
+    expect(row?.value).toBeCloseTo(0.1, 10);
+    expect(row?.caveat).toMatch(/4200 embedding tokens/);
+  });
+
+  it("stays unmeasured if any answered query was unpriced", () => {
+    // A total over the priced ones would be a real number describing part of the run.
+    const mixed = [...priced, sample({ index: 4, costUsd: null })];
+    const row = recordOf(result(mixed), null).budgets.find(
+      (entry) => entry.id === "COST-PER-ANSWER-P50",
+    );
+    expect(row?.value).toBeNull();
+    expect(row?.unmeasured).toMatch(/ADR 0002/);
+  });
+});
+
+describe("a request's cost includes every model call it made (P18a)", () => {
+  function trace(spans: readonly { modelId: string; cost: number | null }[]) {
+    return {
+      requestId: "req_x",
+      totalMs: 1,
+      degraded: false,
+      spans: spans.map((span, id) => ({
+        id,
+        parentId: null,
+        stage: "dense-retrieval" as const,
+        startedAt: 0,
+        endedAt: 1,
+        durationMs: 1,
+        degraded: false,
+        model: {
+          modelId: span.modelId,
+          cacheHit: false,
+          retries: 0,
+          cost:
+            span.cost === null
+              ? null
+              : {
+                  modelId: span.modelId,
+                  inputTokens: 1,
+                  outputTokens: 0,
+                  amountUsd: span.cost,
+                  priceTableVersion: "t",
+                },
+        },
+      })),
+    } as unknown as Parameters<typeof requestCost>[0];
+  }
+
+  it("adds the query embedding to the generation", () => {
+    // Until P18a the embedding span recorded no model call, so this total was generation alone.
+    const cost = requestCost(trace([{ modelId: "text-embedding-3-small", cost: 0.0001 }]), 0.002);
+    expect(cost.total).toBeCloseTo(0.0021, 10);
+    expect(cost.retrieval).toBeCloseTo(0.0001, 10);
+  });
+
+  it("lets the local stand-in reranker through, by name only", () => {
+    const cost = requestCost(
+      trace([
+        { modelId: "text-embedding-3-small", cost: 0.0001 },
+        { modelId: LOCAL_RERANKER, cost: null },
+      ]),
+      0.002,
+    );
+    expect(cost.total).toBeCloseTo(0.0021, 10);
+  });
+
+  it("is unknown when any other call is unpriced", () => {
+    const cost = requestCost(trace([{ modelId: "some-unpriced-embedder", cost: null }]), 0.002);
+    expect(cost.total).toBeNull();
+  });
+
+  it("is unknown when generation is unpriced", () => {
+    const cost = requestCost(trace([{ modelId: "text-embedding-3-small", cost: 0.0001 }]), null);
+    expect(cost.total).toBeNull();
   });
 });
 

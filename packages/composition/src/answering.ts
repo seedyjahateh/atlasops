@@ -92,6 +92,8 @@ export function createAnswerPipeline(
         oracle: ports.oracle,
         sleeper: ports.sleeper,
         clock: ports.clock,
+        // The same table grounding prices generation with, so a request is priced once, whole.
+        prices: ports.prices ?? UNPRICED_TABLE,
         ...(ports.retrievalCache === undefined ? {} : { cache: ports.retrievalCache }),
       },
       {

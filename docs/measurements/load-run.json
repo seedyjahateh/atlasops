@@ -1,6 +1,6 @@
 {
   "profile": {
-    "id": "local-standin-c4",
+    "id": "local-stand-in-c4",
     "corpusSnapshot": "sha256:f05a2049d6de1bb249071782efe6e5d32e092a7fb39bf65e66af376b5179b8b9",
     "workload": "sha256:e32b75e87ef455fb27c16c47517cd3e02400c44c4d85a24dc4b6c590fcb23c34",
     "models": {
@@ -11,9 +11,9 @@
     "hardware": "12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process",
     "concurrency": 4
   },
-  "startedAt": "2026-09-24T14:56:46.772Z",
-  "finishedAt": "2026-09-24T14:56:46.813Z",
-  "commit": "923a09a",
+  "startedAt": "2026-09-24T17:17:13.359Z",
+  "finishedAt": "2026-09-24T17:17:13.400Z",
+  "commit": null,
   "requests": 260,
   "abstentions": 0,
   "chunksIngested": 35,
@@ -22,99 +22,99 @@
   "latency": [
     {
       "stage": "end-to-end",
-      "p50": 0.19360000000000355,
-      "p95": 1.051900000000046,
+      "p50": 0.23329999999998563,
+      "p95": 1.0670999999999822,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "end-to-end (retrieval cache miss)",
-      "p50": 3.064799999999991,
-      "p95": 15.437199999999962,
+      "p50": 3.312000000000012,
+      "p95": 13.72479999999996,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "end-to-end (retrieval cache hit)",
-      "p50": 0.19240000000002055,
-      "p95": 0.720799999999997,
+      "p50": 0.22860000000002856,
+      "p95": 0.8822000000000116,
       "samples": 247,
       "p95IsMaximum": false
     },
     {
       "stage": "audit-write",
-      "p50": 0.03469999999998663,
-      "p95": 0.13269999999999982,
+      "p50": 0.03880000000003747,
+      "p95": 0.1514999999999418,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "dense-retrieval",
-      "p50": 1.248299999999972,
-      "p95": 2.1464999999999463,
+      "p50": 0.7794000000000096,
+      "p95": 1.6015999999999622,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "fusion",
-      "p50": 0.009999999999990905,
-      "p95": 8.613200000000006,
+      "p50": 0.011999999999943611,
+      "p95": 7.968599999999924,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "generation",
-      "p50": 0.03820000000001755,
-      "p95": 0.3172000000000139,
+      "p50": 0.04270000000008167,
+      "p95": 0.38970000000006166,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "lexical-retrieval",
-      "p50": 1.3898000000000366,
-      "p95": 9.98320000000001,
+      "p50": 0.8119000000000369,
+      "p95": 8.853899999999953,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "permission-compile",
-      "p50": 0.002200000000016189,
-      "p95": 0.007599999999968077,
+      "p50": 0.002399999999965985,
+      "p95": 0.006300000000010186,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "permission-resolution",
-      "p50": 0.028799999999989723,
-      "p95": 0.09969999999998436,
+      "p50": 0.031899999999950523,
+      "p95": 0.14840000000003783,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "prompt-assembly",
-      "p50": 0.010300000000029286,
-      "p95": 0.028900000000021464,
+      "p50": 0.011099999999942156,
+      "p95": 0.024199999999950705,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "query-normalisation",
-      "p50": 0.004099999999993997,
-      "p95": 0.012600000000020373,
+      "p50": 0.004600000000095861,
+      "p95": 0.017099999999913962,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "reranking",
-      "p50": 0.2617999999999938,
-      "p95": 0.8129999999999882,
+      "p50": 0.2586000000000013,
+      "p95": 0.8152000000000044,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "verification",
-      "p50": 0.002299999999991087,
-      "p95": 0.008300000000019736,
+      "p50": 0.0024000000000796717,
+      "p95": 0.008600000000001273,
       "samples": 260,
       "p95IsMaximum": false
     }
@@ -125,7 +125,7 @@
       "target": 3000,
       "unit": "ms",
       "method": "scripted load run, fixed workload, stated concurrency",
-      "value": 1.051900000000046,
+      "value": 1.0670999999999822,
       "sampleSize": 260,
       "within": true,
       "unmeasured": null,
@@ -147,7 +147,7 @@
       "target": 400,
       "unit": "ms",
       "method": "span aggregation",
-      "value": 12.082299999999918,
+      "value": 10.307099999999991,
       "sampleSize": 13,
       "within": true,
       "unmeasured": null,
@@ -158,7 +158,7 @@
       "target": 500,
       "unit": "ms",
       "method": "span aggregation at fixed candidate depth",
-      "value": 0.8129999999999882,
+      "value": 0.8152000000000044,
       "sampleSize": 13,
       "within": true,
       "unmeasured": null,
@@ -169,7 +169,7 @@
       "target": 50,
       "unit": "ms",
       "method": "span aggregation",
-      "value": 0.10199999999997544,
+      "value": 0.17870000000016262,
       "sampleSize": 260,
       "within": true,
       "unmeasured": null,
@@ -180,7 +180,7 @@
       "target": 100,
       "unit": "ms",
       "method": "span aggregation",
-      "value": 0.008300000000019736,
+      "value": 0.008600000000001273,
       "sampleSize": 260,
       "within": true,
       "unmeasured": null,
@@ -194,7 +194,7 @@
       "value": null,
       "sampleSize": null,
       "within": null,
-      "unmeasured": "every model in this run is a stand-in and a stand-in has no price (ADR 0002). Reporting zero would make this budget pass trivially while the real figure surfaced on an invoice",
+      "unmeasured": "at least one model in this run has no price in the table in force (ADR 0002). Reporting zero would make this budget pass trivially while the real figure surfaced on an invoice",
       "caveat": null
     },
     {
@@ -205,7 +205,7 @@
       "value": null,
       "sampleSize": null,
       "within": null,
-      "unmeasured": "every model in this run is a stand-in and a stand-in has no price (ADR 0002). Reporting zero would make this budget pass trivially while the real figure surfaced on an invoice",
+      "unmeasured": "at least one model in this run has no price in the table in force (ADR 0002). Reporting zero would make this budget pass trivially while the real figure surfaced on an invoice",
       "caveat": null
     },
     {
@@ -216,7 +216,7 @@
       "value": null,
       "sampleSize": null,
       "within": null,
-      "unmeasured": "token counts exist for this run; a price for the model that produced them does not (ADR 0002). The denominator is real and the rate is not",
+      "unmeasured": "at least one model in this run has no price in the table in force (ADR 0002). Reporting zero would make this budget pass trivially while the real figure surfaced on an invoice",
       "caveat": null
     },
     {
@@ -227,7 +227,7 @@
       "value": null,
       "sampleSize": null,
       "within": null,
-      "unmeasured": "token counts exist for this run; a price for the model that produced them does not (ADR 0002). The denominator is real and the rate is not",
+      "unmeasured": "at least one model in this run has no price in the table in force (ADR 0002). Reporting zero would make this budget pass trivially while the real figure surfaced on an invoice",
       "caveat": null
     }
   ]

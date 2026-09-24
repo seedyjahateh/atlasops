@@ -72,6 +72,16 @@ export {
 } from "./openai.js";
 
 export {
+  MODEL_CHOICES,
+  UNSELECTED_RERANKER,
+  openAiModelSet,
+  parseModelChoice,
+  type ModelChoice,
+  type OpenAiModelSetOptions,
+  type ProviderModelSet,
+} from "./model-set.js";
+
+export {
   OPENAI_DEFAULT_EMBEDDING_DIMENSION,
   OPENAI_DEFAULT_EMBEDDING_MODEL,
   OPENAI_DEFAULT_GENERATION_MODEL,

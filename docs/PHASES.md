@@ -1162,7 +1162,7 @@ model and inventing one is not available.
       boundary change, and a boundary change should not be buried in a commit that also adds an
       exhibit.
 
-- [ ] **P18a — Real models, selectable where evidence is produced.** The evaluation runner and the
+- [x] **P18a — Real models, selectable where evidence is produced.** The evaluation runner and the
       load run choose their model set by configuration — the stand-ins, or the OpenAI adapter from
       P13 — and every artefact records which. Implements the half of PRD 12 items 2 and 4 that says
       the report is "against the reference profile", which pins model identifiers. Acceptance:
@@ -1171,6 +1171,46 @@ model and inventing one is not available.
       says it is unselected rather than inventing one; the stand-ins remain the default, so no
       command spends money unless asked to; tests drive the real-model path through the recorded
       transport, and none reaches the network.
+
+      Done. 744 tests across 29 files. `pnpm app:eval -- --models openai` and
+      `pnpm loadrun -- --models openai` now construct the P13 adapters and the dated price table;
+      without `OPENAI_API_KEY` both refuse before ingesting a byte, naming the variable. Stand-ins
+      stay the default. **No live call has been made**: the key was reported added, but it is not
+      visible to this session's processes at process, user or machine scope, and the phase does not
+      need it.
+
+      **The query embedding had never been priced.** Wiring the real set exposed that the
+      dense-retrieval span ended without a model record — the query embedding's tokens and cost
+      went nowhere, and the rerank span was the same. A request's cost would have been its
+      generation alone, understating PRD 9.3's cost per answer by exactly retrieval's share, with
+      real prices in the table and nothing to show the gap. Both spans now record their model call,
+      priced from the same table grounding uses, which composition passes to both.
+
+      **The unselected reranker could have made cost unmeasurable forever.** Every run uses the
+      stand-in reranker because no rerank model is selected, and it is unpriced — so "any unpriced
+      call makes the request's cost unknown" would null every request for a reason that has nothing
+      to do with cost. Treating it as costing zero would break ADR 0002 in spirit. The rule is:
+      any unpriced call nulls the request, except the local stand-in reranker **by name**, and every
+      cost figure carries a caveat that it excludes reranking and that a selected rerank model would
+      add its own price. It is excluded by name so that nothing else can slip through with it.
+
+      **The p50 cost budget would have been measured at p95.** The first version of the load run's
+      measurement took p95 of every row, harmless while every cost row was unmeasured and wrong the
+      moment one became measurable. Each budget now declares its percentile, with a test that the
+      two cost budgets report different numbers from the same run.
+
+      **A field named `ingestionEmbeddingTokens` held the chunk count.** Never printed, and wrong
+      regardless; it is now the embedder's own usage figure, which the ingestion pipeline was
+      already summing. Found by reading what P18b would divide by.
+
+      **JSON mode on the generator.** Grounding's prompt asks for a JSON object in words, and a model
+      that honours the request but wraps the object in a Markdown fence produces text `JSON.parse`
+      rejects — every answer would fail verification for a formatting reason, and the first real
+      evaluation would have measured code fences. JSON mode removes the fence without loosening the
+      parser.
+
+      Cost per answer counts **answered** queries only, per PRD 9.3's wording: an abstention costs
+      less, and folding it in would lower the figure for a reason unrelated to answering.
 
 - [ ] **P18b — Re-evidence, and a promotion proposal.** Regenerate all seven PRD 12 artefacts; decide
       each item met or unmet with a generator that reads the artefacts, rather than in prose; rewrite

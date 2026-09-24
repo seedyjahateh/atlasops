@@ -16,6 +16,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { parseModelChoice } from "@atlasops/model-gateway";
+
 import { runLoad } from "./harness.js";
 import { breachesIn, recordOf, unmeasuredIn, type LoadRunRecord } from "./measure.js";
 import { renderLoadReport } from "./render.js";
@@ -84,6 +86,8 @@ async function run(argv: readonly string[]): Promise<number> {
   const concurrency = Number(flag(argv, "concurrency", "4"));
   const repeats = Number(flag(argv, "repeats", "20"));
   const commitFlag = flag(argv, "commit", "");
+  // Stand-ins unless asked. The real set spends money, and a forgotten flag must not.
+  const models = parseModelChoice(flag(argv, "models", "stand-in"));
 
   const result = await runLoad({
     corpusRoot: join(ROOT, "examples", "corpus"),
@@ -92,7 +96,10 @@ async function run(argv: readonly string[]): Promise<number> {
     workloadFile: join(ROOT, "examples", "corpus.workload.json"),
     concurrency,
     repeats,
-    profileId: `local-standin-c${String(concurrency)}`,
+    profileId: `local-${models}-c${String(concurrency)}`,
+    models,
+    env: process.env,
+    retrievalCache: !argv.includes("--no-cache"),
   });
 
   const record = recordOf(result, commitFlag.length === 0 ? null : commitFlag);

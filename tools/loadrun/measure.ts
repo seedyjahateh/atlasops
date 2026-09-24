@@ -157,21 +157,46 @@ function latencyRows(result: LoadRunResult): readonly LatencyRow[] {
 
 interface Measured {
   readonly values: readonly number[];
+  /** Which percentile the budget names. p95 for every latency budget, p50 for one cost budget. */
+  readonly at: number;
+  /** Something true of this figure the number does not say. */
+  readonly caveat?: string;
+}
+
+const UNPRICED =
+  "at least one model in this run has no price in the table in force (ADR 0002). Reporting zero " +
+  "would make this budget pass trivially while the real figure surfaced on an invoice";
+
+/**
+ * Stated on every cost figure, because every run uses the stand-in reranker (no rerank model is
+ * selected, ADR 0006). It is a local function no provider bills for, so the figure is true of the
+ * system as configured — and understates any system with a selected reranker by that model's price.
+ */
+const EXCLUDES_RERANK =
+  "excludes reranking: the reranker is the unselected stand-in, a local function nobody bills for. " +
+  "A selected rerank model would add its own price to every answered query.";
+
+/** Costs of the answered queries, or null if any answered query could not be priced. */
+function answeredCosts(result: LoadRunResult): readonly number[] | null {
+  const answered = result.samples.filter((sample) => !sample.abstained);
+  if (answered.length === 0) return [];
+  const costs = answered.map((sample) => sample.costUsd);
+  return costs.some((cost) => cost === null) ? null : (costs as number[]);
 }
 
 /** Which budgets this run can fill, and from what. */
 function valuesFor(id: BudgetId, result: LoadRunResult): Measured | string {
   switch (id) {
     case "ANSWER-LATENCY-P95":
-      return { values: result.samples.map((sample) => sample.totalMs) };
+      return { values: result.samples.map((sample) => sample.totalMs), at: 95 };
     case "RETRIEVAL-STAGE-P95":
-      return { values: selfTimesFor(result.samples, [...STAGE_GROUPS.retrieval]) };
+      return { values: selfTimesFor(result.samples, [...STAGE_GROUPS.retrieval]), at: 95 };
     case "RERANK-STAGE-P95":
-      return { values: selfTimesFor(result.samples, ["reranking"]) };
+      return { values: selfTimesFor(result.samples, ["reranking"]), at: 95 };
     case "PERMISSION-P95":
-      return { values: selfTimesFor(result.samples, [...STAGE_GROUPS.permissions]) };
+      return { values: selfTimesFor(result.samples, [...STAGE_GROUPS.permissions]), at: 95 };
     case "VERIFICATION-P95":
-      return { values: selfTimesFor(result.samples, ["verification"]) };
+      return { values: selfTimesFor(result.samples, ["verification"]), at: 95 };
     case "TIME-TO-FIRST-TOKEN-P95":
       return (
         "no streaming instrumentation exists. The OpenAI adapter speaks the non-streaming " +
@@ -179,17 +204,32 @@ function valuesFor(id: BudgetId, result: LoadRunResult): Measured | string {
         "latency"
       );
     case "COST-PER-ANSWER-P50":
-    case "COST-PER-ANSWER-P95":
-      return (
-        "every model in this run is a stand-in and a stand-in has no price (ADR 0002). Reporting " +
-        "zero would make this budget pass trivially while the real figure surfaced on an invoice"
-      );
-    case "INGESTION-COST-PER-1K-CHUNKS":
-    case "RETRIEVAL-ONLY-COST":
-      return (
-        "token counts exist for this run; a price for the model that produced them does not " +
-        "(ADR 0002). The denominator is real and the rate is not"
-      );
+    case "COST-PER-ANSWER-P95": {
+      // "Per answered query" (PRD 9.3): an abstention answers nothing, and folding its cheaper cost
+      // in would lower the figure for a reason that has nothing to do with answering.
+      const costs = answeredCosts(result);
+      if (costs === null) return UNPRICED;
+      if (costs.length === 0) return "no query in this run was answered, so no answer was priced";
+      return { values: costs, at: id === "COST-PER-ANSWER-P50" ? 50 : 95, caveat: EXCLUDES_RERANK };
+    }
+    case "RETRIEVAL-ONLY-COST": {
+      const costs = result.samples.map((sample) => sample.retrievalCostUsd);
+      if (costs.some((cost) => cost === null)) return UNPRICED;
+      return { values: costs as number[], at: 95, caveat: EXCLUDES_RERANK };
+    }
+    case "INGESTION-COST-PER-1K-CHUNKS": {
+      if (result.ingestionCostUsd === null) return UNPRICED;
+      if (result.chunksIngested === 0) return "the ingestion wrote no chunks, so there is no rate";
+      // One figure over the fixture, not a percentile: PRD 9.3's method is "embedding token
+      // accounting over the fixture", and the fixture is ingested once.
+      return {
+        values: [(result.ingestionCostUsd / result.chunksIngested) * 1000],
+        at: 50,
+        caveat:
+          `one ingestion of ${String(result.chunksIngested)} chunks ` +
+          `(${String(result.ingestionEmbeddingTokens)} embedding tokens), priced at the table in force`,
+      };
+    }
     default:
       return "this run does not produce a value for this budget";
   }
@@ -250,7 +290,9 @@ function budgetRow(budget: Budget, result: LoadRunResult, measuredAt: string): B
 
   const measurement = measure({
     budgetId: budget.id,
-    value: percentile(outcome.values, 95),
+    // The percentile the budget names, not p95 for everything: the p50 cost budget measured at p95
+    // would report the tail and call it the median.
+    value: percentile(outcome.values, outcome.at),
     unit: budget.unit,
     profile: result.profile,
     sampleSize: outcome.values.length,
@@ -268,7 +310,10 @@ function budgetRow(budget: Budget, result: LoadRunResult, measuredAt: string): B
     sampleSize: measurement.sampleSize,
     within: checked.within,
     unmeasured: null,
-    caveat: caveatFor(budget, result),
+    caveat:
+      [caveatFor(budget, result), outcome.caveat ?? null]
+        .filter((entry): entry is string => entry !== null)
+        .join(" ") || null,
   };
 }
 

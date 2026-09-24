@@ -38,7 +38,7 @@ import {
 } from "@atlasops/contracts";
 import { inMemoryCorpusStore } from "@atlasops/corpus";
 import { inMemoryAuditSink, parseGroupMap, staticGroupResolver } from "@atlasops/governance";
-import { citingStandIn } from "@atlasops/grounding";
+import { STAND_IN_MODEL_ID, citingStandIn } from "@atlasops/grounding";
 import { currentSchema, inMemoryLexicalIndex, inMemoryVectorIndex } from "@atlasops/indexing";
 import {
   aclFromManifest,
@@ -51,15 +51,56 @@ import {
   deterministicVector,
   fakeReranker,
   inMemoryEmbeddingCache,
+  openAiModelSet,
   realSleeper,
   type EmbedRequest,
   type EmbedResult,
   type Embedder,
+  type Generator,
+  type ModelChoice,
 } from "@atlasops/model-gateway";
 import { inMemoryRetrievalCache } from "@atlasops/retrieval";
-import { systemClock, type ReferenceProfile, type StageTiming } from "@atlasops/telemetry";
+import {
+  UNPRICED_TABLE,
+  canPrice,
+  costOf,
+  systemClock,
+  traceCost,
+  type PriceTable,
+  type ReferenceProfile,
+  type StageTiming,
+  type Trace,
+} from "@atlasops/telemetry";
+import type { EmbeddingModelRef } from "@atlasops/contracts";
 
 const EMBEDDING = { id: "stand-in-embedder", dimension: 64 };
+
+interface LoadModels {
+  readonly embedder: Embedder;
+  readonly embedding: EmbeddingModelRef;
+  readonly generator: Generator;
+  readonly prices: PriceTable;
+  readonly identifiers: Readonly<Record<string, string>>;
+}
+
+/** The stand-ins by default; the OpenAI set only when asked for, and only with a key. */
+function loadModels(
+  choice: ModelChoice,
+  env: Readonly<Record<string, string | undefined>>,
+): LoadModels {
+  if (choice === "openai") return openAiModelSet(env);
+  return {
+    embedder: standInEmbedder,
+    embedding: EMBEDDING,
+    generator: citingStandIn(),
+    prices: UNPRICED_TABLE,
+    identifiers: {
+      embedder: EMBEDDING.id,
+      reranker: "stand-in-reranker",
+      generator: STAND_IN_MODEL_ID,
+    },
+  };
+}
 
 /** Named so every artefact records that no model produced these vectors. */
 const standInEmbedder: Embedder = {
@@ -142,7 +183,16 @@ export interface RequestSample {
   readonly cacheHit: boolean;
   readonly abstained: boolean;
   readonly stages: readonly StageTiming[];
+  /**
+   * What the whole request cost: the query embedding, the rerank and the generation together.
+   *
+   * Null if any model call in the request had no price — not the sum of the ones that did, which
+   * would be a real number describing part of the request. Until P18a the query embedding was
+   * recorded nowhere, so a request's cost would have been its generation alone.
+   */
   readonly costUsd: number | null;
+  /** The retrieval half alone — what a retrieval-only query costs (PRD 9.3). Null when unpriced. */
+  readonly retrievalCostUsd: number | null;
   readonly inputTokens: number;
   readonly outputTokens: number;
 }
@@ -154,7 +204,10 @@ export interface LoadRunResult {
   readonly finishedAt: string;
   /** Chunks the ingestion wrote, so ingestion cost per 1,000 chunks has a denominator. */
   readonly chunksIngested: number;
+  /** From the embedder's own usage record, summed by the ingestion pipeline. */
   readonly ingestionEmbeddingTokens: number;
+  /** What those tokens cost at the table in force. Null when the embedder is unpriced. */
+  readonly ingestionCostUsd: number | null;
   /**
    * How many requests retrieval served from its cache.
    *
@@ -174,6 +227,14 @@ export interface LoadRunOptions {
   /** How many times to run the workload through. */
   readonly repeats: number;
   readonly profileId: string;
+  /** The stand-ins unless asked otherwise. The real set needs `OPENAI_API_KEY`. */
+  readonly models: ModelChoice;
+  readonly env: Readonly<Record<string, string | undefined>>;
+  /**
+   * Whether repeated queries are served from the retrieval cache. On, as a deployment has it; the
+   * report separates the two populations either way.
+   */
+  readonly retrievalCache: boolean;
 }
 
 interface Built {
@@ -181,15 +242,19 @@ interface Built {
   readonly corpusSnapshot: string;
   readonly chunksIngested: number;
   readonly ingestionEmbeddingTokens: number;
+  readonly ingestionCostUsd: number | null;
+  readonly models: LoadModels;
 }
 
 async function build(options: LoadRunOptions): Promise<Built> {
+  // Chosen first, so a missing key stops the run before it spends anything on ingestion.
+  const models = loadModels(options.models, options.env);
   const store = inMemoryCorpusStore();
-  const schema = currentSchema(EMBEDDING);
+  const schema = currentSchema(models.embedding);
   const lexical = inMemoryLexicalIndex(schema);
   const vector = inMemoryVectorIndex(schema);
   const cache = inMemoryEmbeddingCache();
-  const embeddings = createEmbeddingGateway(standInEmbedder, { sleeper: realSleeper, cache });
+  const embeddings = createEmbeddingGateway(models.embedder, { sleeper: realSleeper, cache });
   const group = formatGroupId("loadrun");
 
   const ingestion = createIngestionPipeline(
@@ -233,11 +298,12 @@ async function build(options: LoadRunOptions): Promise<Built> {
     sleeper: realSleeper,
     clock: systemClock,
     reranker: fakeReranker("stand-in-reranker"),
-    generator: citingStandIn(),
+    generator: models.generator,
+    prices: models.prices,
     groups: staticGroupResolver(memberships),
     audit: inMemoryAuditSink(),
     oracle: corpusVersionOracle(store),
-    retrievalCache: inMemoryRetrievalCache(),
+    ...(options.retrievalCache ? { retrievalCache: inMemoryRetrievalCache() } : {}),
     now: () => new Date().toISOString(),
   });
 
@@ -245,9 +311,13 @@ async function build(options: LoadRunOptions): Promise<Built> {
     pipeline,
     corpusSnapshot: corpusSnapshotOf(store),
     chunksIngested: report.chunksWritten,
-    // Every embedding call the ingestion made, which is the numerator PRD 9.3's ingestion cost
-    // budget needs. It is tokens rather than money until a priced model produces them.
-    ingestionEmbeddingTokens: report.chunksWritten,
+    // The embedder's own usage record, summed by the pipeline. This field previously held the chunk
+    // count under the name of a token count — never printed, and wrong regardless.
+    ingestionEmbeddingTokens: report.embeddingTokens,
+    ingestionCostUsd: canPrice(models.prices, models.embedding.id)
+      ? costOf(models.prices, models.embedding.id, report.embeddingTokens, 0).amountUsd
+      : null,
+    models,
   };
 }
 
@@ -282,6 +352,33 @@ export async function runPool<T>(
   await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
 }
 
+/** The model a request may leave unpriced without its cost becoming unknown. See `requestCost`. */
+export const LOCAL_RERANKER = "stand-in-reranker";
+
+/**
+ * What one request cost, from every model call it made.
+ *
+ * The query embedding and the rerank are recorded on the retrieval trace (P18a); the generation is
+ * priced by grounding. **Any unpriced call makes the total null** — except the stand-in reranker,
+ * named here, which is a local function no provider bills for. It is the one model every run uses,
+ * because no rerank model is selected (ADR 0006), so letting it null every request would leave cost
+ * unmeasurable for a reason that is not about cost. It is excluded by name rather than by pattern,
+ * and the report says every figure excludes reranking and that a selected model would add its price.
+ */
+export function requestCost(
+  retrieval: Trace,
+  generationCostUsd: number | null,
+): { readonly total: number | null; readonly retrieval: number | null } {
+  const unpriced = retrieval.spans.filter(
+    (span) =>
+      span.model !== null && span.model.cost === null && span.model.modelId !== LOCAL_RERANKER,
+  ).length;
+  const retrievalCost = unpriced > 0 ? null : traceCost(retrieval);
+  const total =
+    retrievalCost === null || generationCostUsd === null ? null : retrievalCost + generationCostUsd;
+  return { total, retrieval: retrievalCost };
+}
+
 export async function runLoad(options: LoadRunOptions): Promise<LoadRunResult> {
   if (!Number.isInteger(options.concurrency) || options.concurrency < 1) {
     throw new Error(
@@ -310,6 +407,8 @@ export async function runLoad(options: LoadRunOptions): Promise<LoadRunResult> {
     });
     const totalMs = performance.now() - startedMs;
 
+    const cost = requestCost(outcome.retrieval.trace, outcome.grounding.audit.costUsd);
+
     samples.push({
       index,
       principal: entry.principal,
@@ -320,7 +419,8 @@ export async function runLoad(options: LoadRunOptions): Promise<LoadRunResult> {
       // retrieval breakdown to it here would count every retrieval stage twice — the audit used to
       // carry a copy of it, and that is exactly the bug this harness found in P15.
       stages: outcome.grounding.timings,
-      costUsd: outcome.grounding.audit.costUsd,
+      costUsd: cost.total,
+      retrievalCostUsd: cost.retrieval,
       inputTokens: outcome.grounding.audit.inputTokens,
       outputTokens: outcome.grounding.audit.outputTokens,
     });
@@ -330,11 +430,8 @@ export async function runLoad(options: LoadRunOptions): Promise<LoadRunResult> {
     id: options.profileId,
     corpusSnapshot: built.corpusSnapshot as ReferenceProfile["corpusSnapshot"],
     workload: workloadHash(workload) as ReferenceProfile["workload"],
-    models: {
-      embedder: EMBEDDING.id,
-      reranker: "stand-in-reranker",
-      generator: "stand-in-not-a-model",
-    },
+    // The identifiers of the models that actually answered, as PRD 9.1 requires a profile to pin.
+    models: built.models.identifiers,
     hardware: describeHardware(),
     concurrency: options.concurrency,
   };
@@ -348,6 +445,7 @@ export async function runLoad(options: LoadRunOptions): Promise<LoadRunResult> {
     finishedAt: new Date().toISOString(),
     chunksIngested: built.chunksIngested,
     ingestionEmbeddingTokens: built.ingestionEmbeddingTokens,
+    ingestionCostUsd: built.ingestionCostUsd,
     retrievalCacheHits: ordered.filter((sample) => sample.cacheHit).length,
   };
 }

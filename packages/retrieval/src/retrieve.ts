@@ -36,11 +36,19 @@ import {
 import {
   isModelError,
   rerankWithRetry,
+  toModelCall,
   type EmbeddingGateway,
   type Reranker,
   type Sleeper,
 } from "@atlasops/model-gateway";
-import { createTrace, systemClock, type Clock, type Trace } from "@atlasops/telemetry";
+import {
+  UNPRICED_TABLE,
+  createTrace,
+  systemClock,
+  type Clock,
+  type PriceTable,
+  type Trace,
+} from "@atlasops/telemetry";
 
 import { RETRIEVAL_DEFAULTS, validateConfig, type RetrievalConfig } from "./config.js";
 import { retrievalCacheKey, type RetrievalCache } from "./cache.js";
@@ -57,6 +65,15 @@ export interface RetrievalPorts {
   readonly sleeper: Sleeper;
   readonly cache?: RetrievalCache;
   readonly clock?: Clock;
+  /**
+   * The price table for the model calls this stage makes — the query embedding and the rerank.
+   *
+   * Until P18a neither span recorded its model call at all, so a request's cost was its generation
+   * cost alone and the query embedding was invisible: PRD 9.3's cost per answer would have been
+   * understated by exactly the stage retrieval is responsible for. Defaults to the empty table,
+   * where cost is recorded as unknown rather than as zero (ADR 0002).
+   */
+  readonly prices?: PriceTable;
 }
 
 export interface RetrievalRequest {
@@ -158,7 +175,16 @@ export async function retrieve(
       const scoped = applyScope(candidates, ports.oracle, config);
       supersededRemoved += scoped.removed;
       lists.push({ retriever: "dense", candidates: scoped.kept });
-      span.end();
+      // PRD 9.2: a model-calling span records the model, tokens, cost, cache hit and retries.
+      span.end({
+        model: toModelCall({
+          modelId: embedded.model.id,
+          usage: embedded.usage,
+          outcome: embedded,
+          priceTable: ports.prices ?? UNPRICED_TABLE,
+          totalTexts: 1,
+        }),
+      });
     } catch (error) {
       span.end({ degraded: true });
       if (isConfigurationDefect(error)) throw error;
@@ -218,7 +244,14 @@ export async function retrieve(
           ? []
           : [{ ...candidate, rank: position + 1, rerankScore: score.score }];
       });
-      span.end();
+      span.end({
+        model: toModelCall({
+          modelId: outcome.result.modelId,
+          usage: outcome.result.usage,
+          outcome,
+          priceTable: ports.prices ?? UNPRICED_TABLE,
+        }),
+      });
     } catch (error) {
       // PRD 9.4: serve fused results with reranking bypassed, marked degraded, and continue.
       // Answer quality drops; correctness of citation and permission does not.

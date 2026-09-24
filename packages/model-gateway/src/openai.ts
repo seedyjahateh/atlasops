@@ -251,6 +251,15 @@ export interface OpenAiGeneratorConfig extends OpenAiConfig {
   /** Zero by default: the answer contract in PRD 7.1 is a structure, not a style exercise. */
   readonly temperature?: number;
   readonly maxOutputTokens?: number;
+  /**
+   * Ask the provider to return a JSON object and nothing else.
+   *
+   * Grounding's prompt already asks for JSON in words, and a model that honours the request but
+   * wraps the object in a Markdown code fence produces text `JSON.parse` rejects — every answer then
+   * fails verification for a formatting reason rather than a grounding one, which would make the
+   * first real evaluation measure fences. JSON mode removes the fence without loosening the parser.
+   */
+  readonly jsonOutput?: boolean;
 }
 
 export function openAiGenerator(config: OpenAiGeneratorConfig): Generator {
@@ -268,6 +277,9 @@ export function openAiGenerator(config: OpenAiGeneratorConfig): Generator {
       };
       if (config.maxOutputTokens !== undefined) {
         payload.max_completion_tokens = config.maxOutputTokens;
+      }
+      if (config.jsonOutput === true) {
+        payload.response_format = { type: "json_object" };
       }
 
       const body = await call({
