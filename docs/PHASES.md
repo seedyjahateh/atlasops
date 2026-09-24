@@ -863,7 +863,7 @@ model and inventing one is not available.
       then labelled it myself, the same afternoon, with no second reader, knowing what the system
       does. No method fixes that, and the retrieval numbers carry it.
 
-- [ ] **P15a — Instrument the stages the budgets name.** A span per stage across the whole request,
+- [x] **P15a — Instrument the stages the budgets name.** A span per stage across the whole request,
       not only the retrieval half. Implements PRD 9.2's "every request carries a trace with a span
       per stage". Acceptance: `permission-resolution`, `permission-compile`, `prompt-assembly`,
       `generation`, `verification` and `audit-write` all produce spans on an ordinary answer; the
@@ -879,6 +879,48 @@ model and inventing one is not available.
       recording the retrieval stages under the name of the whole request's timings since P9. A
       report cannot be honest about stages nothing measures, so the instrumentation is its own
       phase and the report follows it.
+
+      Done. 642 tests across 25 files. Four of PRD 9.3's six latency budgets are now measurable
+      where two were: `PERMISSION-P95` and `VERIFICATION-P95` went from "not measured" to figures
+      over 260 requests. The two that remain unmeasured are unmeasurable rather than uninstrumented
+      — time to first token needs streaming the adapter does not do (ADR 0006), and every cost row
+      needs a priced model (ADR 0002).
+
+      **The audit had been recording the wrong thing since P9.** `groundAnswer` sealed every record
+      with `stageBreakdown(retrieval.trace)`, so the field named `stageTimings` carried the
+      retrieval stages and nothing identified it as a subset. It now carries the merged breakdown of
+      the whole request. Anything that read an audit for a stage breakdown before this was reading
+      half a request and could not tell.
+
+      **Three traces, one breakdown.** Permission resolution happens in the composition root before
+      retrieval begins, retrieval traces its own arms, and grounding now traces assembly,
+      generation, verification and the audit write. `mergeStageTimings` sums them per stage in PRD
+      9.2's declared order — summing rather than concatenating, because a consumer handed the same
+      stage twice adds it twice, which is precisely what the first load run did when it combined the
+      retrieval breakdown with the audit's copy of it and reported every retrieval stage at double
+      its time.
+
+      **`trace.snapshot()` exists for exactly one caller.** The audit write is a stage whose work is
+      writing the record that carries the breakdown, so it cannot report its own duration inside
+      that record. The snapshot returns the spans closed so far without closing the trace; the
+      record therefore has `audit-write` absent rather than present and wrong, and
+      `GroundingResult.timings` — finished after the write — has it. There is a test for each half.
+
+      **`ModelCall.cost` widened to `CostRecord | null`**, the same widening `AuditRecord.costUsd`
+      took in P9 and for the same reason. `toModelCall` threw for an unpriced model, so a generation
+      span could not be recorded for a stand-in at all — the choice was a fabricated zero, which
+      makes every cost budget pass trivially, or an uninstrumented stage, which is what it was. Null
+      keeps the span and refuses the number. `traceCost` gained a companion, `unpricedCalls`,
+      because a cost total over a trace where half the calls had no price is a real number
+      describing half the work and nothing in the figure says so.
+
+      **Permission compilation got its own span.** It was inside `query-normalisation`, so PRD 9.3's
+      "permission resolution + compile" budget could never have aggregated it: it was counted under
+      a stage the budget does not name and missing from the one it does.
+
+      One thing deliberately not done: the resolution span is not ended in a `finally`. A failed
+      permission resolution produced no measurable stage, and recording a duration for work that did
+      not complete would put it into a percentile.
 
 - [ ] **P15b — The reference profile, the load run, and the cost and latency report.** The PRD 9.1
       profile as a committed record, a scripted load run at a stated concurrency, and PRD 12 item 4.

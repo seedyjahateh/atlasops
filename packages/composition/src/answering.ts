@@ -27,7 +27,7 @@ import {
   type RetrievalConfig,
   type RetrievalResult,
 } from "@atlasops/retrieval";
-import { UNPRICED_TABLE } from "@atlasops/telemetry";
+import { UNPRICED_TABLE, createTrace, stageBreakdown } from "@atlasops/telemetry";
 
 import type { AnswerPorts } from "./ports.js";
 
@@ -65,8 +65,23 @@ export function createAnswerPipeline(
   const baseConfig = options.config ?? RETRIEVAL_DEFAULTS;
 
   const answer = async (request: AnswerRequest): Promise<AnswerOutcome> => {
-    // Fails closed. Every possible fallback is a leak (PRD 9.4), so this is not in a try block.
+    /**
+     * Permission resolution is timed here because it happens here — before retrieval begins, so
+     * neither of the traces below can see it, and PRD 9.3 budgets it at 50 ms p95 together with the
+     * compile. A trace of one span, handed to grounding, which merges it into the request's
+     * breakdown.
+     */
+    // `ports.clock` is required on this port, so there is no fallback to choose here.
+    const permissionTrace = createTrace(request.requestId, ports.clock);
+    const resolution = permissionTrace.span("permission-resolution");
+
+    // Fails closed. Every possible fallback is a leak (PRD 9.4), so this is not in a try block —
+    // and the span is deliberately not ended in a `finally`: a failed resolution produced no
+    // measurable stage, and recording one would put a duration for work that did not complete
+    // into a percentile.
     const principal = await resolvePrincipal(ports.groups, request.principalId);
+    resolution.end();
+    const priorTimings = stageBreakdown(permissionTrace.finish());
 
     const retrieval = await retrieve(
       {
@@ -99,6 +114,7 @@ export function createAnswerPipeline(
         requestId: request.requestId,
         principal,
         retrieval,
+        priorTimings,
         ...(options.support === undefined ? {} : { support: options.support }),
       },
     );

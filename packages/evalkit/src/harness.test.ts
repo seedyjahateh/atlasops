@@ -219,6 +219,9 @@ function observationFor(
     verifications: [],
     audit,
     attempts: script.abstains === true ? 0 : 1,
+    // Scripted, so there are no spans to report. The harness reads latency from the retrieval
+    // trace; a scripted run has nothing to say about stage timings and says nothing.
+    timings: [],
   };
 
   return { retrieval, grounding };

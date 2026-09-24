@@ -322,6 +322,39 @@ importers:
         specifier: workspace:*
         version: link:../../packages/governance
 
+  tools/loadrun:
+    dependencies:
+      '@atlasops/composition':
+        specifier: workspace:*
+        version: link:../../packages/composition
+      '@atlasops/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@atlasops/corpus':
+        specifier: workspace:*
+        version: link:../../packages/corpus
+      '@atlasops/governance':
+        specifier: workspace:*
+        version: link:../../packages/governance
+      '@atlasops/grounding':
+        specifier: workspace:*
+        version: link:../../packages/grounding
+      '@atlasops/indexing':
+        specifier: workspace:*
+        version: link:../../packages/indexing
+      '@atlasops/ingest':
+        specifier: workspace:*
+        version: link:../../packages/ingest
+      '@atlasops/model-gateway':
+        specifier: workspace:*
+        version: link:../../packages/model-gateway
+      '@atlasops/retrieval':
+        specifier: workspace:*
+        version: link:../../packages/retrieval
+      '@atlasops/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
+
   tools/smoke:
     dependencies:
       '@atlasops/model-gateway':

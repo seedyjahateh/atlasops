@@ -34,6 +34,7 @@ import {
 } from "@atlasops/governance";
 import {
   generateWithRetry,
+  toModelCall,
   type Generator,
   type Sleeper,
   type Usage,
@@ -43,8 +44,13 @@ import {
   UNPRICED_TABLE,
   canPrice,
   costOf,
+  createTrace,
+  mergeStageTimings,
   stageBreakdown,
+  systemClock,
+  type Clock,
   type PriceTable,
+  type StageTiming,
 } from "@atlasops/telemetry";
 
 import { assemblePrompt, type AssembledPrompt } from "./prompt.js";
@@ -71,6 +77,14 @@ export interface GroundingPorts {
    * default is the system clock.
    */
   readonly now?: () => string;
+  /**
+   * Monotonic milliseconds, for the spans this stage records.
+   *
+   * Separate from `now` and for a different job: `now` stamps the audit with an instant a reader
+   * can compare to a calendar, this measures durations. PRD 9.2 requires a span per stage across
+   * the whole request, and until P15a the second half of the request opened none.
+   */
+  readonly clock?: Clock;
 }
 
 export interface GroundingRequest {
@@ -78,6 +92,14 @@ export interface GroundingRequest {
   readonly principal: Principal;
   readonly retrieval: RetrievalResult;
   readonly support?: SupportPolicy;
+  /**
+   * Stage timings from earlier in the request, merged into the audit record.
+   *
+   * Permission resolution happens in the composition root, before retrieval begins, so its span
+   * cannot be recorded here. Passing it in is what lets the audit carry the whole request's
+   * breakdown rather than the part this function happened to witness.
+   */
+  readonly priorTimings?: readonly StageTiming[];
 }
 
 export interface GroundingResult {
@@ -92,6 +114,14 @@ export interface GroundingResult {
   readonly verifications: readonly VerificationReport[];
   readonly audit: AuditRecord;
   readonly attempts: number;
+  /**
+   * The whole request's stage breakdown, including the audit write the record itself cannot carry.
+   *
+   * Callers that want timings read this rather than re-deriving them from two traces: doing that by
+   * hand is how the P15 load harness came to add the retrieval breakdown to a copy of itself and
+   * report every retrieval stage at double its time.
+   */
+  readonly timings: readonly StageTiming[];
 }
 
 /** The wording a caller may show. Permission-driven cases go through governance's constants. */
@@ -144,8 +174,14 @@ export async function groundAnswer(
     queryHash: retrieval.query.hash,
   });
 
+  // This stage's own trace. Retrieval has always had one; everything after it was dark, so PRD
+  // 9.3's verification budget had nothing to aggregate and the report said "not measured".
+  const trace = createTrace(request.requestId, ports.clock ?? systemClock);
+
+  const assembly = trace.span("prompt-assembly");
   const prompt = assemblePrompt(retrieval.query.normalised, retrieval.candidates);
   const support = assessSupport(retrieval.candidates, request.support ?? SUPPORT_DEFAULTS);
+  assembly.end();
 
   const verifications: VerificationReport[] = [];
   let usage: Usage = { inputTokens: 0, outputTokens: 0 };
@@ -169,11 +205,23 @@ export async function groundAnswer(
     // One generation, and at most one regeneration. See the file header.
     for (let attempt = 0; attempt < 2; attempt += 1) {
       attempts += 1;
+      const generation = trace.span("generation");
       const outcome = await generateWithRetry(
         ports.generator,
         { system: prompt.system, user: instruction },
         { sleeper: ports.sleeper },
       );
+      // PRD 9.2: a model-calling span records the model, its tokens, the computed cost, whether it
+      // was a cache hit and how many retries it took. A duration alone cannot answer "which stage
+      // spent the money", which is the question the aggregate views exist for.
+      generation.end({
+        model: toModelCall({
+          modelId: ports.generator.modelId,
+          usage: outcome.result.usage,
+          outcome,
+          priceTable: prices,
+        }),
+      });
       usage = {
         inputTokens: usage.inputTokens + outcome.result.usage.inputTokens,
         outputTokens: usage.outputTokens + outcome.result.usage.outputTokens,
@@ -204,12 +252,14 @@ export async function groundAnswer(
         continue;
       }
 
+      const check = trace.span("verification");
       const report = verifyAnswer({
         answer: parsed,
         prompt,
         candidates: retrieval.candidates,
         journal,
       });
+      check.end();
       verifications.push(report);
       candidate = parsed;
       verified = report;
@@ -236,6 +286,8 @@ export async function groundAnswer(
     ? costOf(prices, modelId, usage.inputTokens, usage.outputTokens).amountUsd
     : null;
 
+  const write = trace.span("audit-write");
+
   const record = journal.seal({
     promptChunks,
     citedChunks: promptChunks.filter((entry) => citedIds.has(entry.chunkId)),
@@ -243,13 +295,23 @@ export async function groundAnswer(
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
     costUsd,
-    stageTimings: stageBreakdown(retrieval.trace),
+    // The whole request, not the half this function witnessed. Until P15a this was
+    // `stageBreakdown(retrieval.trace)`, so every audit record ever written carried the retrieval
+    // stages under the name of the request's timings — a subset nothing in the record identified
+    // as one. The audit-write span itself is still open here and is therefore absent: a span
+    // cannot record the duration of the write that carries it.
+    stageTimings: mergeStageTimings(
+      request.priorTimings ?? [],
+      stageBreakdown(retrieval.trace),
+      stageBreakdown(trace.snapshot()),
+    ),
     writtenAt: (ports.now ?? (() => new Date().toISOString()))(),
   });
 
   // The audit is written before the answer is returned, and the answer is withheld if the write
   // fails (PRD 6.6). `releaseAnswer` is the only way out of this function.
   const released = await releaseAnswer(ports.sink, record, answer);
+  write.end();
 
   return {
     answer: released,
@@ -260,5 +322,11 @@ export async function groundAnswer(
     verifications,
     audit: record,
     attempts,
+    // Finished here rather than at the snapshot above, so this one includes the audit write.
+    timings: mergeStageTimings(
+      request.priorTimings ?? [],
+      stageBreakdown(retrieval.trace),
+      stageBreakdown(trace.finish()),
+    ),
   };
 }

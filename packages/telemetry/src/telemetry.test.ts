@@ -29,6 +29,7 @@ import {
   costByStage,
   createTrace,
   groupDuration,
+  mergeStageTimings,
   stageBreakdown,
   traceCost,
 } from "./span.js";
@@ -198,6 +199,70 @@ describe("cost comes from the versioned table (PRD 9.2)", () => {
     const a = costOf(SYNTHETIC_PRICES, "fake-generator", 1_000_000, 0);
     const b = costOf(SYNTHETIC_PRICES, "fake-embedder", 1_000_000, 0);
     expect(totalCost([a, b])).toBe(1100);
+  });
+});
+
+describe("breakdowns from several traces combine into one (P15a)", () => {
+  it("sums a stage that appears in more than one breakdown", () => {
+    // Concatenating would hand a consumer the same stage twice, and a consumer that adds them up
+    // reports it at double its time — which is exactly what the first load run did.
+    const merged = mergeStageTimings(
+      [{ stage: "generation", inclusiveMs: 10, selfMs: 10, count: 1 }],
+      [{ stage: "generation", inclusiveMs: 4, selfMs: 4, count: 1 }],
+    );
+
+    expect(merged).toEqual([{ stage: "generation", inclusiveMs: 14, selfMs: 14, count: 2 }]);
+  });
+
+  it("returns stages in the order PRD 9.2 declares them", () => {
+    // The shape a reader follows through a request, rather than by size: a breakdown sorted by
+    // duration reorders itself between runs and cannot be diffed.
+    const merged = mergeStageTimings(
+      [{ stage: "verification", inclusiveMs: 1, selfMs: 1, count: 1 }],
+      [{ stage: "permission-resolution", inclusiveMs: 1, selfMs: 1, count: 1 }],
+      [{ stage: "generation", inclusiveMs: 1, selfMs: 1, count: 1 }],
+    );
+
+    expect(merged.map((timing) => timing.stage)).toEqual([
+      "permission-resolution",
+      "generation",
+      "verification",
+    ]);
+  });
+
+  it("is empty when there is nothing to merge", () => {
+    expect(mergeStageTimings()).toEqual([]);
+    expect(mergeStageTimings([], [])).toEqual([]);
+  });
+});
+
+describe("a trace can be read before it is finished (P15a)", () => {
+  it("snapshots the spans closed so far without closing the trace", () => {
+    const clock = manualClock();
+    const recorder = createTrace(REQUEST, clock);
+
+    const first = recorder.span("generation");
+    clock.advance(5);
+    first.end();
+
+    const open = recorder.span("audit-write");
+    const snapshot = recorder.snapshot();
+
+    // The open span is absent rather than reported with a partial duration — the case this exists
+    // for is a stage whose work is writing the record that carries the breakdown.
+    expect(snapshot.spans.map((span) => span.stage)).toEqual(["generation"]);
+
+    clock.advance(2);
+    open.end();
+    expect(recorder.finish().spans).toHaveLength(2);
+  });
+
+  it("still refuses to finish with a span left open", () => {
+    const recorder = createTrace(REQUEST, manualClock());
+    recorder.span("generation");
+    recorder.snapshot();
+
+    expect(() => recorder.finish()).toThrow(/still open/);
   });
 });
 

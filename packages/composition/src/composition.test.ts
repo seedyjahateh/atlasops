@@ -279,6 +279,35 @@ function ask(
 
 /* ----------------------------------------------------------------------------- the tests */
 
+describe("a request is traced end to end (P15a)", () => {
+  it("records permission resolution, which happens before either trace exists", async () => {
+    // It runs in the composition root, before retrieval begins, so neither retrieval's trace nor
+    // grounding's can see it. PRD 9.3 budgets it at 50 ms p95 with the compile; a stage nothing
+    // measures reads as a stage that costs nothing.
+    const world = system();
+    await world.ingestion.run();
+
+    const answer = await ask(world.answering, ALICE, "refund window");
+    const stages = answer.grounding.timings.map((timing) => timing.stage);
+
+    expect(stages).toContain("permission-resolution");
+    expect(stages).toContain("permission-compile");
+  });
+
+  it("puts every stage of the request into one breakdown, each counted once", async () => {
+    const world = system();
+    await world.ingestion.run();
+
+    const answer = await ask(world.answering, ALICE, "refund window");
+    const stages = answer.grounding.timings.map((timing) => timing.stage);
+
+    // Both halves of the request, and no stage twice — the merge sums rather than concatenates.
+    expect(stages).toContain("dense-retrieval");
+    expect(stages).toContain("generation");
+    expect(new Set(stages).size).toBe(stages.length);
+  });
+});
+
 describe("the corpus snapshot is one function (P14a)", () => {
   it("hashes the live versions of what was ingested", async () => {
     const world = system();

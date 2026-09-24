@@ -115,8 +115,15 @@ export async function retrieve(
 
   const normalisation = trace.span("query-normalisation");
   const query = analyseQuery(request.query);
-  const predicate = compilePredicate(request.principal);
   normalisation.end();
+
+  // Its own span rather than part of normalisation. PRD 9.3 budgets "permission resolution +
+  // compile" at 50 ms p95, and a compile folded into the normalisation span cannot be aggregated
+  // against that budget: it would be counted under a stage the budget does not name and be missing
+  // from the one it does — which reads as a stage that costs nothing.
+  const compile = trace.span("permission-compile");
+  const predicate = compilePredicate(request.principal);
+  compile.end();
 
   const cacheKey = retrievalCacheKey(query, predicate.groupSetHash, config);
   const cached = ports.cache?.get(cacheKey);

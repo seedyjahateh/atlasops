@@ -34,6 +34,7 @@ export {
   costByStage,
   createTrace,
   groupDuration,
+  mergeStageTimings,
   stageBreakdown,
   traceCost,
   type ModelCall,

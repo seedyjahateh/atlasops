@@ -408,6 +408,68 @@ describe("the answer path", () => {
     expect(result.attempts).toBe(1);
   });
 
+  describe("the stages PRD 9.2 names produce spans (P15a)", () => {
+    it("records prompt assembly, generation, verification and the audit write", async () => {
+      // Until P15a nothing after retrieval opened a span, so four of PRD 9.3's six latency budgets
+      // had nothing to aggregate and the cost and latency report said "not measured" four times.
+      const result = await groundAnswer(ports(citingGenerator(REFUND)), {
+        requestId: REQUEST,
+        principal: ALICE,
+        retrieval: retrievalResult([REFUND]),
+      });
+
+      const stages = result.timings.map((timing) => timing.stage);
+      expect(stages).toContain("prompt-assembly");
+      expect(stages).toContain("generation");
+      expect(stages).toContain("verification");
+      expect(stages).toContain("audit-write");
+    });
+
+    it("carries the whole request's breakdown into the audit, not the retrieval half", async () => {
+      // The defect this replaces: the record was sealed with `stageBreakdown(retrieval.trace)`, so
+      // every audit ever written named the retrieval stages as the request's timings.
+      const sink = inMemoryAuditSink();
+      await groundAnswer(ports(citingGenerator(REFUND), { sink }), {
+        requestId: REQUEST,
+        principal: ALICE,
+        retrieval: retrievalResult([REFUND]),
+      });
+
+      const stages = (sink.records()[0]?.stageTimings ?? []).map((timing) => timing.stage);
+      expect(stages).toContain("generation");
+      expect(stages).toContain("verification");
+    });
+
+    it("merges timings from earlier in the request rather than dropping them", async () => {
+      // Permission resolution happens in the composition root, before this function is called. A
+      // breakdown that silently omitted it would report a stage as costing nothing.
+      const result = await groundAnswer(ports(citingGenerator(REFUND)), {
+        requestId: REQUEST,
+        principal: ALICE,
+        retrieval: retrievalResult([REFUND]),
+        priorTimings: [{ stage: "permission-resolution", inclusiveMs: 12, selfMs: 12, count: 1 }],
+      });
+
+      const resolution = result.timings.find((timing) => timing.stage === "permission-resolution");
+      expect(resolution?.selfMs).toBe(12);
+    });
+
+    it("does not report the audit write inside the record it is writing", async () => {
+      // A span cannot record the duration of the write that carries it. The record therefore has
+      // the stage absent rather than present with a wrong number, and `result.timings` has it.
+      const sink = inMemoryAuditSink();
+      const result = await groundAnswer(ports(citingGenerator(REFUND), { sink }), {
+        requestId: REQUEST,
+        principal: ALICE,
+        retrieval: retrievalResult([REFUND]),
+      });
+
+      const inRecord = (sink.records()[0]?.stageTimings ?? []).map((timing) => timing.stage);
+      expect(inRecord).not.toContain("audit-write");
+      expect(result.timings.map((timing) => timing.stage)).toContain("audit-write");
+    });
+  });
+
   it("writes the audit before returning the answer (PRD 6.6)", async () => {
     const sink = inMemoryAuditSink();
     await groundAnswer(ports(citingGenerator(REFUND), { sink }), {

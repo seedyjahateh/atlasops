@@ -30,7 +30,7 @@ import {
   toModelCall,
 } from "./gateway.js";
 import { DEFAULT_RETRY_POLICY, backoffFor, recordingSleeper, withRetry } from "./retry.js";
-import type { PriceTable } from "@atlasops/telemetry";
+import { UNPRICED_TABLE, type PriceTable } from "@atlasops/telemetry";
 
 const SYNTHETIC_PRICES: PriceTable = {
   version: "test-synthetic-1",
@@ -268,7 +268,25 @@ describe("the bridge to telemetry", () => {
     });
 
     expect(call.retries).toBe(2);
-    expect(call.cost.priceTableVersion).toBe("test-synthetic-1");
+    expect(call.cost?.priceTableVersion).toBe("test-synthetic-1");
+  });
+
+  it("records the call with a null cost when the table cannot price the model", async () => {
+    // ADR 0002 says never report zero for an unpriced model. Throwing here would have meant a
+    // stand-in could not be traced at all, so the stage went uninstrumented instead — which is
+    // how PRD 9.3's generation and verification budgets ended up with nothing to aggregate.
+    const gateway = createEmbeddingGateway(fakeEmbedder(), FAST);
+    const outcome = await gateway.embed(["hello"]);
+
+    const call = toModelCall({
+      modelId: "unpriced-stand-in",
+      usage: outcome.usage,
+      outcome,
+      priceTable: UNPRICED_TABLE,
+    });
+
+    expect(call.modelId).toBe("unpriced-stand-in");
+    expect(call.cost).toBeNull();
   });
 
   it("floors retries at zero for a fully cached call", async () => {
@@ -287,7 +305,7 @@ describe("the bridge to telemetry", () => {
 
     expect(call.retries).toBe(0);
     expect(call.cacheHit).toBe(true);
-    expect(call.cost.amountUsd).toBe(0);
+    expect(call.cost?.amountUsd).toBe(0);
   });
 
   it("reports a partial cache hit as a miss when the total is known", async () => {

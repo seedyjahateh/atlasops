@@ -12,7 +12,7 @@
  */
 
 import type { EmbeddingModelRef } from "@atlasops/contracts";
-import { costOf, type ModelCall, type PriceTable } from "@atlasops/telemetry";
+import { canPrice, costOf, type ModelCall, type PriceTable } from "@atlasops/telemetry";
 
 import { embeddingCacheKey, type EmbeddingCache } from "./cache.js";
 import type {
@@ -175,12 +175,13 @@ export function toModelCall(input: {
 
   return {
     modelId: input.modelId,
-    cost: costOf(
-      input.priceTable,
-      input.modelId,
-      input.usage.inputTokens,
-      input.usage.outputTokens,
-    ),
+    // Null rather than a throw when the table cannot price this model (ADR 0002). Throwing here
+    // would mean a stand-in could not be traced at all, and the stage would go uninstrumented —
+    // which is how PRD 9.3's verification and generation budgets came to have nothing to
+    // aggregate. Null keeps the span and refuses the number.
+    cost: canPrice(input.priceTable, input.modelId)
+      ? costOf(input.priceTable, input.modelId, input.usage.inputTokens, input.usage.outputTokens)
+      : null,
     cacheHit,
     retries: Math.max(0, input.outcome.attempts - 1),
   };
