@@ -1162,18 +1162,36 @@ model and inventing one is not available.
       boundary change, and a boundary change should not be buried in a commit that also adds an
       exhibit.
 
-- [ ] **P18 — Re-evidence, and a promotion proposal.** Regenerate all seven PRD 12 artefacts against
-      the real adapter, the labelled snapshot and the load run; rewrite `docs/promotion-readiness.md`
-      from what the artefacts actually contain. Acceptance: every item is marked met or unmet from a
-      generated artefact rather than from prose; if and only if all seven hold, the phase writes a
-      **proposed** manifest edit into `docs/promotion/` — as a file in this repository, for review —
-      listing every field PRD 12 requires with the value the artefacts support; the portfolio's
+- [ ] **P18a — Real models, selectable where evidence is produced.** The evaluation runner and the
+      load run choose their model set by configuration — the stand-ins, or the OpenAI adapter from
+      P13 — and every artefact records which. Implements the half of PRD 12 items 2 and 4 that says
+      the report is "against the reference profile", which pins model identifiers. Acceptance:
+      `--models openai` constructs the P13 adapters and the dated price table, and refuses to start
+      without `OPENAI_API_KEY`, naming the variable; the reranker stays the stand-in and the artefact
+      says it is unselected rather than inventing one; the stand-ins remain the default, so no
+      command spends money unless asked to; tests drive the real-model path through the recorded
+      transport, and none reaches the network.
+
+- [ ] **P18b — Re-evidence, and a promotion proposal.** Regenerate all seven PRD 12 artefacts; decide
+      each item met or unmet with a generator that reads the artefacts, rather than in prose; rewrite
+      `docs/promotion-readiness.md` from its output. Acceptance: the verdict for every item comes
+      from a generated artefact; if and only if all seven hold, the phase writes a **proposed**
+      manifest edit into `docs/promotion/` — as a file in this repository, for review — listing every
+      field PRD 12 requires with the value the artefacts support; the portfolio's
       `content/projects/RAG-01.json` is still not touched from here, and no number is promoted that
       its artefact does not contain.
 
       **A refusal remains an acceptable outcome.** If the artefacts do not support `measured`, this
       phase says so again and the proposal is not written. P12 already established that the
       honest result of an evidence phase can be "no".
+
+      **Why P18 is split.** Its acceptance asked for the artefacts "against the real adapter", and
+      the real adapter from P13 is wired into nothing that produces an artefact: the evaluation
+      runner and the load run both construct stand-ins unconditionally. So even with a key in the
+      environment, P18 as written could not have produced the evidence it names. Making the model
+      set selectable is its own change with its own failure modes — above all, a command that
+      spends money when nobody asked it to — and it has to exist before the verdict can mean
+      anything. P18b then runs whichever set is configured and says which it was.
 
 ## What this build does not do
 
