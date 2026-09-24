@@ -19,7 +19,13 @@ import {
 } from "@atlasops/composition";
 import { inMemoryCorpusStore } from "@atlasops/corpus";
 import { currentSchema, inMemoryLexicalIndex, inMemoryVectorIndex } from "@atlasops/indexing";
-import { filesystemConnector, structureAware, type IngestionReport } from "@atlasops/ingest";
+import {
+  aclFromManifest,
+  filesystemConnector,
+  loadAclManifest,
+  structureAware,
+  type IngestionReport,
+} from "@atlasops/ingest";
 import {
   createEmbeddingGateway,
   deterministicVector,
@@ -40,6 +46,13 @@ export interface WorkerConfig {
   readonly corpusGroup: string;
   /** Chunk budget for this connector. PRD 4.3 makes chunking a per-connector decision. */
   readonly maxTokens: number;
+  /**
+   * A per-path access manifest, for a corpus with zones.
+   *
+   * Absent means the whole corpus carries `corpusGroup` — fine for a corpus everybody may read,
+   * wrong for one a permission probe runs against, because nothing there is forbidden to anybody.
+   */
+  readonly aclManifest: string | null;
 }
 
 export class ConfigError extends Error {
@@ -89,7 +102,15 @@ export function readWorkerConfig(
     );
   }
 
-  return { corpusRoot, profile: profile as StoreProfile, corpusGroup, maxTokens };
+  const aclManifest = flag(argv, "acl") ?? env.ATLASOPS_ACL_MANIFEST;
+
+  return {
+    corpusRoot,
+    profile: profile as StoreProfile,
+    corpusGroup,
+    maxTokens,
+    aclManifest: aclManifest === undefined || aclManifest.length === 0 ? null : aclManifest,
+  };
 }
 
 const EMBEDDING = { id: "stand-in-embedder", dimension: 64 };
@@ -126,7 +147,11 @@ export function createWorker(config: WorkerConfig): IngestionPipeline {
       connector: filesystemConnector({
         root: config.corpusRoot,
         strategy: structureAware({ maxTokens: config.maxTokens, boundaryDepth: 2 }),
-        acl: { readableBy: [group], existence: "visible" },
+        // Zones when the corpus declares them, one label when it does not. The manifest resolver
+        // refuses a path it does not cover rather than defaulting it readable (PRD 6.1).
+        ...(config.aclManifest === null
+          ? { acl: { readableBy: [group], existence: "visible" } }
+          : { aclFor: aclFromManifest(loadAclManifest(config.aclManifest)) }),
         now: () => new Date().toISOString(),
       }),
       chunks: indexingChunkSink(lexical, vector),

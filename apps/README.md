@@ -23,6 +23,28 @@ curl -s localhost:8080/answer \
   -d '{"query":"refund window","principal":"prn_reader"}'
 ```
 
+## The corpus has zones, and the principal decides what it returns
+
+`examples/corpus` is four access zones, not one pile of documents: `public/`, `engineering/`,
+`finance/` and a **hidden** `restricted/`. `examples/corpus.acl.json` says which group owns each
+path and `examples/corpus.groups.json` says who is in each group, and the scripts above pass both
+(`--acl`, `--groups`). `docs/corpus-procedure.md` explains why it is shaped that way.
+
+Two consequences when running these by hand:
+
+- **The same question answers differently for different principals, and that is the system
+  working.** `prn_reader` holds `grp_everyone` only; `prn_frank` holds finance; `prn_alice` holds
+  engineering. Asking about the quarter close as `prn_reader` cites a public document; asking as
+  `prn_frank` cites the finance one. Nothing about the hidden `restricted/` zone surfaces for
+  anybody but `prn_exec`, and for everyone else the wording is the same as when nothing was found.
+- **A document with no rule in the manifest is not ingested.** Its own fetch fails with
+  `ACL_UNRESOLVED`, the rest of the crawl completes, and the worker exits non-zero. There is no
+  default label, because a default is how a file nobody labelled becomes a file everybody can read.
+
+Running without `--acl` is still supported and applies one label to the whole corpus. That is the
+right shape for a corpus everybody may read and the wrong one for any corpus a permission probe
+runs against, since nothing in it is forbidden to anybody.
+
 ## What is not installed, and what follows from it
 
 **These processes still run stand-ins, although an adapter now exists.** `model-gateway` gained an

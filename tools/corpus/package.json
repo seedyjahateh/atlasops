@@ -1,0 +1,19 @@
+{
+  "name": "@atlasops/corpus-inventory",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Ingests the example corpus and pins every chunk identifier a dataset can label.",
+  "exports": {
+    ".": "./inventory.ts"
+  },
+  "dependencies": {
+    "@atlasops/composition": "workspace:*",
+    "@atlasops/contracts": "workspace:*",
+    "@atlasops/corpus": "workspace:*",
+    "@atlasops/indexing": "workspace:*",
+    "@atlasops/ingest": "workspace:*",
+    "@atlasops/model-gateway": "workspace:*",
+    "@atlasops/telemetry": "workspace:*"
+  }
+}

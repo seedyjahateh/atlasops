@@ -12,6 +12,7 @@
 
 export {
   normaliseGroups,
+  parseGroupMap,
   resolvePrincipal,
   staticGroupResolver,
   unavailableGroupResolver,

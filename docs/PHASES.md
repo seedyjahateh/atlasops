@@ -736,7 +736,7 @@ model and inventing one is not available.
       cross-encoder has no adapter and the reranker stays bypassable, named as unselected rather
       than filled in with an invented identifier.
 
-- [ ] **P14a — The corpus, its access zones, and a pinned inventory.** The fixed corpus the labels
+- [x] **P14a — The corpus, its access zones, and a pinned inventory.** The fixed corpus the labels
       will point at: documents across several ACL zones including a `hidden` source and the PRD 6.5
       injection passages, a connector that can express per-source labels, and a committed inventory
       of every chunk identifier the corpus produces. Implements PRD 9.1's "fixed corpus snapshot"
@@ -748,6 +748,53 @@ model and inventing one is not available.
       implementations that drift make every dataset pin wrong; the inventory is generated rather
       than hand-maintained, and a stale one fails `pnpm verify`; the construction procedure is
       written down as PRD 13 requires.
+
+      Done. 30 new tests (619 total across 24 files). The corpus is eight documents in four zones —
+      `public/`, `engineering/`, `finance/` and a hidden `restricted/` — producing 35 chunks, pinned
+      at `sha256:f05a2049…`.
+
+      **The connector could not express a zone, and that was a real gap rather than a missing
+      convenience.** One label for a whole root describes only a corpus everybody may read, so every
+      permission metric over it is zero because nothing is forbidden — a leak count that is
+      arithmetic rather than evidence. `aclFor` resolves a label per path from a manifest that sits
+      **outside** the crawl root, because a label file inside it would be ingested, chunked and
+      retrievable: an access-control policy answering questions about itself.
+
+      **There is no default label and there is not going to be one.** A path no rule covers fails
+      its own fetch with `ACL_UNRESOLVED`, which was demonstrated rather than asserted: an
+      unlabelled file added to the corpus produced exactly that, the other eight sources ingested
+      anyway (35 chunks written, PRD 4.5 isolation intact), and `app:ingest` exited 1. The rejected
+      alternative is the one that looks harmless — a permissive default — and it is how a document
+      nobody labelled becomes a document everybody can read.
+
+      **The snapshot hash was a private function inside `apps/eval-runner`.** Promoted to
+      `@atlasops/composition` alongside `CORPUS_CHUNKING`, because the inventory tool needed both
+      and an application may not import an application. Two implementations would have agreed until
+      they did not, and the failure would have been a dataset pin nobody could explain. The live
+      proof is that `pnpm app:eval` and `pnpm corpus:inventory` print the same hash. Chunking is
+      shared for the same reason and a sharper one: chunk identifiers derive from a version and an
+      ordinal, so a tool inventorying at a different token budget would mint identifiers the runner
+      never creates — labels pointing at nothing while the snapshot matched perfectly.
+
+      **The inventory is generated and checked, and `pnpm verify` runs the check.** Demonstrated in
+      both directions: appending one sentence to a corpus document made `pnpm corpus:check` fail and
+      say why; reverting returned exit 0. Without it, editing a document would move every identifier
+      pointing into it, the labels would reference chunks that no longer exist, every metric would
+      still compute, and the numbers would quietly describe a smaller corpus. That is the failure
+      class this repository cares about most: the one that leaves the build green.
+
+      **The zones were built to be tempting, not tidy.** The finance documents deliberately reuse
+      the support handbook's vocabulary — "refund", "window", "exception" — so a question an
+      engineering principal may legitimately ask has forbidden material sitting right beside the
+      answer. A corpus whose zones share no vocabulary lets lexical mismatch do the pre-filter's
+      job and makes the enforcement look better than it is; there is a test asserting the overlap
+      survives. Checked live over HTTP: `prn_reader` asking about the quarter close cited a public
+      document, `prn_frank` asking the same cited the finance one, and the hidden `restricted/`
+      source surfaced for nobody.
+
+      `docs/corpus-procedure.md` is PRD 13's published construction procedure, including the part
+      nobody enjoys writing: I wrote all eight documents myself, in one pass, no domain expert has
+      read them, and every policy number in them is plausible and invented.
 
 - [ ] **P14b — The four labelled datasets.** Graded relevance labels, grounded answers with their
       supporting chunks and a human calibration subset, the abstention set, and the permission

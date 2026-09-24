@@ -33,6 +33,16 @@ export interface ApiConfig {
   readonly bootstrapCorpus: string | null;
   /** The group the bootstrap corpus is labelled with, and the group a caller must hold to read it. */
   readonly corpusGroup: string;
+  /**
+   * A per-path access manifest, for a corpus with zones.
+   *
+   * Absent means the whole corpus carries `corpusGroup`, which is the right shape for a corpus
+   * where everything is readable by the same people and the wrong one for any corpus a permission
+   * probe is run against — nothing is forbidden there, so nothing can leak.
+   */
+  readonly aclManifest: string | null;
+  /** A principal-to-groups file. Absent means the single bootstrap principal, in `corpusGroup`. */
+  readonly groupMap: string | null;
 }
 
 export class ConfigError extends Error {
@@ -111,7 +121,13 @@ export function readApiConfig(
     ),
     bootstrapCorpus: bootstrap === undefined || bootstrap.length === 0 ? null : bootstrap,
     corpusGroup,
+    aclManifest: optionalPath(flag(argv, "acl") ?? env.ATLASOPS_ACL_MANIFEST),
+    groupMap: optionalPath(flag(argv, "groups") ?? env.ATLASOPS_GROUP_MAP),
   };
+}
+
+function optionalPath(value: string | undefined): string | null {
+  return value === undefined || value.length === 0 ? null : value;
 }
 
 /** What the process prints at startup, so a running instance can say what it is. */
@@ -121,6 +137,7 @@ export function describeApiConfig(config: ApiConfig): readonly string[] {
     `store profile       ${config.profile} (in-process; a restart loses the corpus)`,
     `generator           ${config.generator} (no provider adapter is installed)`,
     `bootstrap corpus    ${config.bootstrapCorpus ?? "(none)"}`,
-    `corpus group        grp_${config.corpusGroup}`,
+    `access manifest     ${config.aclManifest ?? `(none; everything is grp_${config.corpusGroup})`}`,
+    `group map           ${config.groupMap ?? `(none; prn_reader is grp_${config.corpusGroup})`}`,
   ];
 }

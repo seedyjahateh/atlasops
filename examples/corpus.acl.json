@@ -1,0 +1,33 @@
+{
+  "$comment": [
+    "Access labels for examples/corpus, declared beside the corpus rather than inside it.",
+    "",
+    "It sits outside the crawl root on purpose: a label file inside the corpus would be ingested,",
+    "chunked and retrievable — an access-control policy answering questions about itself. Keeping",
+    "it out also keeps ADR 0003 true, since bytes decide a version's identity and a label change",
+    "must not mint a new version.",
+    "",
+    "There is no catch-all rule and there is not going to be one. A path no rule covers fails the",
+    "fetch for that source (ACL_UNRESOLVED) rather than acquiring a default, because a default is",
+    "how 'unknown' becomes 'public' (PRD 6.1). Adding a document to this corpus means deciding who",
+    "may read it, in this file, in the same change."
+  ],
+  "rules": [
+    {
+      "prefix": "public/",
+      "label": { "readableBy": ["grp_everyone"], "existence": "visible" }
+    },
+    {
+      "prefix": "engineering/",
+      "label": { "readableBy": ["grp_engineering"], "existence": "visible" }
+    },
+    {
+      "prefix": "finance/",
+      "label": { "readableBy": ["grp_finance"], "existence": "visible" }
+    },
+    {
+      "prefix": "restricted/",
+      "label": { "readableBy": ["grp_exec"], "existence": "hidden" }
+    }
+  ]
+}

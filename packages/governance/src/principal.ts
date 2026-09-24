@@ -12,7 +12,13 @@
  * means "we do not know what this principal reads" and the request stops.
  */
 
-import { AtlasOpsError, type GroupId, type PrincipalId } from "@atlasops/contracts";
+import {
+  AtlasOpsError,
+  parseGroupId,
+  parsePrincipalId,
+  type GroupId,
+  type PrincipalId,
+} from "@atlasops/contracts";
 
 export interface Principal {
   readonly id: PrincipalId;
@@ -69,6 +75,57 @@ export function staticGroupResolver(
       return Promise.resolve(groups);
     },
   };
+}
+
+/**
+ * A membership map read from data, for a corpus that ships its principals beside its zones.
+ *
+ * Validated rather than cast. A membership file decides who reads what, so a malformed one stops
+ * the process rather than resolving to an empty group set — empty means "reads nothing", and a
+ * principal who silently reads nothing is indistinguishable from a working system with an empty
+ * corpus. Identifiers go through the `contracts` parsers, so a typo is a startup error rather than
+ * a permission that never matches anything.
+ */
+export function parseGroupMap(
+  value: unknown,
+  where = "groups",
+): Readonly<Record<string, readonly GroupId[]>> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new AtlasOpsError("VALIDATION", `${where} must be an object`, where);
+  }
+
+  // `$`-prefixed keys are comments in the JSON files this parses, the same convention layers.json
+  // uses. A comment is not a principal.
+  const entries = Object.entries(value as Record<string, unknown>).filter(
+    ([principalId]) => !principalId.startsWith("$"),
+  );
+  if (entries.length === 0) {
+    throw new AtlasOpsError(
+      "VALIDATION",
+      `${where} names no principal. Every request would then fail to resolve, which is safe and ` +
+        `indistinguishable from a broken directory.`,
+      where,
+    );
+  }
+
+  const map: Record<string, readonly GroupId[]> = {};
+  for (const [principalId, groups] of entries) {
+    const at = `${where}.${principalId}`;
+    parsePrincipalId(principalId, at);
+    if (!Array.isArray(groups)) {
+      throw new AtlasOpsError("VALIDATION", `${at} must be an array of group identifiers`, at);
+    }
+    map[principalId] = normaliseGroups(
+      groups.map((group, index) => {
+        if (typeof group !== "string") {
+          throw new AtlasOpsError("VALIDATION", `${at}[${String(index)}] must be a string`, at);
+        }
+        return parseGroupId(group, `${at}[${String(index)}]`);
+      }),
+    );
+  }
+
+  return map;
 }
 
 /** A resolver that always fails, for exercising the fail-closed path. */

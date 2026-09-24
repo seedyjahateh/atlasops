@@ -16,8 +16,12 @@
  * comparison of four corpora, and PRD 8.2 asks for four arms "over the same dataset version".
  */
 
-import { contentHashOf, formatGroupId, parsePrincipalId, type GroupId } from "@atlasops/contracts";
+import { readFileSync } from "node:fs";
+
+import { formatGroupId, parsePrincipalId, type GroupId } from "@atlasops/contracts";
 import {
+  CORPUS_CHUNKING,
+  corpusSnapshotOf,
   corpusVersionOracle,
   createAnswerPipeline,
   createIngestionPipeline,
@@ -39,10 +43,20 @@ import {
   type PermissionProbeItem,
   type RunReport,
 } from "@atlasops/evalkit";
-import { inMemoryAuditSink, staticGroupResolver, type AuditRecord } from "@atlasops/governance";
+import {
+  inMemoryAuditSink,
+  parseGroupMap,
+  staticGroupResolver,
+  type AuditRecord,
+} from "@atlasops/governance";
 import { STAND_IN_MODEL_ID, citingStandIn } from "@atlasops/grounding";
 import { currentSchema, inMemoryLexicalIndex, inMemoryVectorIndex } from "@atlasops/indexing";
-import { filesystemConnector, structureAware } from "@atlasops/ingest";
+import {
+  aclFromManifest,
+  filesystemConnector,
+  loadAclManifest,
+  structureAware,
+} from "@atlasops/ingest";
 import {
   createEmbeddingGateway,
   deterministicVector,
@@ -74,6 +88,10 @@ export interface RunnerConfig {
    * able to see that, so the report records it.
    */
   readonly allowSnapshotMismatch: boolean;
+  /** A per-path access manifest. Without one, nothing in the corpus is forbidden to anybody. */
+  readonly aclManifest: string | null;
+  /** A principal-to-groups file, so probes can be run as somebody who must not see a zone. */
+  readonly groupMap: string | null;
   /**
    * The commit this run was made from.
    *
@@ -82,6 +100,10 @@ export interface RunnerConfig {
    * checkout, and a CI job knows its own SHA anyway. Absent is recorded as absent.
    */
   readonly commit: string | null;
+}
+
+function optionalPath(value: string | undefined): string | null {
+  return value === undefined || value.length === 0 ? null : value;
 }
 
 /** A flag, taking precedence over the environment. See `apps/api/src/config.ts` for why both. */
@@ -116,6 +138,8 @@ export function readRunnerConfig(
     corpusGroup,
     allowSnapshotMismatch:
       argv.includes("--allow-snapshot-mismatch") || env.ATLASOPS_ALLOW_SNAPSHOT_MISMATCH === "1",
+    aclManifest: optionalPath(flag(argv, "acl") ?? env.ATLASOPS_ACL_MANIFEST),
+    groupMap: optionalPath(flag(argv, "groups") ?? env.ATLASOPS_GROUP_MAP),
     commit: flag(argv, "commit") ?? env.ATLASOPS_COMMIT ?? null,
   };
 }
@@ -152,21 +176,6 @@ export interface EvaluationOutcome {
   readonly commit: string | null;
 }
 
-/**
- * The corpus snapshot, as a hash of what was ingested.
- *
- * Derived from the live version of every source in identifier order, so it changes when the corpus
- * changes and not when the crawl order does. It is the value PRD 8.1 wants a dataset pinned to.
- */
-function snapshotOf(store: ReturnType<typeof inMemoryCorpusStore>): string {
-  const versions = store
-    .sources()
-    .map((sourceId) => store.liveVersion(sourceId))
-    .filter((version) => version !== null)
-    .map((version) => `${version.sourceId}\u001f${version.sourceVersionId}`);
-  return contentHashOf(versions.join("\n"));
-}
-
 export async function runEvaluationSuite(
   config: RunnerConfig,
   datasets: DatasetsFile,
@@ -189,8 +198,12 @@ export async function runEvaluationSuite(
       clock: systemClock,
       connector: filesystemConnector({
         root: config.corpusRoot,
-        strategy: structureAware({ maxTokens: 256, boundaryDepth: 2 }),
-        acl: { readableBy: [group], existence: "visible" },
+        // Shared with the inventory tool (P14a). Chunk identifiers are derived from a version and
+        // an ordinal, so a different token budget here would produce identifiers no dataset labels.
+        strategy: structureAware(CORPUS_CHUNKING),
+        ...(config.aclManifest === null
+          ? { acl: { readableBy: [group], existence: "visible" } }
+          : { aclFor: aclFromManifest(loadAclManifest(config.aclManifest)) }),
         now: () => new Date().toISOString(),
       }),
       chunks: indexingChunkSink(lexical, vector),
@@ -201,7 +214,7 @@ export async function runEvaluationSuite(
 
   // One ingestion, then every arm over it. See the file header.
   await ingestion.run();
-  const corpusSnapshot = snapshotOf(store);
+  const corpusSnapshot = corpusSnapshotOf(store);
 
   const loaded = {
     relevance: datasets.relevance === undefined ? undefined : loadDataset(datasets.relevance),
@@ -249,7 +262,11 @@ export async function runEvaluationSuite(
     clock: systemClock,
     reranker: fakeReranker("stand-in-reranker"),
     generator: citingStandIn(),
-    groups: staticGroupResolver({ prn_alice: [group], prn_reader: [group] }),
+    groups: staticGroupResolver(
+      config.groupMap === null
+        ? { prn_alice: [group], prn_reader: [group] }
+        : parseGroupMap(JSON.parse(readFileSync(config.groupMap, "utf8")), config.groupMap),
+    ),
     audit,
     oracle: corpusVersionOracle(store),
     now: () => new Date().toISOString(),

@@ -289,6 +289,30 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  tools/corpus:
+    dependencies:
+      '@atlasops/composition':
+        specifier: workspace:*
+        version: link:../../packages/composition
+      '@atlasops/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@atlasops/corpus':
+        specifier: workspace:*
+        version: link:../../packages/corpus
+      '@atlasops/indexing':
+        specifier: workspace:*
+        version: link:../../packages/indexing
+      '@atlasops/ingest':
+        specifier: workspace:*
+        version: link:../../packages/ingest
+      '@atlasops/model-gateway':
+        specifier: workspace:*
+        version: link:../../packages/model-gateway
+      '@atlasops/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
+
   tools/smoke:
     dependencies:
       '@atlasops/model-gateway':

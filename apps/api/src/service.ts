@@ -23,7 +23,10 @@ import {
   isAtlasOpsError,
   parsePrincipalId,
 } from "@atlasops/contracts";
+import { readFileSync } from "node:fs";
+
 import {
+  CORPUS_CHUNKING,
   corpusVersionOracle,
   createAnswerPipeline,
   createIngestionPipeline,
@@ -33,12 +36,18 @@ import {
 import { inMemoryCorpusStore } from "@atlasops/corpus";
 import {
   inMemoryAuditSink,
+  parseGroupMap,
   staticGroupResolver,
   type RecordingAuditSink,
 } from "@atlasops/governance";
 import { citingStandIn } from "@atlasops/grounding";
 import { currentSchema, inMemoryLexicalIndex, inMemoryVectorIndex } from "@atlasops/indexing";
-import { filesystemConnector, structureAware } from "@atlasops/ingest";
+import {
+  aclFromManifest,
+  filesystemConnector,
+  loadAclManifest,
+  structureAware,
+} from "@atlasops/ingest";
 import {
   createEmbeddingGateway,
   deterministicVector,
@@ -90,6 +99,24 @@ export function createAnswerService(config: ApiConfig): AnswerService {
   const audit = inMemoryAuditSink();
   const group = formatGroupId(config.corpusGroup);
 
+  /**
+   * Zones, or one label for everything.
+   *
+   * Both paths exist because both are real: a corpus where everybody reads everything is the
+   * ordinary case and stays a one-liner, and a corpus with zones is the only kind a permission
+   * probe says anything about. The manifest resolver refuses a path it does not cover rather than
+   * inventing a default (PRD 6.1), so adding a document without labelling it stops the crawl.
+   */
+  const corpusAcl =
+    config.aclManifest === null
+      ? { acl: { readableBy: [group], existence: "visible" } }
+      : { aclFor: aclFromManifest(loadAclManifest(config.aclManifest)) };
+
+  const memberships =
+    config.groupMap === null
+      ? { prn_reader: [group] }
+      : parseGroupMap(JSON.parse(readFileSync(config.groupMap, "utf8")), config.groupMap);
+
   const pipeline = createAnswerPipeline({
     store,
     lexical,
@@ -99,10 +126,10 @@ export function createAnswerService(config: ApiConfig): AnswerService {
     clock: systemClock,
     reranker: fakeReranker("stand-in-reranker"),
     generator: citingStandIn(),
-    // One principal, whose group is the one the bootstrap corpus carries. A real deployment
+    // Either the corpus's own membership file or a single bootstrap principal. A real deployment
     // resolves this against a directory; the resolver is a port precisely so that swap is a
     // configuration change rather than a rewrite.
-    groups: staticGroupResolver({ prn_reader: [group] }),
+    groups: staticGroupResolver(memberships),
     audit,
     oracle: corpusVersionOracle(store),
     retrievalCache: inMemoryRetrievalCache(),
@@ -122,8 +149,8 @@ export function createAnswerService(config: ApiConfig): AnswerService {
         clock: systemClock,
         connector: filesystemConnector({
           root: config.bootstrapCorpus,
-          strategy: structureAware({ maxTokens: 256, boundaryDepth: 2 }),
-          acl: { readableBy: [group], existence: "visible" },
+          strategy: structureAware(CORPUS_CHUNKING),
+          ...corpusAcl,
           now: () => new Date().toISOString(),
         }),
         chunks: indexingChunkSink(lexical, vector),

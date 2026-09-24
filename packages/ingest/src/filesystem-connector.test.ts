@@ -84,6 +84,72 @@ describe("the filesystem connector", () => {
     expect(fetched.observation.acl).toEqual(ACL);
   });
 
+  describe("labels per path", () => {
+    it("gives each zone its own label", async () => {
+      // A connector that can only apply one label to a whole corpus can only describe a corpus
+      // everybody may read — and a permission probe over such a corpus measures nothing, because
+      // nothing in it is forbidden to anybody.
+      const connector = filesystemConnector({
+        root: makeRoot({ "public/a.md": "public", "finance/b.md": "restricted" }),
+        strategy: structureAware({ maxTokens: 64, boundaryDepth: 2 }),
+        aclFor: (path) =>
+          path.startsWith("finance/")
+            ? { readableBy: ["grp_finance"], existence: "visible" }
+            : { readableBy: ["grp_everyone"], existence: "visible" },
+        now: NOW,
+      });
+      await connector.list();
+
+      const open = await connector.fetch("src_public--a.md" as never);
+      const closed = await connector.fetch("src_finance--b.md" as never);
+
+      expect(open.observation.acl).toEqual({ readableBy: ["grp_everyone"], existence: "visible" });
+      expect(closed.observation.acl).toEqual({ readableBy: ["grp_finance"], existence: "visible" });
+    });
+
+    it("fails the fetch of an unlabelled file and leaves the rest of the crawl alone", async () => {
+      // Isolation, not suppression (PRD 4.5): the unlabelled file is never ingested, so nobody can
+      // retrieve it, and the labelled ones still arrive.
+      const connector = filesystemConnector({
+        root: makeRoot({ "public/a.md": "public", "stray.md": "unlabelled" }),
+        strategy: structureAware({ maxTokens: 64, boundaryDepth: 2 }),
+        aclFor: (path) => {
+          if (!path.startsWith("public/")) throw new Error(`no rule covers "${path}"`);
+          return { readableBy: ["grp_everyone"], existence: "visible" };
+        },
+        now: NOW,
+      });
+      const listing = await connector.list();
+      expect(listing.sources).toHaveLength(2);
+
+      await expect(connector.fetch("src_stray.md" as never)).rejects.toThrow(/no rule covers/);
+      await expect(connector.fetch("src_public--a.md" as never)).resolves.toBeDefined();
+    });
+
+    it("refuses to be built with both a uniform label and a resolver", () => {
+      // Two answers to one question. Better now than on the first fetch of the first crawl.
+      expect(() =>
+        filesystemConnector({
+          root: makeRoot({}),
+          strategy: structureAware({ maxTokens: 64, boundaryDepth: 2 }),
+          acl: ACL,
+          aclFor: () => ACL,
+          now: NOW,
+        }),
+      ).toThrow(/exactly one/);
+    });
+
+    it("refuses to be built with neither", () => {
+      expect(() =>
+        filesystemConnector({
+          root: makeRoot({}),
+          strategy: structureAware({ maxTokens: 64, boundaryDepth: 2 }),
+          now: NOW,
+        }),
+      ).toThrow(/exactly one/);
+    });
+  });
+
   it("refuses to fetch a source that was not in the last listing", async () => {
     const connector = connect(makeRoot({ "handbook.md": "text" }));
     await connector.list();

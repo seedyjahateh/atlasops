@@ -30,8 +30,23 @@ import type { ChunkStrategy } from "./strategy.js";
 export interface FilesystemConnectorOptions {
   readonly root: string;
   readonly strategy: ChunkStrategy;
-  /** The label every file under this root carries. Unresolvable here is a hard error (PRD 6.1). */
-  readonly acl: unknown;
+  /**
+   * The label every file under this root carries. Unresolvable here is a hard error (PRD 6.1).
+   *
+   * Exactly one of `acl` and `aclFor` is given. A corpus where everything shares a label is the
+   * common case and stays a one-liner; a corpus with zones needs the resolver, because a single
+   * label makes every permission probe over it vacuous — nothing is forbidden, so nothing leaks.
+   */
+  readonly acl?: unknown;
+  /**
+   * A label per path, relative to the root, with `/` separators.
+   *
+   * It may throw, and a throw is the point: `aclFromManifest` refuses a path no rule covers rather
+   * than inventing a permissive default. The failure lands on one source's fetch, so PRD 4.5's
+   * isolation still holds — the rest of the crawl completes and the unlabelled file is the only
+   * casualty.
+   */
+  readonly aclFor?: (relativePath: string) => unknown;
   readonly name?: string;
   /** Lower-case, with the dot. Defaults to Markdown and plain text. */
   readonly extensions?: readonly string[];
@@ -108,6 +123,22 @@ export function filesystemConnector(options: FilesystemConnectorOptions): Connec
   const name = options.name ?? "filesystem";
   const extensions = options.extensions ?? [...DEFAULT_EXTENSIONS];
 
+  // Neither is a corpus with no access decision at all, and both is two answers to one question.
+  // Either way the right moment to fail is now, not on the first fetch of the first crawl.
+  const uniform = options.acl !== undefined;
+  const perPath = options.aclFor !== undefined;
+  if (uniform === perPath) {
+    throw new AtlasOpsError(
+      "VALIDATION",
+      `${name}: give exactly one of "acl" (one label for the whole root) or "aclFor" (a label per ` +
+        `path). Neither means the corpus has no access decision; both means it has two.`,
+      "connector.acl",
+    );
+  }
+
+  const labelFor = (relativePath: string): unknown =>
+    options.aclFor === undefined ? options.acl : options.aclFor(relativePath);
+
   /** Path per identifier, rebuilt on every listing so a renamed file is not served from memory. */
   const paths = new Map<SourceId, string>();
 
@@ -157,6 +188,15 @@ export function filesystemConnector(options: FilesystemConnectorOptions): Connec
         return Promise.reject(new Error(`could not read ${path}: ${(cause as Error).message}`));
       }
 
+      let acl: unknown;
+      try {
+        acl = labelFor(relative(options.root, path).split(sep).join("/"));
+      } catch (cause) {
+        // Isolation, not suppression: this source fails and the crawl continues (PRD 4.5). An
+        // unlabelled file is never ingested, so it cannot be retrieved by anybody.
+        return Promise.reject(cause instanceof Error ? cause : new Error(String(cause)));
+      }
+
       return Promise.resolve({
         text,
         observation: {
@@ -165,7 +205,7 @@ export function filesystemConnector(options: FilesystemConnectorOptions): Connec
           observedAt: options.now(),
           effectiveDate: null,
           upstreamRevision: null,
-          acl: options.acl,
+          acl,
         },
       });
     },

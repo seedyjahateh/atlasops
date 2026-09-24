@@ -1,0 +1,19 @@
+{
+  "$comment": [
+    "Who may read which zone of examples/corpus. Read beside corpus.acl.json: that file says which",
+    "group owns a document, this one says which principals are in that group.",
+    "",
+    "prn_alice is the interesting one. She is engineering, so the finance documents are present in",
+    "the corpus, adjacent in vocabulary to the ones she may read, and forbidden to her — which is",
+    "what makes a leak count over this corpus evidence rather than arithmetic. Nobody but prn_exec",
+    "may read the restricted zone, and prn_exec exists so that the hidden document is reachable by",
+    "somebody; a document no principal can read is not a test of anything.",
+    "",
+    "A principal named here but absent from a group still resolves — to a smaller set. A principal",
+    "absent from this file does not resolve at all, and the request fails closed (PRD 9.4)."
+  ],
+  "prn_reader": ["grp_everyone"],
+  "prn_alice": ["grp_everyone", "grp_engineering"],
+  "prn_frank": ["grp_everyone", "grp_finance"],
+  "prn_exec": ["grp_everyone", "grp_exec"]
+}

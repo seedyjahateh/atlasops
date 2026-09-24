@@ -36,3 +36,5 @@ export {
 export { indexingChunkSink } from "./chunk-sink.js";
 
 export { corpusVersionOracle } from "./corpus-oracle.js";
+
+export { CORPUS_CHUNKING, corpusSnapshotOf, type CorpusChunking } from "./snapshot.js";

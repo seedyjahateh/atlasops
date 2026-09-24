@@ -51,6 +51,7 @@ import { createAnswerPipeline } from "./answering.js";
 import { indexingChunkSink } from "./chunk-sink.js";
 import { corpusVersionOracle } from "./corpus-oracle.js";
 import { createIngestionPipeline } from "./ingesting.js";
+import { CORPUS_CHUNKING, corpusSnapshotOf } from "./snapshot.js";
 
 /* -------------------------------------------------------------------------------- fixtures */
 
@@ -277,6 +278,52 @@ function ask(
 }
 
 /* ----------------------------------------------------------------------------- the tests */
+
+describe("the corpus snapshot is one function (P14a)", () => {
+  it("hashes the live versions of what was ingested", async () => {
+    const world = system();
+    await world.ingestion.run();
+
+    expect(corpusSnapshotOf(world.store)).toMatch(/^sha256:[0-9a-f]{64}$/);
+  });
+
+  it("moves when the corpus changes", async () => {
+    const world = system();
+    await world.ingestion.run();
+    const before = corpusSnapshotOf(world.store);
+
+    world.upstream.add({
+      sourceId: HANDBOOK,
+      text: `${HANDBOOK_TEXT}\n## Appeals\n\nAn appeal goes to the owner of the order.\n`,
+      groups: [ENGINEERING],
+    });
+    await world.ingestion.run();
+
+    // The whole point of pinning a dataset to it: PRD 8.1 calls re-ingesting the corpus one of the
+    // two most effective ways to fake an improvement, and this is what makes that visible.
+    expect(corpusSnapshotOf(world.store)).not.toBe(before);
+  });
+
+  it("does not move when a deleted source is the only difference to the listing order", async () => {
+    // Derived from live versions in identifier order, so a crawl that returns sources in another
+    // order produces the same hash — otherwise every run would appear to be a new corpus.
+    const world = system();
+    await world.ingestion.run();
+    const first = corpusSnapshotOf(world.store);
+
+    const reversed = system([...DEFAULT_FIXTURES].reverse());
+    await reversed.ingestion.run();
+
+    expect(corpusSnapshotOf(reversed.store)).toBe(first);
+  });
+
+  it("publishes the chunking settings the identifiers depend on", () => {
+    // Shared with tools/corpus, because a chunk identifier is derived from a version and an
+    // ordinal: a different token budget produces identifiers the runner never creates.
+    expect(CORPUS_CHUNKING.maxTokens).toBeGreaterThan(0);
+    expect(CORPUS_CHUNKING.boundaryDepth).toBeGreaterThan(0);
+  });
+});
 
 describe("the two pipelines meet at the corpus and the indexes (PRD 10)", () => {
   it("ingests a corpus and answers from it", async () => {

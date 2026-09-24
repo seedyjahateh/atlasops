@@ -35,6 +35,7 @@ import { abstentionMessage, outcomeFor } from "./existence.js";
 import { computeCacheKey, groupSetHash, permissionedCacheKey } from "./groupset.js";
 import {
   normaliseGroups,
+  parseGroupMap,
   resolvePrincipal,
   staticGroupResolver,
   unavailableGroupResolver,
@@ -284,5 +285,39 @@ describe("abstention wording is not an oracle (PRD 6.4)", () => {
 
   it("chooses visible wording only when every exclusion was visible", () => {
     expect(outcomeFor(["visible", "visible"])).toBe("excluded-visible");
+  });
+});
+
+describe("a membership map read from data (P14a)", () => {
+  it("parses principals to normalised group sets", () => {
+    const map = parseGroupMap({
+      prn_alice: ["grp_engineering", "grp_everyone"],
+      prn_frank: ["grp_finance"],
+    });
+
+    // Normalised on the way in, because group-set identity is what every cache key and audit
+    // record downstream depends on.
+    expect(map.prn_alice).toEqual(["grp_engineering", "grp_everyone"]);
+    expect(map.prn_frank).toEqual(["grp_finance"]);
+  });
+
+  it("ignores $-prefixed keys, which are comments in these files", () => {
+    const map = parseGroupMap({ $comment: "why alice is engineering", prn_alice: ["grp_x"] });
+    expect(Object.keys(map)).toEqual(["prn_alice"]);
+  });
+
+  it("refuses a malformed identifier rather than carrying it to a permission check", () => {
+    // A group identifier that never matches anything produces a principal who reads nothing, which
+    // looks exactly like a working system with an empty corpus.
+    expect(() => parseGroupMap({ prn_alice: ["engineering"] })).toThrow();
+    expect(() => parseGroupMap({ alice: ["grp_engineering"] })).toThrow();
+  });
+
+  it("refuses a map naming no principal", () => {
+    expect(() => parseGroupMap({ $comment: "only a comment" })).toThrow(/names no principal/);
+  });
+
+  it("refuses groups that are not an array", () => {
+    expect(() => parseGroupMap({ prn_alice: "grp_engineering" })).toThrow(/must be an array/);
   });
 });

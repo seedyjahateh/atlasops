@@ -60,6 +60,14 @@ export {
 
 export { filesystemConnector, type FilesystemConnectorOptions } from "./filesystem-connector.js";
 
+export {
+  aclFromManifest,
+  loadAclManifest,
+  parseAclManifest,
+  type AclManifest,
+  type AclRule,
+} from "./acl-manifest.js";
+
 export { failingChunkSink, inMemoryChunkSink, type ChunkSink, type StoredChunk } from "./sink.js";
 
 export {

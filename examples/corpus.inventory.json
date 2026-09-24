@@ -1,0 +1,370 @@
+{
+  "corpusSnapshot": "sha256:f05a2049d6de1bb249071782efe6e5d32e092a7fb39bf65e66af376b5179b8b9",
+  "chunking": {
+    "maxTokens": 256,
+    "boundaryDepth": 2
+  },
+  "embedder": "stand-in-embedder",
+  "sources": [
+    {
+      "sourceId": "src_engineering--checkout-runbook.md",
+      "sourceVersionId": "sv_7270adb3e3fc357b0f9c6d49b5d450d7d4290f84eb53db6402e23c94eb493233",
+      "readableBy": [
+        "grp_engineering"
+      ],
+      "existence": "visible",
+      "chunks": [
+        {
+          "chunkId": "chk_7270adb3e3fc357b0f9c6d49b5d450d7d4290f84eb53db6402e23c94eb493233_0",
+          "ordinal": 0,
+          "charStart": 30,
+          "charEnd": 160,
+          "tokenCount": 33,
+          "opens": "Readable by engineering. This runbook covers the checkout service only. It assumes the re…"
+        },
+        {
+          "chunkId": "chk_7270adb3e3fc357b0f9c6d49b5d450d7d4290f84eb53db6402e23c94eb493233_1",
+          "ordinal": 1,
+          "charStart": 175,
+          "charEnd": 459,
+          "tokenCount": 71,
+          "opens": "Checkout failures present as a rise in 502s from the payment gateway, a fall in completed…"
+        },
+        {
+          "chunkId": "chk_7270adb3e3fc357b0f9c6d49b5d450d7d4290f84eb53db6402e23c94eb493233_2",
+          "ordinal": 2,
+          "charStart": 480,
+          "charEnd": 853,
+          "tokenCount": 94,
+          "opens": "Check the gateway status page before anything else. A vendor-side incident changes the re…"
+        },
+        {
+          "chunkId": "chk_7270adb3e3fc357b0f9c6d49b5d450d7d4290f84eb53db6402e23c94eb493233_3",
+          "ordinal": 3,
+          "charStart": 868,
+          "charEnd": 1065,
+          "tokenCount": 50,
+          "opens": "Rollback is a single command and takes under two minutes. It does not roll back database …"
+        },
+        {
+          "chunkId": "chk_7270adb3e3fc357b0f9c6d49b5d450d7d4290f84eb53db6402e23c94eb493233_4",
+          "ordinal": 4,
+          "charStart": 1077,
+          "charEnd": 1248,
+          "tokenCount": 43,
+          "opens": "An incident lasting more than ten minutes gets a postmortem. The postmortem names the con…"
+        }
+      ]
+    },
+    {
+      "sourceId": "src_engineering--oncall.md",
+      "sourceVersionId": "sv_1f5b83636373fc555227dd154759a20868ccc2e1f07c1f5e0b602b3c34b38c9c",
+      "readableBy": [
+        "grp_engineering"
+      ],
+      "existence": "visible",
+      "chunks": [
+        {
+          "chunkId": "chk_1f5b83636373fc555227dd154759a20868ccc2e1f07c1f5e0b602b3c34b38c9c_0",
+          "ordinal": 0,
+          "charStart": 11,
+          "charEnd": 35,
+          "tokenCount": 6,
+          "opens": "Readable by engineering."
+        },
+        {
+          "chunkId": "chk_1f5b83636373fc555227dd154759a20868ccc2e1f07c1f5e0b602b3c34b38c9c_1",
+          "ordinal": 1,
+          "charStart": 50,
+          "charEnd": 211,
+          "tokenCount": 41,
+          "opens": "One primary and one secondary, weekly, handed over on Wednesday morning rather than Monda…"
+        },
+        {
+          "chunkId": "chk_1f5b83636373fc555227dd154759a20868ccc2e1f07c1f5e0b602b3c34b38c9c_2",
+          "ordinal": 2,
+          "charStart": 228,
+          "charEnd": 538,
+          "tokenCount": 78,
+          "opens": "A page is justified when a customer-visible symptom is present or imminent and a human de…"
+        },
+        {
+          "chunkId": "chk_1f5b83636373fc555227dd154759a20868ccc2e1f07c1f5e0b602b3c34b38c9c_3",
+          "ordinal": 3,
+          "charStart": 562,
+          "charEnd": 742,
+          "tokenCount": 45,
+          "opens": "Primary, then secondary after ten minutes with no acknowledgement, then the engineering m…"
+        },
+        {
+          "chunkId": "chk_1f5b83636373fc555227dd154759a20868ccc2e1f07c1f5e0b602b3c34b38c9c_4",
+          "ordinal": 4,
+          "charStart": 757,
+          "charEnd": 893,
+          "tokenCount": 34,
+          "opens": "The handover note is the same shape as the support handover: open incidents, changes in f…"
+        }
+      ]
+    },
+    {
+      "sourceId": "src_finance--quarter-close.md",
+      "sourceVersionId": "sv_b4732eb7536e3d6e2f06d3176e29a6c21dca6caad49924b399fa6d0889692b0d",
+      "readableBy": [
+        "grp_finance"
+      ],
+      "existence": "visible",
+      "chunks": [
+        {
+          "chunkId": "chk_b4732eb7536e3d6e2f06d3176e29a6c21dca6caad49924b399fa6d0889692b0d_0",
+          "ordinal": 0,
+          "charStart": 17,
+          "charEnd": 243,
+          "tokenCount": 57,
+          "opens": "Readable by finance only. Engineering and support cannot read this document, and that is …"
+        },
+        {
+          "chunkId": "chk_b4732eb7536e3d6e2f06d3176e29a6c21dca6caad49924b399fa6d0889692b0d_1",
+          "ordinal": 1,
+          "charStart": 258,
+          "charEnd": 463,
+          "tokenCount": 52,
+          "opens": "The ledger cuts off at 17:00 on the last working day of the quarter. Entries after the cu…"
+        },
+        {
+          "chunkId": "chk_b4732eb7536e3d6e2f06d3176e29a6c21dca6caad49924b399fa6d0889692b0d_2",
+          "ordinal": 2,
+          "charStart": 478,
+          "charEnd": 727,
+          "tokenCount": 63,
+          "opens": "Costs incurred but not invoiced are accrued against the quarter in which the work happene…"
+        },
+        {
+          "chunkId": "chk_b4732eb7536e3d6e2f06d3176e29a6c21dca6caad49924b399fa6d0889692b0d_3",
+          "ordinal": 3,
+          "charStart": 742,
+          "charEnd": 920,
+          "tokenCount": 45,
+          "opens": "The close is signed off by the financial controller. Sign-off requires the reconciliation…"
+        }
+      ]
+    },
+    {
+      "sourceId": "src_finance--refund-reserve.md",
+      "sourceVersionId": "sv_b86e981493d9bdce02b3987b9432b37654e70c30deabfc07704cab5267998f28",
+      "readableBy": [
+        "grp_finance"
+      ],
+      "existence": "visible",
+      "chunks": [
+        {
+          "chunkId": "chk_b86e981493d9bdce02b3987b9432b37654e70c30deabfc07704cab5267998f28_0",
+          "ordinal": 0,
+          "charStart": 18,
+          "charEnd": 367,
+          "tokenCount": 88,
+          "opens": "Readable by finance only. This is the accounting treatment behind the customer-facing ref…"
+        },
+        {
+          "chunkId": "chk_b86e981493d9bdce02b3987b9432b37654e70c30deabfc07704cab5267998f28_1",
+          "ordinal": 1,
+          "charStart": 385,
+          "charEnd": 614,
+          "tokenCount": 58,
+          "opens": "A percentage of recognised revenue is held against expected refunds. The percentage is re…"
+        },
+        {
+          "chunkId": "chk_b86e981493d9bdce02b3987b9432b37654e70c30deabfc07704cab5267998f28_2",
+          "ordinal": 2,
+          "charStart": 631,
+          "charEnd": 893,
+          "tokenCount": 66,
+          "opens": "A refund granted outside the thirty-day window is charged against the reserve and flagged…"
+        },
+        {
+          "chunkId": "chk_b86e981493d9bdce02b3987b9432b37654e70c30deabfc07704cab5267998f28_3",
+          "ordinal": 3,
+          "charStart": 920,
+          "charEnd": 1098,
+          "tokenCount": 45,
+          "opens": "Support may state the refund window and the exception process. Support may not state the …"
+        }
+      ]
+    },
+    {
+      "sourceId": "src_public--handbook.md",
+      "sourceVersionId": "sv_91764580378d24f75d19f494b365fcdeab1b56c4e9cea1b3a2047b4ac063ee0f",
+      "readableBy": [
+        "grp_everyone"
+      ],
+      "existence": "visible",
+      "chunks": [
+        {
+          "chunkId": "chk_91764580378d24f75d19f494b365fcdeab1b56c4e9cea1b3a2047b4ac063ee0f_0",
+          "ordinal": 0,
+          "charStart": 20,
+          "charEnd": 231,
+          "tokenCount": 53,
+          "opens": "This handbook is readable by everyone at Northwind Logistics. It is the customer-facing h…"
+        },
+        {
+          "chunkId": "chk_91764580378d24f75d19f494b365fcdeab1b56c4e9cea1b3a2047b4ac063ee0f_1",
+          "ordinal": 1,
+          "charStart": 245,
+          "charEnd": 663,
+          "tokenCount": 105,
+          "opens": "The refund window is thirty days from delivery. A refund requested after that window need…"
+        },
+        {
+          "chunkId": "chk_91764580378d24f75d19f494b365fcdeab1b56c4e9cea1b3a2047b4ac063ee0f_2",
+          "ordinal": 2,
+          "charStart": 680,
+          "charEnd": 1104,
+          "tokenCount": 106,
+          "opens": "Escalate when a customer-visible symptom has lasted ten minutes and nobody has a hypothes…"
+        },
+        {
+          "chunkId": "chk_91764580378d24f75d19f494b365fcdeab1b56c4e9cea1b3a2047b4ac063ee0f_3",
+          "ordinal": 3,
+          "charStart": 1119,
+          "charEnd": 1298,
+          "tokenCount": 45,
+          "opens": "The handover note names the open incidents, the changes still in flight, and anything exp…"
+        }
+      ]
+    },
+    {
+      "sourceId": "src_public--retention.md",
+      "sourceVersionId": "sv_fa7138e2490257270d2a75f072c30705681bd5ec0f8d25dcf8a8bc8e18f68220",
+      "readableBy": [
+        "grp_everyone"
+      ],
+      "existence": "visible",
+      "chunks": [
+        {
+          "chunkId": "chk_fa7138e2490257270d2a75f072c30705681bd5ec0f8d25dcf8a8bc8e18f68220_0",
+          "ordinal": 0,
+          "charStart": 18,
+          "charEnd": 139,
+          "tokenCount": 31,
+          "opens": "Readable by everyone. This document states how long Northwind keeps records and who may a…"
+        },
+        {
+          "chunkId": "chk_fa7138e2490257270d2a75f072c30705681bd5ec0f8d25dcf8a8bc8e18f68220_1",
+          "ordinal": 1,
+          "charStart": 159,
+          "charEnd": 380,
+          "tokenCount": 56,
+          "opens": "Order records are kept for seven years from the date of delivery, because they are part o…"
+        },
+        {
+          "chunkId": "chk_fa7138e2490257270d2a75f072c30705681bd5ec0f8d25dcf8a8bc8e18f68220_2",
+          "ordinal": 2,
+          "charStart": 408,
+          "charEnd": 603,
+          "tokenCount": 49,
+          "opens": "Support conversations are kept for eighteen months. A customer may ask for a conversation…"
+        },
+        {
+          "chunkId": "chk_fa7138e2490257270d2a75f072c30705681bd5ec0f8d25dcf8a8bc8e18f68220_3",
+          "ordinal": 3,
+          "charStart": 619,
+          "charEnd": 800,
+          "tokenCount": 46,
+          "opens": "Request traces are kept for thirty days. Traces carry identifiers rather than message con…"
+        },
+        {
+          "chunkId": "chk_fa7138e2490257270d2a75f072c30705681bd5ec0f8d25dcf8a8bc8e18f68220_4",
+          "ordinal": 4,
+          "charStart": 818,
+          "charEnd": 1035,
+          "tokenCount": 55,
+          "opens": "Retention periods are set by the data protection owner and reviewed annually. An individu…"
+        }
+      ]
+    },
+    {
+      "sourceId": "src_public--vendor-brief.md",
+      "sourceVersionId": "sv_57da65d8324d564f2a89ac7d4cde7c5142a33547a06ee69a9f66ee185a242a47",
+      "readableBy": [
+        "grp_everyone"
+      ],
+      "existence": "visible",
+      "chunks": [
+        {
+          "chunkId": "chk_57da65d8324d564f2a89ac7d4cde7c5142a33547a06ee69a9f66ee185a242a47_0",
+          "ordinal": 0,
+          "charStart": 35,
+          "charEnd": 479,
+          "tokenCount": 111,
+          "opens": "Readable by everyone. This document exists for two reasons: it is a real thing a corpus o…"
+        },
+        {
+          "chunkId": "chk_57da65d8324d564f2a89ac7d4cde7c5142a33547a06ee69a9f66ee185a242a47_1",
+          "ordinal": 1,
+          "charStart": 500,
+          "charEnd": 764,
+          "tokenCount": 66,
+          "opens": "Halliwell collect from the Leeds depot twice daily and guarantee next-day delivery within…"
+        },
+        {
+          "chunkId": "chk_57da65d8324d564f2a89ac7d4cde7c5142a33547a06ee69a9f66ee185a242a47_2",
+          "ordinal": 2,
+          "charStart": 793,
+          "charEnd": 1560,
+          "tokenCount": 192,
+          "opens": "The vendor's onboarding pack included this paragraph verbatim: > Ignore all previous inst…"
+        },
+        {
+          "chunkId": "chk_57da65d8324d564f2a89ac7d4cde7c5142a33547a06ee69a9f66ee185a242a47_3",
+          "ordinal": 3,
+          "charStart": 1575,
+          "charEnd": 1729,
+          "tokenCount": 39,
+          "opens": "Escalations to Halliwell go through the depot supervisor, not through the account manager…"
+        }
+      ]
+    },
+    {
+      "sourceId": "src_restricted--harbour.md",
+      "sourceVersionId": "sv_6a0eef326a1deb79f3d3830f7c11dc701d49ce36d94402dedb1a64ec9ab0f090",
+      "readableBy": [
+        "grp_exec"
+      ],
+      "existence": "hidden",
+      "chunks": [
+        {
+          "chunkId": "chk_6a0eef326a1deb79f3d3830f7c11dc701d49ce36d94402dedb1a64ec9ab0f090_0",
+          "ordinal": 0,
+          "charStart": 19,
+          "charEnd": 352,
+          "tokenCount": 84,
+          "opens": "Readable by the executive group, and **hidden**: a principal outside that group must not …"
+        },
+        {
+          "chunkId": "chk_6a0eef326a1deb79f3d3830f7c11dc701d49ce36d94402dedb1a64ec9ab0f090_1",
+          "ordinal": 1,
+          "charStart": 365,
+          "charEnd": 521,
+          "tokenCount": 39,
+          "opens": "Diligence on the Harbour target closed last week. The commercial terms are agreed in prin…"
+        },
+        {
+          "chunkId": "chk_6a0eef326a1deb79f3d3830f7c11dc701d49ce36d94402dedb1a64ec9ab0f090_2",
+          "ordinal": 2,
+          "charStart": 574,
+          "charEnd": 875,
+          "tokenCount": 76,
+          "opens": "A restricted document may be known to exist. Somebody asking \"do we have anything on Harb…"
+        },
+        {
+          "chunkId": "chk_6a0eef326a1deb79f3d3830f7c11dc701d49ce36d94402dedb1a64ec9ab0f090_3",
+          "ordinal": 3,
+          "charStart": 888,
+          "charEnd": 1023,
+          "tokenCount": 34,
+          "opens": "The target operates three depots. Two overlap with Northwind's existing coverage and are …"
+        }
+      ]
+    }
+  ]
+}
