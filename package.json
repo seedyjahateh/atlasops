@@ -30,6 +30,7 @@
     "app:ingest": "tsx apps/ingest-worker/src/main.ts --corpus examples/corpus --acl examples/corpus.acl.json",
     "app:eval": "tsx apps/eval-runner/src/main.ts --corpus examples/corpus --acl examples/corpus.acl.json --groups examples/corpus.groups.json --datasets examples/corpus.datasets.json",
     "app:console": "tsx apps/console/src/main.ts",
+    "demo": "tsx apps/demo/src/main.ts",
     "smoke:openai": "tsx tools/smoke/openai.ts",
     "exhibit:rag-02": "tsx exhibits/rag-02-codebase/src/cli.ts",
     "exhibit:rag-03": "tsx exhibits/rag-03-incident/src/cli.ts"

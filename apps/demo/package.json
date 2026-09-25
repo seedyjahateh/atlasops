@@ -1,0 +1,25 @@
+{
+  "name": "@atlasops/demo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A two-minute scripted walkthrough of RAG-01: a cited answer, permissions enforced before retrieval, a prompt injection that changes nothing, generation failing gracefully, and the trace behind an answer.",
+  "exports": {
+    ".": "./src/demo.ts"
+  },
+  "scripts": {
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@atlasops/composition": "workspace:*",
+    "@atlasops/contracts": "workspace:*",
+    "@atlasops/corpus": "workspace:*",
+    "@atlasops/governance": "workspace:*",
+    "@atlasops/grounding": "workspace:*",
+    "@atlasops/indexing": "workspace:*",
+    "@atlasops/ingest": "workspace:*",
+    "@atlasops/model-gateway": "workspace:*",
+    "@atlasops/retrieval": "workspace:*",
+    "@atlasops/telemetry": "workspace:*"
+  }
+}
