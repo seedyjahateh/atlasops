@@ -1,8 +1,8 @@
 # Governance report
 
-- **Commit:** a76f16b
-- **Arm:** fused-with-rerank
-- **Measured at:** 2026-09-24T17:58:12.894Z
+- **Commit:** d1b5c50
+- **Arm:** fused-no-rerank
+- **Measured at:** 2026-09-25T14:59:48.072Z
 
 ## Permission probe set
 

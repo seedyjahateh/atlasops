@@ -13,11 +13,11 @@
         "English only. Chunking, stopword removal and the lexical analyser assume English. The stopword list is a conventional English one, not tuned and not language-detected. A corpus in another language needs its own list, and that is a per-connector decision the way chunking strategy is. Nothing detects a mismatch, so a non-English corpus would ingest and retrieve badly rather than loudly.",
         "No real user traffic. Every measurement in this repository is synthetic in telemetry's literal sense — the flag is true by default and nothing here has ever set it to false. No query in any dataset came from a person trying to get work done, and the distribution of real questions is the thing none of this has seen.",
         "Judged metrics carry the judge's bias. Groundedness and contradiction cannot be computed by string matching, so they need a judge, and a judge introduces a bias that can be mistaken for a quality improvement — particularly when the judge and the generator share a family.",
-        "Real models have run, in two of the four roles. Since P18b the published evaluation (docs/evidence/run-*.json) and load run (docs/measurements/load-run.json) used text-embedding-3-small and gpt-4.1-mini, priced from the dated table openai-2026-09-24.",
-        "The reranker is the unselected stand-in, and with real embeddings it makes ranking worse. OpenAI publishes no rerank model (ADR 0006), so none is selected. With stand-ins everywhere it was harmless; with real embeddings the ablation shows the served configuration, fused-with-rerank, is the worst of the fused arms: nDCG@10 0.71, against 0.87 with reranking bypassed and 0.95 dense-only.",
+        "Real models answer, and the served configuration has no reranker. The published evaluation (docs/evidence/run-*.json) and load run (docs/measurements/load-run.json) used text-embedding-3-small and gpt-4.1-mini, priced from the dated table openai-2026-09-24.",
+        "Reranking is bypassed in the served configuration (ADR 0011), because the only reranker is the unselected stand-in, and it made ranking worse. OpenAI publishes no rerank model (ADR 0006). With real embeddings, serving the stand-in gave nDCG@10 0.71 on development and 0.64 on held-out, against 0.87 and 0.77 with it bypassed.",
         "The judge is a stand-in, so the groundedness rows (supported-claim rate, contradiction rate, judge-human agreement) are not quality evidence, whatever they read. PRD 8.3 does not let a judged metric gate a release alone, and here it cannot inform one either.",
-        "Cost is measured, with two qualifications. Cost per answered query is p50 $0.00082 and p95 $0.00172, and ingestion costs $0.001 per thousand chunks — all far inside PRD 9.3. Every figure excludes reranking, because the reranker is a local stand-in nothing bills for; a selected rerank model would add its own price.",
-        "The answer path is close to its latency budget, and over it without the cache. End-to-end p95 is 2,914 ms against 3,000 — but 247 of the 260 requests were served from the retrieval cache. The thirteen cache misses have a p95 of 3,597 ms, over budget; with thirteen samples that is the slowest one. Generation is almost the whole of it.",
+        "Cost is measured, with one qualification. Cost per answered query is p50 $0.00081 and p95 $0.00212, and ingestion costs $0.001 per thousand chunks — all far inside PRD 9.3. Nothing is excluded now that no reranker runs, but a selected rerank model would add its own price. The evaluation report's own cost row counts generation only; the load run's is the whole-request figure.",
+        "The answer path is over its latency budget, and the breach is accepted, not fixed. End-to-end p95 is 4,634 ms against 3,000 (the cache-miss p95 is 4,951 ms, over thirteen samples).",
         "Generation failures degrade, and an evaluation leaves the degraded queries out. Since ADR 0010, a model failure in generation returns the ranked passages with no prose (PRD 9.4) instead of aborting the request. It took two aborted real evaluations to get there: one transient failure in P18b, and one answer that hit the 800-token output limit in the first held-out run.",
         "Time to first token is unmeasurable. PRD 9.3 names streaming instrumentation as the method, and streaming is not implemented: the adapter speaks the non-streaming endpoint (ADR 0006).",
         "No persistent storage adapter exists. The only store profile is memory, in-process. Four components in four processes therefore cannot share a corpus, which is why the API and the evaluation runner crawl one themselves rather than reading what the worker wrote."
@@ -42,66 +42,66 @@
         "id": "retrieval-recall-at-10",
         "category": "quality",
         "label": "Retrieval recall@10, served configuration",
-        "value": 0.7575757575757575,
+        "value": 0.9242424242424242,
         "unit": "ratio",
         "direction": "higher-is-better",
-        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit a76f16b",
+        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit d1b5c50",
         "sampleSize": 11,
         "synthetic": true,
-        "measuredAt": "2026-09-24T17:58:12.894Z",
-        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-with-rerank.json"
+        "measuredAt": "2026-09-25T14:59:48.072Z",
+        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-no-rerank.json"
       },
       {
         "id": "retrieval-ndcg-at-10",
         "category": "quality",
         "label": "Retrieval nDCG@10, served configuration",
-        "value": 0.7145175713493865,
+        "value": 0.8663381881612779,
         "unit": "ratio",
         "direction": "higher-is-better",
-        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit a76f16b",
+        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit d1b5c50",
         "sampleSize": 11,
         "synthetic": true,
-        "measuredAt": "2026-09-24T17:58:12.894Z",
-        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-with-rerank.json"
+        "measuredAt": "2026-09-25T14:59:48.072Z",
+        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-no-rerank.json"
       },
       {
         "id": "retrieval-mrr",
         "category": "quality",
         "label": "Retrieval mean reciprocal rank, served configuration",
-        "value": 0.7151515151515151,
+        "value": 0.859090909090909,
         "unit": "ratio",
         "direction": "higher-is-better",
-        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit a76f16b",
+        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit d1b5c50",
         "sampleSize": 11,
         "synthetic": true,
-        "measuredAt": "2026-09-24T17:58:12.894Z",
-        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-with-rerank.json"
+        "measuredAt": "2026-09-25T14:59:48.072Z",
+        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-no-rerank.json"
       },
       {
         "id": "citation-precision",
         "category": "quality",
         "label": "Citation precision",
-        "value": 0.8333333333333334,
+        "value": 1,
         "unit": "ratio",
         "direction": "higher-is-better",
-        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit a76f16b",
+        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit d1b5c50",
         "sampleSize": 6,
         "synthetic": true,
-        "measuredAt": "2026-09-24T17:58:12.894Z",
-        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-with-rerank.json"
+        "measuredAt": "2026-09-25T14:59:48.072Z",
+        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-no-rerank.json"
       },
       {
         "id": "citation-recall",
         "category": "quality",
         "label": "Citation recall",
-        "value": 0.8333333333333334,
+        "value": 1,
         "unit": "ratio",
         "direction": "higher-is-better",
-        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit a76f16b",
+        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit d1b5c50",
         "sampleSize": 6,
         "synthetic": true,
-        "measuredAt": "2026-09-24T17:58:12.894Z",
-        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-with-rerank.json"
+        "measuredAt": "2026-09-25T14:59:48.072Z",
+        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-no-rerank.json"
       },
       {
         "id": "citation-span-validity",
@@ -110,24 +110,24 @@
         "value": 1,
         "unit": "ratio",
         "direction": "higher-is-better",
-        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit a76f16b",
+        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit d1b5c50",
         "sampleSize": 6,
         "synthetic": true,
-        "measuredAt": "2026-09-24T17:58:12.894Z",
-        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-with-rerank.json"
+        "measuredAt": "2026-09-25T14:59:48.072Z",
+        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-no-rerank.json"
       },
       {
         "id": "correct-abstention",
         "category": "quality",
         "label": "Correct abstention on questions the corpus cannot answer",
-        "value": 1,
+        "value": 0.75,
         "unit": "ratio",
         "direction": "higher-is-better",
-        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit a76f16b",
+        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit d1b5c50",
         "sampleSize": 4,
         "synthetic": true,
-        "measuredAt": "2026-09-24T17:58:12.894Z",
-        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-with-rerank.json"
+        "measuredAt": "2026-09-25T14:59:48.072Z",
+        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-no-rerank.json"
       },
       {
         "id": "over-abstention",
@@ -136,11 +136,11 @@
         "value": 0,
         "unit": "ratio",
         "direction": "lower-is-better",
-        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit a76f16b",
+        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit d1b5c50",
         "sampleSize": 2,
         "synthetic": true,
-        "measuredAt": "2026-09-24T17:58:12.894Z",
-        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-with-rerank.json"
+        "measuredAt": "2026-09-25T14:59:48.072Z",
+        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-no-rerank.json"
       },
       {
         "id": "permission-leak-count",
@@ -149,11 +149,11 @@
         "value": 0,
         "unit": "count",
         "direction": "lower-is-better",
-        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit a76f16b",
+        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit d1b5c50",
         "sampleSize": 6,
         "synthetic": true,
-        "measuredAt": "2026-09-24T17:58:12.894Z",
-        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-with-rerank.json"
+        "measuredAt": "2026-09-25T14:59:48.072Z",
+        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-no-rerank.json"
       },
       {
         "id": "existence-disclosure-count",
@@ -162,88 +162,88 @@
         "value": 0,
         "unit": "count",
         "direction": "lower-is-better",
-        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit a76f16b",
+        "environment": "Evaluation, development split: corpus-relevance@1.0.0, corpus-grounded-answers@1.0.0, corpus-abstention@1.0.0, corpus-permission-probe@1.0.0; corpus sha256:f05a2049d6de; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 1 run at commit d1b5c50",
         "sampleSize": 6,
         "synthetic": true,
-        "measuredAt": "2026-09-24T17:58:12.894Z",
-        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-with-rerank.json"
+        "measuredAt": "2026-09-25T14:59:48.072Z",
+        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-no-rerank.json"
       },
       {
         "id": "answer-latency-p95",
         "category": "latency",
         "label": "End-to-end answer latency p95, all requests (95% retrieval-cache hits)",
-        "value": 2914.402299999998,
+        "value": 4633.710999999996,
         "unit": "ms",
         "direction": "lower-is-better",
-        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 95% retrieval-cache hits",
+        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
         "sampleSize": 260,
         "synthetic": true,
-        "measuredAt": "2026-09-24T18:10:06.412Z",
+        "measuredAt": "2026-09-25T15:02:23.964Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       },
       {
         "id": "retrieval-stage-latency-p95",
         "category": "latency",
         "label": "Retrieval stage latency p95, both retrievers and fusion",
-        "value": 329.66579999999976,
+        "value": 247.39310000000023,
         "unit": "ms",
         "direction": "lower-is-better",
-        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 95% retrieval-cache hits",
+        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
         "sampleSize": 13,
         "synthetic": true,
-        "measuredAt": "2026-09-24T18:10:06.412Z",
+        "measuredAt": "2026-09-25T15:02:23.964Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       },
       {
         "id": "permission-latency-p95",
         "category": "latency",
         "label": "Permission resolution and predicate compilation latency p95",
-        "value": 0.04010000001289882,
+        "value": 0.02719999999681022,
         "unit": "ms",
         "direction": "lower-is-better",
-        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 95% retrieval-cache hits",
+        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
         "sampleSize": 260,
         "synthetic": true,
-        "measuredAt": "2026-09-24T18:10:06.412Z",
+        "measuredAt": "2026-09-25T15:02:23.964Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       },
       {
         "id": "verification-latency-p95",
         "category": "latency",
         "label": "Citation verification latency p95",
-        "value": 0.04060000000754371,
+        "value": 0.03920000001380686,
         "unit": "ms",
         "direction": "lower-is-better",
-        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 95% retrieval-cache hits",
+        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
         "sampleSize": 260,
         "synthetic": true,
-        "measuredAt": "2026-09-24T18:10:06.412Z",
+        "measuredAt": "2026-09-25T15:02:23.964Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       },
       {
         "id": "cost-per-answer-p50",
         "category": "cost",
         "label": "Cost per answered query p50, excluding reranking",
-        "value": 0.000822,
+        "value": 0.0008052000000000001,
         "unit": "usd",
         "direction": "lower-is-better",
-        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 95% retrieval-cache hits",
-        "sampleSize": 211,
+        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
+        "sampleSize": 218,
         "synthetic": true,
-        "measuredAt": "2026-09-24T18:10:06.412Z",
+        "measuredAt": "2026-09-25T15:02:23.964Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       },
       {
         "id": "cost-per-answer-p95",
         "category": "cost",
         "label": "Cost per answered query p95, excluding reranking",
-        "value": 0.0017176,
+        "value": 0.002122,
         "unit": "usd",
         "direction": "lower-is-better",
-        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 95% retrieval-cache hits",
-        "sampleSize": 211,
+        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
+        "sampleSize": 218,
         "synthetic": true,
-        "measuredAt": "2026-09-24T18:10:06.412Z",
+        "measuredAt": "2026-09-25T15:02:23.964Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       },
       {
@@ -253,23 +253,23 @@
         "value": 0.0010000000000000002,
         "unit": "usd-per-1k",
         "direction": "lower-is-better",
-        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 95% retrieval-cache hits",
+        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
         "sampleSize": 1,
         "synthetic": true,
-        "measuredAt": "2026-09-24T18:10:06.412Z",
+        "measuredAt": "2026-09-25T15:02:23.964Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       },
       {
         "id": "answer-latency-p95-cache-miss",
         "category": "latency",
         "label": "End-to-end answer latency p95, retrieval-cache misses only (the slowest sample)",
-        "value": 3596.541,
+        "value": 4950.878899999999,
         "unit": "ms",
         "direction": "lower-is-better",
-        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker stand-in-reranker; 95% retrieval-cache hits",
+        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
         "sampleSize": 13,
         "synthetic": true,
-        "measuredAt": "2026-09-24T18:10:06.412Z",
+        "measuredAt": "2026-09-25T15:02:23.964Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       }
     ],
@@ -277,10 +277,10 @@
       {
         "id": "evaluation-served-configuration",
         "type": "evaluation",
-        "title": "Evaluation report for the served configuration, fused retrieval with rerank",
-        "url": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-with-rerank.md",
+        "title": "Evaluation report for the served configuration, the fused-no-rerank arm",
+        "url": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/run-fused-no-rerank.md",
         "primary": true,
-        "verifiedAt": "2026-09-24",
+        "verifiedAt": "2026-09-25",
         "external": false
       },
       {
@@ -289,7 +289,7 @@
         "title": "Ablation across the four retrieval arms",
         "url": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/ablation.md",
         "primary": false,
-        "verifiedAt": "2026-09-24",
+        "verifiedAt": "2026-09-25",
         "external": false
       },
       {
@@ -298,7 +298,7 @@
         "title": "Governance report: permission probes, leak count and the prompt-injection subset",
         "url": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/governance.md",
         "primary": false,
-        "verifiedAt": "2026-09-24",
+        "verifiedAt": "2026-09-25",
         "external": false
       },
       {
@@ -307,7 +307,7 @@
         "title": "Cost and latency report from a scripted load run, with the stage breakdown",
         "url": "https://github.com/seedyjahateh/atlasops/blob/main/docs/evidence/cost-and-latency.md",
         "primary": false,
-        "verifiedAt": "2026-09-24",
+        "verifiedAt": "2026-09-25",
         "external": false
       },
       {
@@ -316,7 +316,7 @@
         "title": "Raw span export of the load run, one trace per request",
         "url": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.spans.jsonl",
         "primary": false,
-        "verifiedAt": "2026-09-24",
+        "verifiedAt": "2026-09-25",
         "external": false
       },
       {
@@ -340,7 +340,7 @@
     ],
     "dates": {
       "started": "2026-09-20",
-      "lastVerified": "2026-09-24"
+      "lastVerified": "2026-09-25"
     },
     "integrity": {
       "reviewedBy": null,
@@ -350,43 +350,43 @@
   "provenance": {
     "metrics": {
       "retrieval-recall-at-10": {
-        "file": "docs/evidence/run-fused-with-rerank.json",
+        "file": "docs/evidence/run-fused-no-rerank.json",
         "pointer": "/metrics/0/value"
       },
       "retrieval-ndcg-at-10": {
-        "file": "docs/evidence/run-fused-with-rerank.json",
+        "file": "docs/evidence/run-fused-no-rerank.json",
         "pointer": "/metrics/1/value"
       },
       "retrieval-mrr": {
-        "file": "docs/evidence/run-fused-with-rerank.json",
+        "file": "docs/evidence/run-fused-no-rerank.json",
         "pointer": "/metrics/2/value"
       },
       "citation-precision": {
-        "file": "docs/evidence/run-fused-with-rerank.json",
+        "file": "docs/evidence/run-fused-no-rerank.json",
         "pointer": "/metrics/5/value"
       },
       "citation-recall": {
-        "file": "docs/evidence/run-fused-with-rerank.json",
+        "file": "docs/evidence/run-fused-no-rerank.json",
         "pointer": "/metrics/6/value"
       },
       "citation-span-validity": {
-        "file": "docs/evidence/run-fused-with-rerank.json",
+        "file": "docs/evidence/run-fused-no-rerank.json",
         "pointer": "/metrics/7/value"
       },
       "correct-abstention": {
-        "file": "docs/evidence/run-fused-with-rerank.json",
+        "file": "docs/evidence/run-fused-no-rerank.json",
         "pointer": "/metrics/11/value"
       },
       "over-abstention": {
-        "file": "docs/evidence/run-fused-with-rerank.json",
+        "file": "docs/evidence/run-fused-no-rerank.json",
         "pointer": "/metrics/12/value"
       },
       "permission-leak-count": {
-        "file": "docs/evidence/run-fused-with-rerank.json",
+        "file": "docs/evidence/run-fused-no-rerank.json",
         "pointer": "/metrics/13/value"
       },
       "existence-disclosure-count": {
-        "file": "docs/evidence/run-fused-with-rerank.json",
+        "file": "docs/evidence/run-fused-no-rerank.json",
         "pointer": "/metrics/14/value"
       },
       "answer-latency-p95": {
@@ -423,7 +423,7 @@
       }
     },
     "lastVerified": {
-      "file": "docs/evidence/run-fused-with-rerank.json",
+      "file": "docs/evidence/run-fused-no-rerank.json",
       "pointer": "/measuredAt"
     },
     "problem": {
@@ -437,27 +437,27 @@
   },
   "excluded": [
     {
-      "what": "contribution:dense (docs/evidence/run-fused-with-rerank.json)",
+      "what": "contribution:dense (docs/evidence/run-fused-no-rerank.json)",
       "reason": "a diagnostic of how fusion weighed the retrievers, not a property of the answers"
     },
     {
-      "what": "contribution:lexical (docs/evidence/run-fused-with-rerank.json)",
+      "what": "contribution:lexical (docs/evidence/run-fused-no-rerank.json)",
       "reason": "a diagnostic of how fusion weighed the retrievers, not a property of the answers"
     },
     {
-      "what": "supported-claim-rate (docs/evidence/run-fused-with-rerank.json)",
+      "what": "supported-claim-rate (docs/evidence/run-fused-no-rerank.json)",
       "reason": "scored by `stand-in-judge`, a stand-in judge: PRD 8.3 does not let a judged metric gate a release alone, and a stand-in's score is not evidence of groundedness at all"
     },
     {
-      "what": "contradiction-rate (docs/evidence/run-fused-with-rerank.json)",
+      "what": "contradiction-rate (docs/evidence/run-fused-no-rerank.json)",
       "reason": "scored by `stand-in-judge`, a stand-in judge: PRD 8.3 does not let a judged metric gate a release alone, and a stand-in's score is not evidence of groundedness at all"
     },
     {
-      "what": "judge-human-agreement (docs/evidence/run-fused-with-rerank.json)",
+      "what": "judge-human-agreement (docs/evidence/run-fused-no-rerank.json)",
       "reason": "scored by `stand-in-judge`, a stand-in judge: PRD 8.3 does not let a judged metric gate a release alone, and a stand-in's score is not evidence of groundedness at all"
     },
     {
-      "what": "cost-per-answer (docs/evidence/run-fused-with-rerank.json)",
+      "what": "cost-per-answer (docs/evidence/run-fused-no-rerank.json)",
       "reason": "counts generation only; the load run's cost per answered query is the whole-request figure and is proposed instead"
     },
     {
@@ -469,7 +469,7 @@
       "reason": "an ablation arm is evidence about the served configuration, not a description of it; it is linked through the ablation report"
     },
     {
-      "what": "every metric of the `fused-no-rerank` arm (docs/evidence/run-fused-no-rerank.json)",
+      "what": "every metric of the `fused-with-rerank` arm (docs/evidence/run-fused-with-rerank.json)",
       "reason": "an ablation arm is evidence about the served configuration, not a description of it; it is linked through the ablation report"
     },
     {
@@ -478,7 +478,7 @@
     },
     {
       "what": "RERANK-STAGE-P95 (docs/measurements/load-run.json)",
-      "reason": "measures `stand-in-reranker (unselected: no provider rerank model, ADR 0006)`, a local function, not a rerank model"
+      "reason": "unmeasured: the served configuration bypasses reranking (ADR 0011), so no request has a rerank stage to measure"
     },
     {
       "what": "RETRIEVAL-ONLY-COST (docs/measurements/load-run.json)",
@@ -489,9 +489,10 @@
     "Nothing in this file has been applied. It is a proposal for a reviewed edit to the portfolio manifest, which this repository never writes.",
     "Every URL points at `main`. Pin each to the commit you review, so that the evidence cannot change under the manifest after it is promoted.",
     "`integrity.reviewedBy` and `integrity.reviewedAt` are left null on purpose: they record a person's review, and a generator cannot perform one.",
-    "`status` is `in-progress` rather than `complete` because the limitations list records a PRD requirement as unimplemented: \"PRD 9.3 names streaming instrumentation as the method, and streaming is not implemented: the adapter speaks the non-streaming endpoint (ADR 0006).\"",
-    "The served configuration is not the best-ranking arm: its nDCG@10 is 0.7145, below dense-only (0.9493) and lexical-only (0.7766) and fused-no-rerank (0.8663). The proposed retrieval metrics describe what is served; changing what is served is a decision to confirm on the held-out split before promotion, not after.",
-    "The evaluation used the development split only. The held-out split is sealed until `pnpm app:eval -- --final \"<reason>\"`, and no number here comes from it.",
+    "`status` is `in-progress` rather than `complete` because the limitations list records a PRD requirement as unimplemented: \"Streaming is the fix for what this feels like to a user, and is not implemented.\"",
+    "The served configuration is not the best-ranking arm: its nDCG@10 is 0.8663, below dense-only (0.9493). The proposed retrieval metrics describe what is served; changing what is served is a decision to confirm on the held-out split before promotion, not after.",
+    "The evaluation used the development split only; no number here comes from the held-out split. Where a held-out run was published, it is linked from the limitations list rather than promoted.",
+    "ANSWER-LATENCY-P95 is over its PRD 9.3 budget: 4633.710999999996 ms against 3000. It is proposed as measured, not as met. Whether the breach was accepted, by whom and why is in docs/measurements/accepted-breaches.json.",
     "`content.problem` is the leading sentences of PRD section 1's first paragraph, cut at a sentence boundary to fit the schema's 600 characters rather than rewritten. Left out: \"And it is unevenly permissioned — the security incident retro, the compensation policy, and the customer-specific runbook are each legitimately readable by different, overlapping sets of people.\" — decide whether the field needs it more than what precedes it.",
     "The stack lists only terms the portfolio vocabulary has. The models used — text-embedding-3-small and gpt-4.1-mini, over HTTP without an SDK (ADR 0006) — have no term in `technology.v1`; adding one is a reviewed taxonomy change, not part of this edit."
   ]

@@ -6,16 +6,16 @@
     "models": {
       "embedder": "text-embedding-3-small",
       "generator": "gpt-4.1-mini",
-      "reranker": "stand-in-reranker (unselected: no provider rerank model, ADR 0006)"
+      "reranker": "none (bypassed by the served configuration, ADR 0011)"
     },
     "hardware": "12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process",
     "concurrency": 4
   },
-  "startedAt": "2026-09-24T18:08:17.108Z",
-  "finishedAt": "2026-09-24T18:10:06.412Z",
-  "commit": "dd00811",
+  "startedAt": "2026-09-25T15:00:38.834Z",
+  "finishedAt": "2026-09-25T15:02:23.964Z",
+  "commit": "d1b5c50",
   "requests": 260,
-  "abstentions": 49,
+  "abstentions": 42,
   "chunksIngested": 35,
   "priceTableVersion": "openai-2026-09-24",
   "retrievalCacheHits": 247,
@@ -23,99 +23,92 @@
   "latency": [
     {
       "stage": "end-to-end",
-      "p50": 1390.3907999999938,
-      "p95": 2914.402299999998,
+      "p50": 1356.137499999997,
+      "p95": 4633.710999999996,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "end-to-end (retrieval cache miss)",
-      "p50": 1740.0100000000002,
-      "p95": 3596.541,
+      "p50": 1659.8873999999996,
+      "p95": 4950.878899999999,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "end-to-end (retrieval cache hit)",
-      "p50": 1386.9853999999996,
-      "p95": 2914.402299999998,
+      "p50": 1348.195000000007,
+      "p95": 4633.710999999996,
       "samples": 247,
       "p95IsMaximum": false
     },
     {
       "stage": "audit-write",
-      "p50": 0.046900000001187436,
-      "p95": 0.08460000000013679,
+      "p50": 0.032700000003387686,
+      "p95": 0.06750000000101863,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "dense-retrieval",
-      "p50": 211.60820000000012,
-      "p95": 329.2392,
+      "p50": 193.50620000000026,
+      "p95": 246.92369999999937,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "fusion",
-      "p50": 0.0316000000002532,
-      "p95": 13.35470000000032,
+      "p50": 0.021899999999732245,
+      "p95": 7.067199999999957,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "generation",
-      "p50": 1389.7442999999985,
-      "p95": 2914.0637000000024,
+      "p50": 1348.7031000000006,
+      "p95": 4633.498,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "lexical-retrieval",
-      "p50": 0.3969999999999345,
-      "p95": 0.9989000000000487,
+      "p50": 0.2559000000001106,
+      "p95": 0.4639999999999418,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "permission-compile",
-      "p50": 0.011200000008102506,
-      "p95": 0.02289999999993597,
+      "p50": 0.005699999994249083,
+      "p95": 0.013399999996181577,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "permission-resolution",
-      "p50": 0.006100000002334127,
-      "p95": 0.01629999999931897,
+      "p50": 0.003700000001117587,
+      "p95": 0.00909999999566935,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "prompt-assembly",
-      "p50": 0.03170000000318396,
-      "p95": 0.059299999998984276,
+      "p50": 0.020700000000942964,
+      "p95": 0.040000000000873115,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "query-normalisation",
-      "p50": 0.04830000000038126,
-      "p95": 0.07560000000012224,
+      "p50": 0.03209999999671709,
+      "p95": 0.07909999999537831,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
-      "stage": "reranking",
-      "p50": 0.24989999999979773,
-      "p95": 1.0613000000003012,
-      "samples": 13,
-      "p95IsMaximum": true
-    },
-    {
       "stage": "verification",
-      "p50": 0.01959999999962747,
-      "p95": 0.04060000000754371,
+      "p50": 0.012700000006589107,
+      "p95": 0.03920000001380686,
       "samples": 260,
       "p95IsMaximum": false
     }
@@ -126,9 +119,9 @@
       "target": 3000,
       "unit": "ms",
       "method": "scripted load run, fixed workload, stated concurrency",
-      "value": 2914.402299999998,
+      "value": 4633.710999999996,
       "sampleSize": 260,
-      "within": true,
+      "within": false,
       "unmeasured": null,
       "caveat": "247 of 260 requests were served from the retrieval cache, so this figure is mostly the cost of a cache lookup rather than of an answer. The cache-miss row in the latency table is the one to read for the answer path."
     },
@@ -148,7 +141,7 @@
       "target": 400,
       "unit": "ms",
       "method": "span aggregation",
-      "value": 329.66579999999976,
+      "value": 247.39310000000023,
       "sampleSize": 13,
       "within": true,
       "unmeasured": null,
@@ -159,10 +152,10 @@
       "target": 500,
       "unit": "ms",
       "method": "span aggregation at fixed candidate depth",
-      "value": 1.0613000000003012,
-      "sampleSize": 13,
-      "within": true,
-      "unmeasured": null,
+      "value": null,
+      "sampleSize": null,
+      "within": null,
+      "unmeasured": "the served configuration bypasses reranking (ADR 0011), so no request has a rerank stage to measure",
       "caveat": null
     },
     {
@@ -170,7 +163,7 @@
       "target": 50,
       "unit": "ms",
       "method": "span aggregation",
-      "value": 0.04010000001289882,
+      "value": 0.02719999999681022,
       "sampleSize": 260,
       "within": true,
       "unmeasured": null,
@@ -181,7 +174,7 @@
       "target": 100,
       "unit": "ms",
       "method": "span aggregation",
-      "value": 0.04060000000754371,
+      "value": 0.03920000001380686,
       "sampleSize": 260,
       "within": true,
       "unmeasured": null,
@@ -192,22 +185,22 @@
       "target": 0.02,
       "unit": "usd",
       "method": "per-request token accounting x versioned price table",
-      "value": 0.000822,
-      "sampleSize": 211,
+      "value": 0.0008052000000000001,
+      "sampleSize": 218,
       "within": true,
       "unmeasured": null,
-      "caveat": "excludes reranking: the reranker is the unselected stand-in, a local function nobody bills for. A selected rerank model would add its own price to every answered query."
+      "caveat": null
     },
     {
       "id": "COST-PER-ANSWER-P95",
       "target": 0.06,
       "unit": "usd",
       "method": "per-request token accounting x versioned price table",
-      "value": 0.0017176,
-      "sampleSize": 211,
+      "value": 0.002122,
+      "sampleSize": 218,
       "within": true,
       "unmeasured": null,
-      "caveat": "excludes reranking: the reranker is the unselected stand-in, a local function nobody bills for. A selected rerank model would add its own price to every answered query."
+      "caveat": null
     },
     {
       "id": "INGESTION-COST-PER-1K-CHUNKS",
@@ -229,7 +222,7 @@
       "sampleSize": 260,
       "within": true,
       "unmeasured": null,
-      "caveat": "excludes reranking: the reranker is the unselected stand-in, a local function nobody bills for. A selected rerank model would add its own price to every answered query."
+      "caveat": null
     }
   ]
 }

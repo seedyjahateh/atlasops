@@ -526,18 +526,42 @@ describe("the proposal", () => {
 
   it("says in-progress while the limitations record an unimplemented requirement, and complete once none does", () => {
     expect(changes.status).toBe("in-progress");
+    // Every statement that something is unimplemented, not just the first: any one keeps it open.
     const view = withText(PATHS.limitations, (text) =>
-      text.replace("streaming is not implemented", "streaming is implemented"),
+      text.replace(/\bis not implemented\b/g, "is implemented"),
     );
     expect(propose(view, decide(view), HISTORY).changes.status).toBe("complete");
   });
 
-  it("tells the reviewer when the served configuration is not the best-ranking arm", () => {
-    expect(proposal.forTheReviewer.join("\n")).toMatch(
-      /served configuration is not the best-ranking arm/,
-    );
+  it("tells the reviewer about every budget the proposed numbers breach", () => {
+    const load = parseJson(repository.read(PATHS.loadRun));
+    if (!isRecord(load)) throw new Error("fixture: load record unreadable");
+    const breached = rows(load, "budgets").filter((row) => row.within === false);
+    const notes = proposal.forTheReviewer.join("\n");
+    for (const budget of breached) {
+      expect(notes).toContain(`${String(budget.id)} is over its PRD 9.3 budget`);
+    }
+    // And says nothing of the kind for budgets that hold.
+    for (const budget of rows(load, "budgets").filter((row) => row.within === true)) {
+      expect(notes).not.toContain(`${String(budget.id)} is over its PRD 9.3 budget`);
+    }
+  });
+
+  it("tells the reviewer which arms rank above the served one, and only those", () => {
+    const ndcg = (arm: string): number => {
+      const record = parseJson(repository.read(PATHS.runJson(arm)));
+      if (!isRecord(record)) throw new Error(`fixture: ${arm} record unreadable`);
+      const row = rows(record, "metrics").find((metric) => metric.metric === "nDCG@10");
+      return typeof row?.value === "number" ? row.value : Number.NaN;
+    };
+    const above = ARMS.filter((arm) => arm !== SERVED_ARM && ndcg(arm) > ndcg(SERVED_ARM));
+    const note = proposal.forTheReviewer.find((entry) => entry.includes("best-ranking arm")) ?? "";
+    if (above.length === 0) {
+      expect(note).toBe("");
+      return;
+    }
     for (const arm of ARMS.filter((candidate) => candidate !== SERVED_ARM)) {
-      expect(proposal.forTheReviewer.join("\n")).toContain(arm);
+      expect(note.includes(`${arm} (`), arm).toBe(above.includes(arm));
     }
   });
 

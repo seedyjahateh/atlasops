@@ -43,44 +43,44 @@ bias; they do not remove it.
 
 ## What this build actually has, beyond PRD 12's four
 
-**Real models have run, in two of the four roles.** Since P18b the published
-evaluation (`docs/evidence/run-*.json`) and load run (`docs/measurements/load-run.json`) used
-`text-embedding-3-small` and `gpt-4.1-mini`, priced from the dated table `openai-2026-09-24`. Two
-roles are still stand-ins, and each limits what the numbers mean:
+**Real models answer, and the served configuration has no reranker.** The published evaluation
+(`docs/evidence/run-*.json`) and load run (`docs/measurements/load-run.json`) used
+`text-embedding-3-small` and `gpt-4.1-mini`, priced from the dated table `openai-2026-09-24`.
+Neither of the other two roles has a real model:
 
-- **The reranker is the unselected stand-in, and with real embeddings it makes ranking worse.**
-  OpenAI publishes no rerank model (ADR 0006), so none is selected. With stand-ins everywhere it was
-  harmless; with real embeddings the ablation shows the **served configuration,
-  `fused-with-rerank`, is the worst of the fused arms**: nDCG@10 **0.71**, against **0.87** with
-  reranking bypassed and **0.95** dense-only. The served default was deliberately not changed in the
-  evidence phase — choosing a configuration on eleven development items and then quoting those
-  items would be overfitting. **The held-out split points the same way** (P19b,
-  `docs/evidence/held-out/retrieval-by-split.md`): nDCG@10 **0.64** served, **0.77** with
-  reranking bypassed, **0.82** dense-only. That is three items, and bypassing wins on two of them,
-  so it says which way to lean rather than by how much. The served default is still unchanged:
-  choosing it is a person's decision.
+- **Reranking is bypassed in the served configuration (ADR 0011), because the only reranker is the
+  unselected stand-in, and it made ranking worse.** OpenAI publishes no rerank model (ADR 0006).
+  With real embeddings, serving the stand-in gave nDCG@10 0.71 on development and 0.64 on held-out,
+  against 0.87 and 0.77 with it bypassed. The project owner chose the bypass over dense-only, which
+  ranks higher still (0.95 and 0.82), to keep hybrid retrieval and its lexical fallback on the
+  strength of 14 labelled items. The cost is that PRD 7.3's support threshold is defined on reranker
+  scores and never fires without one, so refusing is left to the generator: correct abstention is
+  **0.75 over 4** on development, one unanswerable question answered. The held-out split has been
+  read for this decision and can no longer confirm the next one.
 - **The judge is a stand-in**, so the groundedness rows (supported-claim rate, contradiction rate,
   judge-human agreement) are not quality evidence, whatever they read. PRD 8.3 does not let a judged
   metric gate a release alone, and here it cannot inform one either.
 
-What the real run established, and which stand-ins never could: **correct-abstention 1.0 over 4**
-(it was 0 with the stand-in generator), citation precision and recall 0.83 on the served arm,
-span-validity 1.0, and **zero leaks and zero existence disclosures with real models in the loop**.
-Each is over a small development split labelled by the author of the corpus, and says so.
+What the real run established, and which stand-ins never could: citation precision and recall
+**1.0** on the served arm, span-validity 1.0, and **zero leaks and zero existence disclosures with
+real models in the loop**. Each is over a small development split labelled by the author of the
+corpus, and says so.
 
-**Cost is measured, with two qualifications.** Cost per answered query is p50 **$0.00082** and p95
-**$0.00172**, and ingestion costs $0.001 per thousand chunks — all far inside PRD 9.3. Every figure
-**excludes reranking**, because the reranker is a local stand-in nothing bills for; a selected rerank
-model would add its own price. And the evaluation report's own cost row counts generation only — the
-load run is the whole-request figure, since P18a priced the query embedding on the retrieval span
-and the harness row predates that.
+**Cost is measured, with one qualification.** Cost per answered query is p50 **$0.00081** and p95
+**$0.00212**, and ingestion costs $0.001 per thousand chunks — all far inside PRD 9.3. Nothing is
+excluded now that no reranker runs, but a selected rerank model would add its own price. The
+evaluation report's own cost row counts generation only; the load run's is the whole-request figure.
 
-**The answer path is close to its latency budget, and over it without the cache.** End-to-end p95 is
-**2,914 ms** against 3,000 — but 247 of the 260 requests were served from the retrieval cache. The
-thirteen cache misses have a p95 of **3,597 ms, over budget**; with thirteen samples that is the
-slowest one. Generation is almost the whole of it. The run was also throttled by this account's
-rate limit (200,000 tokens per minute) at concurrency 4, and the waits are inside the figures; how
-many requests waited is not in the export.
+**The answer path is over its latency budget, and the breach is accepted, not fixed.** End-to-end
+p95 is **4,634 ms** against 3,000 (the cache-miss p95 is 4,951 ms, over thirteen samples). One
+workload question — "when should an incident be escalated and to whom" — now gets a complete
+563–592-token answer that takes about five seconds to generate, and its twenty repeats set the p95
+alone; generation's median is unchanged. The breach is accepted in
+`docs/measurements/accepted-breaches.json` for this record only, as PRD 9.3 permits, and the
+budget was not raised. A re-run lapses the acceptance. Streaming is the fix for what this feels
+like to a user, and is not implemented. The run was also throttled by this account's rate limit
+(200,000 tokens per minute) at concurrency 4, and the waits are inside the figures. How many
+requests waited is not in the export.
 
 **Generation failures degrade, and an evaluation leaves the degraded queries out.** Since ADR 0010,
 a model failure in generation returns the ranked passages with no prose (PRD 9.4) instead of

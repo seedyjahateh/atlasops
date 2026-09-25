@@ -18,6 +18,12 @@ import { fileURLToPath } from "node:url";
 
 import { parseModelChoice } from "@atlasops/model-gateway";
 
+import {
+  ACCEPTED_BREACHES_FILE,
+  parseAcceptances,
+  reviewBreaches,
+  type AcceptedBreach,
+} from "./accept.js";
 import { runLoad } from "./harness.js";
 import { breachesIn, recordOf, unmeasuredIn, type LoadRunRecord } from "./measure.js";
 import { renderLoadReport } from "./render.js";
@@ -26,6 +32,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(here, "..", "..");
 const RECORD_PATH = join(ROOT, "docs", "measurements", "load-run.json");
 const SPANS_PATH = join(ROOT, "docs", "measurements", "load-run.spans.jsonl");
+const ACCEPTED_PATH = join(ROOT, "docs", "measurements", ACCEPTED_BREACHES_FILE);
 
 function flag(argv: readonly string[], name: string, fallback: string): string {
   const at = argv.indexOf(`--${name}`);
@@ -65,9 +72,38 @@ function check(): number {
     process.stdout.write(`  not measured  ${row.id}: ${row.unmeasured ?? ""}\n`);
   }
 
-  if (breaches.length > 0) {
-    process.stderr.write(`\nloadrun: ${String(breaches.length)} budget(s) exceeded\n\n`);
-    for (const breach of breaches) {
+  let acceptances: readonly AcceptedBreach[] = [];
+  if (existsSync(ACCEPTED_PATH)) {
+    try {
+      acceptances = parseAcceptances(JSON.parse(readFileSync(ACCEPTED_PATH, "utf8")));
+    } catch (error) {
+      // Malformed is refused, not ignored: an acceptance nobody can read accepts nothing.
+      process.stderr.write(
+        `loadrun: docs/measurements/${ACCEPTED_BREACHES_FILE} is malformed: ` +
+          `${error instanceof Error ? error.message : String(error)}\n`,
+      );
+      return 1;
+    }
+  }
+  const review = reviewBreaches(record, breaches, acceptances);
+
+  for (const { breach, by } of review.accepted) {
+    process.stdout.write(
+      `  over budget, accepted  ${breach.id}: ${String(breach.value)} ${breach.unit} against ` +
+        `${String(breach.target)} ${breach.unit}. Accepted by ${by.acceptedBy} on ${by.acceptedAt} ` +
+        `(${by.decision}): ${by.reason}\n`,
+    );
+  }
+  for (const lapsed of review.lapsed) {
+    process.stdout.write(
+      `  lapsed acceptance  ${lapsed.budget} for record ${lapsed.recordCommit}: matches nothing in ` +
+        `this record, and can be deleted\n`,
+    );
+  }
+
+  if (review.unaccepted.length > 0) {
+    process.stderr.write(`\nloadrun: ${String(review.unaccepted.length)} budget(s) exceeded\n\n`);
+    for (const breach of review.unaccepted) {
       process.stderr.write(
         `  ${breach.id}: ${String(breach.value)} ${breach.unit} against a target of ` +
           `${String(breach.target)} ${breach.unit}\n`,

@@ -9,11 +9,11 @@ PRD 12 item 4. Produced by `pnpm loadrun`, from the reference profile PRD 9.1 re
 - **Workload:** sha256:e32b75e87ef455fb27c16c47517cd3e02400c44c4d85a24dc4b6c590fcb23c34
 - **Concurrency:** 4 (sustained, worker pool — not a burst)
 - **Hardware:** 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process
-- **Models:** embedder=text-embedding-3-small, generator=gpt-4.1-mini, reranker=stand-in-reranker (unselected: no provider rerank model, ADR 0006)
+- **Models:** embedder=text-embedding-3-small, generator=gpt-4.1-mini, reranker=none (bypassed by the served configuration, ADR 0011)
 - **Price table:** openai-2026-09-24
-- **Commit:** dd00811
-- **Run:** 2026-09-24T18:08:17.108Z → 2026-09-24T18:10:06.412Z
-- **Requests:** 260 (49 abstained)
+- **Commit:** d1b5c50
+- **Run:** 2026-09-25T15:00:38.834Z → 2026-09-25T15:02:23.964Z
+- **Requests:** 260 (42 abstained)
 
 ## What this run measured, and what it did not
 
@@ -37,27 +37,24 @@ harness, so its rate is absent rather than guessed.
 
 | Budget | Target | This run | Samples | Method |
 | ------ | ------ | -------- | ------- | ------ |
-| ANSWER-LATENCY-P95 | 3000 ms | 2914.4023 ms (within) | 260 | scripted load run, fixed workload, stated concurrency |
+| ANSWER-LATENCY-P95 | 3000 ms | 4633.711 ms (**over**) | 260 | scripted load run, fixed workload, stated concurrency |
 | TIME-TO-FIRST-TOKEN-P95 | 1200 ms | **not measured** | — | streaming instrumentation on the same run |
-| RETRIEVAL-STAGE-P95 | 400 ms | 329.6658 ms (within) | 13 | span aggregation |
-| RERANK-STAGE-P95 | 500 ms | 1.0613 ms (within) | 13 | span aggregation at fixed candidate depth |
-| PERMISSION-P95 | 50 ms | 0.0401 ms (within) | 260 | span aggregation |
-| VERIFICATION-P95 | 100 ms | 0.0406 ms (within) | 260 | span aggregation |
-| COST-PER-ANSWER-P50 | 0.02 usd | 0.0008 usd (within) | 211 | per-request token accounting x versioned price table |
-| COST-PER-ANSWER-P95 | 0.06 usd | 0.0017 usd (within) | 211 | per-request token accounting x versioned price table |
+| RETRIEVAL-STAGE-P95 | 400 ms | 247.3931 ms (within) | 13 | span aggregation |
+| RERANK-STAGE-P95 | 500 ms | **not measured** | — | span aggregation at fixed candidate depth |
+| PERMISSION-P95 | 50 ms | 0.0272 ms (within) | 260 | span aggregation |
+| VERIFICATION-P95 | 100 ms | 0.0392 ms (within) | 260 | span aggregation |
+| COST-PER-ANSWER-P50 | 0.02 usd | 0.0008 usd (within) | 218 | per-request token accounting x versioned price table |
+| COST-PER-ANSWER-P95 | 0.06 usd | 0.0021 usd (within) | 218 | per-request token accounting x versioned price table |
 | INGESTION-COST-PER-1K-CHUNKS | 0.5 usd | 0.001 usd (within) | 1 | embedding token accounting over the fixture |
 | RETRIEVAL-ONLY-COST | 0.001 usd | 0 usd (within) | 260 | embedding token accounting over the fixture |
 
-9 of 10 budgets were measured. A budget that was exceeded is reported with the stage breakdown below and **is not raised to make the build
+8 of 10 budgets were measured. A budget that was exceeded is reported with the stage breakdown below and **is not raised to make the build
 pass** (PRD 9.3).
 
 ### What these figures do not say about themselves
 
 - **ANSWER-LATENCY-P95** — 247 of 260 requests were served from the retrieval cache, so this figure is mostly the cost of a cache lookup rather than of an answer. The cache-miss row in the latency table is the one to read for the answer path.
-- **COST-PER-ANSWER-P50** — excludes reranking: the reranker is the unselected stand-in, a local function nobody bills for. A selected rerank model would add its own price to every answered query.
-- **COST-PER-ANSWER-P95** — excludes reranking: the reranker is the unselected stand-in, a local function nobody bills for. A selected rerank model would add its own price to every answered query.
 - **INGESTION-COST-PER-1K-CHUNKS** — one ingestion of 35 chunks (1750 embedding tokens), priced at the table in force
-- **RETRIEVAL-ONLY-COST** — excludes reranking: the reranker is the unselected stand-in, a local function nobody bills for. A selected rerank model would add its own price to every answered query.
 
 ### Why the rest could not be measured
 
@@ -65,6 +62,7 @@ Listed rather than omitted: a report that dropped the rows it could not fill wou
 clean sheet.
 
 - **TIME-TO-FIRST-TOKEN-P95** — no streaming instrumentation exists. The OpenAI adapter speaks the non-streaming endpoint (ADR 0006), and a first-token time cannot be inferred from a whole-response latency
+- **RERANK-STAGE-P95** — the served configuration bypasses reranking (ADR 0011), so no request has a rerank stage to measure
 
 ## Latency by stage
 
@@ -74,20 +72,19 @@ span.
 
 | Stage | p50 (ms) | p95 (ms) | Samples |
 | ----- | -------- | -------- | ------- |
-| end-to-end | 1390.39 | 2914.4 | 260 |
-| end-to-end (retrieval cache miss) | 1740.01 | 3596.54 † | 13 |
-| end-to-end (retrieval cache hit) | 1386.99 | 2914.4 | 247 |
-| audit-write | 0.05 | 0.08 | 260 |
-| dense-retrieval | 211.61 | 329.24 † | 13 |
-| fusion | 0.03 | 13.35 † | 13 |
-| generation | 1389.74 | 2914.06 | 260 |
-| lexical-retrieval | 0.4 | 1 † | 13 |
-| permission-compile | 0.01 | 0.02 | 260 |
-| permission-resolution | 0.01 | 0.02 | 260 |
-| prompt-assembly | 0.03 | 0.06 | 260 |
-| query-normalisation | 0.05 | 0.08 | 260 |
-| reranking | 0.25 | 1.06 † | 13 |
-| verification | 0.02 | 0.04 | 260 |
+| end-to-end | 1356.14 | 4633.71 | 260 |
+| end-to-end (retrieval cache miss) | 1659.89 | 4950.88 † | 13 |
+| end-to-end (retrieval cache hit) | 1348.2 | 4633.71 | 247 |
+| audit-write | 0.03 | 0.07 | 260 |
+| dense-retrieval | 193.51 | 246.92 † | 13 |
+| fusion | 0.02 | 7.07 † | 13 |
+| generation | 1348.7 | 4633.5 | 260 |
+| lexical-retrieval | 0.26 | 0.46 † | 13 |
+| permission-compile | 0.01 | 0.01 | 260 |
+| permission-resolution | 0 | 0.01 | 260 |
+| prompt-assembly | 0.02 | 0.04 | 260 |
+| query-normalisation | 0.03 | 0.08 | 260 |
+| verification | 0.01 | 0.04 | 260 |
 
 † The p95 rests on twenty samples or fewer, where nearest-rank returns the maximum. It is the
 largest value observed wearing a percentile's name, and a larger run would be needed before it

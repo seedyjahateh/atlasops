@@ -2,8 +2,8 @@
 
 - **System:** atlasops
 - **Arm:** dense-only
-- **Commit:** a76f16b
-- **Measured at:** 2026-09-24T17:56:05.362Z
+- **Commit:** d1b5c50
+- **Measured at:** 2026-09-25T14:58:28.454Z
 - **Judge:** stand-in-judge@v1
 
 ## Models
@@ -75,13 +75,13 @@ _Not measured: this run is the "dense-only" arm; the deltas are a comparison acr
 
 | Metric | Value | Queries | Aggregation |
 | --- | --- | --- | --- |
-| cost-per-answer | 0.0008 | 29 | mean |
+| cost-per-answer | 0.0007 | 29 | mean |
 
 ## Latency
 
 | Stage | p50 (ms) | p95 (ms) | Samples |
 | --- | --- | --- | --- |
-| end-to-end | 198.3 | 266.3 | 29 |
+| end-to-end | 178.4 | 364.5 | 29 |
 
 ## Governance
 

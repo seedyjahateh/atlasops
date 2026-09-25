@@ -2,8 +2,8 @@
 
 - **System:** atlasops
 - **Arm:** fused-with-rerank
-- **Commit:** a76f16b
-- **Measured at:** 2026-09-24T17:58:12.894Z
+- **Commit:** d1b5c50
+- **Measured at:** 2026-09-25T15:00:25.644Z
 - **Judge:** stand-in-judge@v1
 
 ## Models
@@ -82,7 +82,7 @@ _Not measured: this run is the "fused-with-rerank" arm; the deltas are a compari
 
 | Stage | p50 (ms) | p95 (ms) | Samples |
 | --- | --- | --- | --- |
-| end-to-end | 0.7 | 1.3 | 29 |
+| end-to-end | 0.5 | 1 | 29 |
 
 ## Governance
 

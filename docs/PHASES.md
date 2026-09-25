@@ -1356,6 +1356,27 @@ request, not by the loop.
       and the run completed. Leak count 0 over 7 probes. What caused that failure is not recorded:
       the per-query record keeps the degraded mark, not the error kind.
 
+- [x] **P19c — Serve fused retrieval with the stand-in reranker bypassed** (ADR 0011). The project
+      owner's decision, chosen over dense-only. `RETRIEVAL_DEFAULTS.rerank.enabled` is `false`.
+      The served arm is derived from the default by `evalkit`'s `servedArm`, not named in each tool;
+      the evaluation records `served: true` on it, and the readiness verdict reads it from there.
+      Re-evaluated and re-load-run at `d1b5c50` against real models, as PRD 8.5 requires for a
+      reranker change, and published.
+
+      Evaluation: retrieval reproduced the P18b ablation exactly; the served arm has citation
+      precision and recall 1.0 and correct abstention 0.75 (1 of 4 answered that should have been
+      refused, because no reranker score means no support threshold). The P19a fallback fired
+      once in the served arm and once in dense-only, and the run completed.
+
+      Load run: **end-to-end p95 4,634 ms against 3,000 — a breach, accepted rather than fixed.**
+      Diagnosed to one workload question whose answer grew to 563–592 tokens; generation's median
+      did not move and retrieval got faster. PRD 9.3 allows a regression "explicitly accepted in a
+      reviewed change", and until now there was no way to record one except raising the number.
+      `docs/measurements/accepted-breaches.json` is that record. `loadrun:check` honours an entry
+      only when budget, record commit and value all match, so a re-run lapses it, and a malformed
+      entry fails the check. The owner accepted this one; capping answer length was rejected as
+      trading completeness for a number, and streaming remains the real fix.
+
 ## What this build does not do
 
 P12 produces the evidence. It does **not** edit `content/projects/RAG-01.json` in the portfolio

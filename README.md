@@ -26,11 +26,13 @@ the readiness verdict agree with what is committed.
 
 The evaluation and load run in [`docs/evidence/`](docs/evidence/) and
 [`docs/measurements/`](docs/measurements/) used real models for embedding and generation. The
-reranker and the judge are still stand-ins, and every artefact names them. No number from them is
-quoted here: the specification allows that only after the reviewed promotion, and
-[`docs/limitations.md`](docs/limitations.md) records what the numbers do not support. In
-particular, the served configuration ranks worse than reranking bypassed, and the latency budget
-holds only on the retrieval cache.
+judge is still a stand-in, and the served configuration bypasses the stand-in reranker (ADR 0011);
+every artefact names both. No number from them is quoted here: the specification allows that only
+after the reviewed promotion, and [`docs/limitations.md`](docs/limitations.md) records what the
+numbers do not support. In particular, without a reranker, refusing unanswerable questions is left
+to the generator, and the end-to-end latency budget is breached — an explicit, reviewed acceptance
+in [`docs/measurements/accepted-breaches.json`](docs/measurements/accepted-breaches.json), not a
+raised target.
 
 ## Where to start reading
 

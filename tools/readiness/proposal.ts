@@ -729,7 +729,15 @@ export function propose(view: RepositoryView, verdict: Verdict, history: History
   const splits = Array.isArray(served.splits) ? served.splits.map(String) : [];
   if (!splits.includes("held-out")) {
     notes.push(
-      `The evaluation used the ${splits.join(" and ")} split only. The held-out split is sealed until \`pnpm app:eval -- --final "<reason>"\`, and no number here comes from it.`,
+      `The evaluation used the ${splits.join(" and ")} split only; no number here comes from the held-out split. Where a held-out run was published, it is linked from the limitations list rather than promoted.`,
+    );
+  }
+  // A budget over its target is promoted as measured, with the breach stated beside it: a reviewer
+  // should not have to open the load record to learn that a proposed number fails its budget.
+  const loadBudgets = Array.isArray(load.budgets) ? load.budgets.filter(isRecord) : [];
+  for (const budget of loadBudgets.filter((row) => row.within === false)) {
+    notes.push(
+      `${String(budget.id)} is over its PRD 9.3 budget: ${String(budget.value)} ${String(budget.unit)} against ${String(budget.target)}. It is proposed as measured, not as met. Whether the breach was accepted, by whom and why is in docs/measurements/accepted-breaches.json.`,
     );
   }
   if (problem.dropped.length > 0) {

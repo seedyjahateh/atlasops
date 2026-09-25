@@ -1,9 +1,10 @@
 {
   "runId": "sha256:2c3e742486cf01aa41931d306f0b55bb6b55162fe08e65ad0ee4419bd2bae3cb",
   "arm": "fused-no-rerank",
+  "served": true,
   "system": "atlasops",
-  "commit": "a76f16b",
-  "measuredAt": "2026-09-24T17:57:32.595Z",
+  "commit": "d1b5c50",
+  "measuredAt": "2026-09-25T14:59:48.072Z",
   "corpusSnapshot": "sha256:f05a2049d6de1bb249071782efe6e5d32e092a7fb39bf65e66af376b5179b8b9",
   "snapshotMatchesDatasets": true,
   "datasets": [
@@ -141,7 +142,7 @@
     {
       "dimension": "Cost and latency",
       "metric": "cost-per-answer",
-      "value": 0.000840441379310345,
+      "value": 0.0008102068965517242,
       "sampleSize": 29,
       "aggregation": "mean"
     }

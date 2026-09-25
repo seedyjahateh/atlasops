@@ -24,6 +24,7 @@ import {
   type LoadRunResult,
   type RequestSample,
 } from "./harness.js";
+import { AcceptanceError, parseAcceptances, reviewBreaches } from "./accept.js";
 import { breachesIn, recordOf, unmeasuredIn } from "./measure.js";
 import { renderLoadReport } from "./render.js";
 
@@ -396,5 +397,65 @@ describe("the rendered report", () => {
 
   it("states that PRD 12 item 4 remains unmet", () => {
     expect(rendered).toContain("remains unmet");
+  });
+});
+
+describe("a breach accepted in a reviewed change (PRD 9.3)", () => {
+  // Synthetic: every request takes 5 s, so the end-to-end budget of 3 s is breached.
+  const slow = recordOf(
+    result([sample({ totalMs: 5000 }), sample({ index: 1, totalMs: 5000 })]),
+    "abc1234",
+  );
+  const breaches = breachesIn(slow);
+  const acceptance = {
+    budget: "ANSWER-LATENCY-P95",
+    recordCommit: "abc1234",
+    value: 5000,
+    acceptedBy: "a reviewer",
+    acceptedAt: "2026-09-25",
+    reason: "fixture",
+    decision: "ADR 0000",
+  };
+
+  it("covers the breach it names exactly, and leaves the breach reported as one", () => {
+    expect(breaches.map((breach) => breach.id)).toContain("ANSWER-LATENCY-P95");
+    const review = reviewBreaches(slow, breaches, parseAcceptances({ accepted: [acceptance] }));
+    expect(review.unaccepted).toEqual([]);
+    expect(review.accepted.map((entry) => entry.breach.id)).toEqual(["ANSWER-LATENCY-P95"]);
+  });
+
+  it("lapses on a re-run: another commit, or another value, is not covered", () => {
+    // An old yes must not cover the next regression.
+    for (const changed of [{ recordCommit: "def5678" }, { value: 5001 }]) {
+      const review = reviewBreaches(
+        slow,
+        breaches,
+        parseAcceptances({ accepted: [{ ...acceptance, ...changed }] }),
+      );
+      expect(review.unaccepted.map((breach) => breach.id)).toEqual(["ANSWER-LATENCY-P95"]);
+      expect(review.lapsed).toHaveLength(1);
+    }
+  });
+
+  it("covers nothing for a record with no commit, which nobody could have reviewed", () => {
+    const anonymous = { ...slow, commit: null };
+    const review = reviewBreaches(
+      anonymous,
+      breachesIn(anonymous),
+      parseAcceptances({ accepted: [acceptance] }),
+    );
+    expect(review.unaccepted).toHaveLength(1);
+  });
+
+  it("refuses an acceptance without its reasons", () => {
+    for (const field of ["acceptedBy", "reason", "decision", "recordCommit"]) {
+      expect(() => parseAcceptances({ accepted: [{ ...acceptance, [field]: "" }] }), field).toThrow(
+        AcceptanceError,
+      );
+    }
+    expect(() =>
+      parseAcceptances({ accepted: [{ ...acceptance, acceptedAt: "yesterday" }] }),
+    ).toThrow(/YYYY-MM-DD/);
+    expect(() => parseAcceptances({ nope: [] })).toThrow(/`accepted` array/);
   });
 });

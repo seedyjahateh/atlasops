@@ -2,8 +2,8 @@
 
 - **System:** atlasops
 - **Arm:** lexical-only
-- **Commit:** a76f16b
-- **Measured at:** 2026-09-24T17:56:48.904Z
+- **Commit:** d1b5c50
+- **Measured at:** 2026-09-25T14:59:06.430Z
 - **Judge:** stand-in-judge@v1
 
 ## Models
@@ -81,7 +81,7 @@ _Not measured: this run is the "lexical-only" arm; the deltas are a comparison a
 
 | Stage | p50 (ms) | p95 (ms) | Samples |
 | --- | --- | --- | --- |
-| end-to-end | 0.5 | 1.3 | 29 |
+| end-to-end | 0.3 | 0.6 | 29 |
 
 ## Governance
 
