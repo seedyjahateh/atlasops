@@ -1,0 +1,149 @@
+{
+  "runId": "sha256:288e9a71098df2d4b2787aa394f4da637e67158dec98c49b81c285e8625ff0c0",
+  "arm": "lexical-only",
+  "system": "atlasops",
+  "commit": "9be9fd5",
+  "measuredAt": "2026-09-25T11:56:46.587Z",
+  "corpusSnapshot": "sha256:f05a2049d6de1bb249071782efe6e5d32e092a7fb39bf65e66af376b5179b8b9",
+  "snapshotMatchesDatasets": true,
+  "datasets": [
+    "corpus-relevance@1.0.0 (sha256:46cb25bfd38ffec12202743caa40b7cdd0052da677053aeb9306c2edf08c9566, corpus sha256:f05a2049d6de1bb249071782efe6e5d32e092a7fb39bf65e66af376b5179b8b9)",
+    "corpus-grounded-answers@1.0.0 (sha256:c0f18a6eb423a9bf8fe23e3c4c806cf6e1d9357aa2217a5d69c1ceaba16abcc9, corpus sha256:f05a2049d6de1bb249071782efe6e5d32e092a7fb39bf65e66af376b5179b8b9)",
+    "corpus-abstention@1.0.0 (sha256:117f46fc1a0cbe7fd568c0b213f77da3c4f84c3fe23ca63f3cef79fb0f51af03, corpus sha256:f05a2049d6de1bb249071782efe6e5d32e092a7fb39bf65e66af376b5179b8b9)",
+    "corpus-permission-probe@1.0.0 (sha256:e91788e77d6f286064dd4c77eefe84cd601c9c5db1d0acd528e442f49e1e7e3a, corpus sha256:f05a2049d6de1bb249071782efe6e5d32e092a7fb39bf65e66af376b5179b8b9)"
+  ],
+  "splits": [
+    "development",
+    "held-out"
+  ],
+  "models": {
+    "embedder": "text-embedding-3-small",
+    "generator": "gpt-4.1-mini",
+    "reranker": "stand-in-reranker (unselected: no provider rerank model, ADR 0006)",
+    "judge": "stand-in-judge"
+  },
+  "promptVersions": {
+    "answering": "sha256:d7df0785adfe",
+    "judge": "v1"
+  },
+  "runCount": 1,
+  "seeds": {
+    "bootstrap": 20260501
+  },
+  "determinism": "generation at temperature 0; stand-in models are deterministic",
+  "perQueryFile": "run-lexical-only.queries.jsonl",
+  "perQueryRecords": 35,
+  "metrics": [
+    {
+      "dimension": "Retrieval",
+      "metric": "recall@10",
+      "value": 0.6666666666666666,
+      "sampleSize": 14,
+      "aggregation": "mean"
+    },
+    {
+      "dimension": "Retrieval",
+      "metric": "nDCG@10",
+      "value": 0.7588377092247564,
+      "sampleSize": 14,
+      "aggregation": "mean"
+    },
+    {
+      "dimension": "Retrieval",
+      "metric": "MRR",
+      "value": 0.7857142857142857,
+      "sampleSize": 14,
+      "aggregation": "mean"
+    },
+    {
+      "dimension": "Retrieval",
+      "metric": "contribution:lexical",
+      "value": 0.8571428571428571,
+      "sampleSize": 14,
+      "aggregation": "mean"
+    },
+    {
+      "dimension": "Citation",
+      "metric": "citation-precision",
+      "value": 0.8571428571428571,
+      "sampleSize": 7,
+      "aggregation": "mean"
+    },
+    {
+      "dimension": "Citation",
+      "metric": "citation-recall",
+      "value": 0.8571428571428571,
+      "sampleSize": 7,
+      "aggregation": "mean"
+    },
+    {
+      "dimension": "Citation",
+      "metric": "span-validity",
+      "value": 1,
+      "sampleSize": 7,
+      "aggregation": "mean"
+    },
+    {
+      "dimension": "Groundedness",
+      "metric": "supported-claim-rate",
+      "value": 0.8571428571428571,
+      "sampleSize": 7,
+      "aggregation": "mean"
+    },
+    {
+      "dimension": "Groundedness",
+      "metric": "contradiction-rate",
+      "value": 0.14285714285714285,
+      "sampleSize": 7,
+      "aggregation": "mean"
+    },
+    {
+      "dimension": "Groundedness",
+      "metric": "judge-human-agreement",
+      "value": 1,
+      "sampleSize": 4,
+      "aggregation": "mean"
+    },
+    {
+      "dimension": "Abstention",
+      "metric": "correct-abstention",
+      "value": 0.6,
+      "sampleSize": 5,
+      "aggregation": "mean"
+    },
+    {
+      "dimension": "Abstention",
+      "metric": "over-abstention",
+      "value": 0,
+      "sampleSize": 2,
+      "aggregation": "mean"
+    },
+    {
+      "dimension": "Governance",
+      "metric": "leak-count",
+      "value": 0,
+      "sampleSize": 7,
+      "aggregation": "sum"
+    },
+    {
+      "dimension": "Governance",
+      "metric": "existence-disclosure",
+      "value": 0,
+      "sampleSize": 7,
+      "aggregation": "sum"
+    },
+    {
+      "dimension": "Cost and latency",
+      "metric": "cost-per-answer",
+      "value": 0.0005475200000000001,
+      "sampleSize": 35,
+      "aggregation": "mean"
+    }
+  ],
+  "unavailable": [
+    {
+      "dimension": "Fusion and rerank",
+      "reason": "this run is the \"lexical-only\" arm; the deltas are a comparison across arms"
+    }
+  ]
+}

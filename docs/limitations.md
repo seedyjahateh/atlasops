@@ -54,7 +54,11 @@ roles are still stand-ins, and each limits what the numbers mean:
   `fused-with-rerank`, is the worst of the fused arms**: nDCG@10 **0.71**, against **0.87** with
   reranking bypassed and **0.95** dense-only. The served default was deliberately not changed in the
   evidence phase — choosing a configuration on eleven development items and then quoting those
-  items would be overfitting — and it is the first decision anybody promoting this should make.
+  items would be overfitting. **The held-out split points the same way** (P19b,
+  `docs/evidence/held-out/retrieval-by-split.md`): nDCG@10 **0.64** served, **0.77** with
+  reranking bypassed, **0.82** dense-only. That is three items, and bypassing wins on two of them,
+  so it says which way to lean rather than by how much. The served default is still unchanged:
+  choosing it is a person's decision.
 - **The judge is a stand-in**, so the groundedness rows (supported-claim rate, contradiction rate,
   judge-human agreement) are not quality evidence, whatever they read. PRD 8.3 does not let a judged
   metric gate a release alone, and here it cannot inform one either.

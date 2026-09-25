@@ -1333,10 +1333,28 @@ request, not by the loop.
       per-query file and leaves them out of the answer metrics, so an outage is never scored as a
       decision. Tests cover the fallback, the regeneration path, retries spent, a non-model error
       still throwing, the API response and the harness exclusions.
-- [ ] **P19b — The held-out evaluation for the reranker decision.** Run the final evaluation at a
+- [x] **P19b — The held-out evaluation for the reranker decision.** Run the final evaluation at a
       committed SHA, publish it, and report the held-out split's retrieval metrics per arm from its
       per-query files with a tested command. Acceptance: the decision about the stand-in reranker
       is a person's, made on the published held-out numbers; this phase changes no default.
+
+      Done. Published in `docs/evidence/held-out/`, from a real run at `9be9fd5`
+      (text-embedding-3-small, gpt-4.1-mini, stand-in reranker and judge). The runner now writes
+      `retrieval-by-split.md` whenever it reads held-out. On the three held-out relevance items,
+      nDCG@10 is 0.6424 served (fused with rerank), 0.7743 fused without rerank, 0.8221 dense-only
+      and 0.6936 lexical-only. Bypassing the reranker beats serving it on rel-012 and rel-013 and
+      loses on rel-014 (0.6309 against 1.0000). The direction replicates development; three items
+      cannot size it, and no interval is drawn. The development rows reproduce the published P18b
+      figures to four decimal places, and an earlier held-out run whose SHA did not match its code
+      gave identical retrieval rows.
+
+      The held-out split has now been read twice for this one decision, with nothing changed
+      between the reads. Any configuration chosen next can no longer be confirmed on it.
+
+      The fallback from P19a ran for real in this evaluation: generation failed on one dense-only
+      query (`prb-004`, a permission probe), which returned its passages and was marked degraded,
+      and the run completed. Leak count 0 over 7 probes. What caused that failure is not recorded:
+      the per-query record keeps the degraded mark, not the error kind.
 
 ## What this build does not do
 
