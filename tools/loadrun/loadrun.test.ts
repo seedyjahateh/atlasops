@@ -57,6 +57,7 @@ function sample(overrides: Partial<RequestSample> = {}): RequestSample {
     retrievalCostUsd: null,
     inputTokens: 10,
     outputTokens: 5,
+    firstTokenMs: null,
     ...overrides,
   };
 }
@@ -191,7 +192,7 @@ describe("the record", () => {
     const record = recordOf(result([sample()], 0), null);
 
     for (const row of unmeasuredIn(record)) {
-      expect(row.unmeasured, row.id).toMatch(/ADR|streaming|no span/);
+      expect(row.unmeasured, row.id).toMatch(/ADR|stream|no span/);
     }
   });
 
@@ -397,6 +398,35 @@ describe("the rendered report", () => {
 
   it("states that PRD 12 item 4 remains unmet", () => {
     expect(rendered).toContain("remains unmet");
+  });
+});
+
+describe("time to first token (PRD 9.3, ADR 0012)", () => {
+  const ttft = (samples: readonly RequestSample[]) =>
+    recordOf(result(samples), null).budgets.find((row) => row.id === "TIME-TO-FIRST-TOKEN-P95");
+
+  it("is measured over the requests that streamed a first token, and only those", () => {
+    // Synthetic values. The abstention never reached generation, so it has no first token and is
+    // not counted as a zero.
+    const row = ttft([
+      sample({ index: 0, firstTokenMs: 400 }),
+      sample({ index: 1, firstTokenMs: 900 }),
+      sample({ index: 2, firstTokenMs: null, abstained: true }),
+    ]);
+    expect(row?.value).toBe(900);
+    expect(row?.sampleSize).toBe(2);
+    expect(row?.within).toBe(true);
+    expect(row?.caveat).toMatch(/returned whole, after verification/);
+  });
+
+  it("stays unmeasured when nothing streamed, rather than using a whole-response time", () => {
+    const row = ttft([sample({ totalMs: 800 })]);
+    expect(row?.value).toBeNull();
+    expect(row?.unmeasured).toMatch(/no request streamed a first token/);
+  });
+
+  it("fails the budget when the first token is late", () => {
+    expect(ttft([sample({ firstTokenMs: 1500 })])?.within).toBe(false);
   });
 });
 

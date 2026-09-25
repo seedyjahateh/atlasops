@@ -149,6 +149,18 @@ export interface GroundingResult {
    * report every retrieval stage at double its time.
    */
   readonly timings: readonly StageTiming[];
+  /**
+   * When the first token of the first generation arrived, as a reading of this stage's clock
+   * (`ports.clock`), or `null` when no generator streamed one — a stand-in, an abstention before
+   * generation, or generation that failed.
+   *
+   * A clock reading, not a duration, so a caller that timed the request on the same clock gets time
+   * to first token by subtraction (PRD 9.3). It is placed by working back from when the call
+   * returned, using the adapter's own response time, so retry waits before the successful attempt
+   * cannot pull it earlier than it was. **Nothing reached the caller at that moment**: the answer is
+   * returned whole, after verification (PRD 7.2). This measures the model, not what a user saw.
+   */
+  readonly firstTokenAtMs: number | null;
 }
 
 /** The wording a caller may show. Permission-driven cases go through governance's constants. */
@@ -209,7 +221,8 @@ export async function groundAnswer(
 
   // This stage's own trace. Retrieval has always had one; everything after it was dark, so PRD
   // 9.3's verification budget had nothing to aggregate and the report said "not measured".
-  const trace = createTrace(request.requestId, ports.clock ?? systemClock);
+  const clock = ports.clock ?? systemClock;
+  const trace = createTrace(request.requestId, clock);
 
   const assembly = trace.span("prompt-assembly");
   const prompt = assemblePrompt(retrieval.query.normalised, retrieval.candidates);
@@ -221,6 +234,7 @@ export async function groundAnswer(
   let attempts = 0;
   let answer: Answer;
   let generationUnavailable = false;
+  let firstTokenAtMs: number | null = null;
 
   if (support.abstain) {
     // PRD 7.3: below the support threshold, or nothing to answer from at all. When nothing was
@@ -255,6 +269,11 @@ export async function groundAnswer(
         generation.end({ degraded: true });
         generationUnavailable = true;
         break;
+      }
+      const returnedAt = clock.now();
+      const { firstTokenMs, responseMs } = outcome.result;
+      if (firstTokenAtMs === null && firstTokenMs !== undefined && responseMs !== undefined) {
+        firstTokenAtMs = returnedAt - (responseMs - firstTokenMs);
       }
       // PRD 9.2: a model-calling span records the model, its tokens, the computed cost, whether it
       // was a cache hit and how many retries it took. A duration alone cannot answer "which stage
@@ -377,6 +396,7 @@ export async function groundAnswer(
   return {
     answer: released,
     degraded: generationUnavailable ? ["generation-unavailable"] : [],
+    firstTokenAtMs,
     passages,
     message: messageFor(released, retrieval, retrieval.candidates.length > 0),
     prose: renderProse(released),

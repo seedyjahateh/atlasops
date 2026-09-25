@@ -695,6 +695,55 @@ describe("generation unavailable degrades to ranked passages (PRD 9.4)", () => {
   });
 });
 
+/* ---------------------------------------------------------------- time to first token */
+
+describe("the first token is placed on this stage's clock (PRD 9.3, ADR 0012)", () => {
+  /** A generator that streamed: first token 30 ms into a 100 ms response. */
+  function streamingCitingGenerator(target: FusedCandidate): Generator {
+    const inner = citingGenerator(target);
+    return {
+      modelId: inner.modelId,
+      generate: async (request) => ({
+        ...(await inner.generate(request)),
+        firstTokenMs: 30,
+        responseMs: 100,
+      }),
+    };
+  }
+
+  it("works back from when the call returned, using the adapter's own response time", async () => {
+    // The clock reads 1,000 when the call returns; the response took 100 ms and its first token
+    // came 30 ms in, so the first token arrived at 1,000 - (100 - 30) = 930.
+    const clock = manualClock(1000);
+    const result = await groundAnswer(ports(streamingCitingGenerator(REFUND), { clock }), {
+      requestId: REQUEST,
+      principal: ALICE,
+      retrieval: retrievalResult([REFUND]),
+    });
+    expect(result.firstTokenAtMs).toBe(930);
+    // Measured, and still released only after verification: the answer is the verified one.
+    expect(result.answer.abstained).toBe(false);
+  });
+
+  it("is null for a generator that does not stream, rather than a whole-response time", async () => {
+    const result = await groundAnswer(ports(citingGenerator(REFUND)), {
+      requestId: REQUEST,
+      principal: ALICE,
+      retrieval: retrievalResult([REFUND]),
+    });
+    expect(result.firstTokenAtMs).toBeNull();
+  });
+
+  it("is null when generation was unavailable, since no token arrived", async () => {
+    const result = await groundAnswer(ports(unavailableGenerator()), {
+      requestId: REQUEST,
+      principal: ALICE,
+      retrieval: retrievalResult([REFUND]),
+    });
+    expect(result.firstTokenAtMs).toBeNull();
+  });
+});
+
 /* ------------------------------------------------------------------------------ injection */
 
 describe("a prompt-injection corpus does not change behaviour (PRD 6.5)", () => {

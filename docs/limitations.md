@@ -107,9 +107,9 @@ for any run that uses them:
 **No persistent storage adapter exists.** The only store profile is `memory`, in-process. Four
 components in four processes therefore cannot share a corpus, which is why the API and the
 evaluation runner crawl one themselves rather than reading what the worker wrote. PRD 10 has these
-components communicating through the corpus store and the indexes; with a persistent profile they
-would, and the composition root would not change. Both applications refuse any other profile by
-name rather than falling back.
+components communicating through the corpus store and the indexes, and that shared store is not
+implemented; with a persistent profile they would communicate that way, and the composition root
+would not change. Both applications refuse any other profile by name rather than falling back.
 
 ---
 

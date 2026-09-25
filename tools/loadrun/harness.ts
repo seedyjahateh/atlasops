@@ -195,6 +195,13 @@ export interface RequestSample {
   readonly retrievalCostUsd: number | null;
   readonly inputTokens: number;
   readonly outputTokens: number;
+  /**
+   * Milliseconds from the start of the request to the first token the generator streamed, or null
+   * when none did — a stand-in generator, a request that abstained before generation, or generation
+   * that failed (PRD 9.3, ADR 0012). The answer itself reached nobody at that moment: it is returned
+   * whole, after verification.
+   */
+  readonly firstTokenMs: number | null;
 }
 
 export interface LoadRunResult {
@@ -428,6 +435,11 @@ export async function runLoad(options: LoadRunOptions): Promise<LoadRunResult> {
       retrievalCostUsd: cost.retrieval,
       inputTokens: outcome.grounding.audit.inputTokens,
       outputTokens: outcome.grounding.audit.outputTokens,
+      // Both readings are `systemClock`, which the pipeline above is built with.
+      firstTokenMs:
+        outcome.grounding.firstTokenAtMs === null
+          ? null
+          : outcome.grounding.firstTokenAtMs - startedMs,
     });
   });
 

@@ -215,12 +215,26 @@ function valuesFor(id: BudgetId, result: LoadRunResult): Measured | string {
       return { values: selfTimesFor(result.samples, [...STAGE_GROUPS.permissions]), at: 95 };
     case "VERIFICATION-P95":
       return { values: selfTimesFor(result.samples, ["verification"]), at: 95 };
-    case "TIME-TO-FIRST-TOKEN-P95":
-      return (
-        "no streaming instrumentation exists. The OpenAI adapter speaks the non-streaming " +
-        "endpoint (ADR 0006), and a first-token time cannot be inferred from a whole-response " +
-        "latency"
-      );
+    case "TIME-TO-FIRST-TOKEN-P95": {
+      // From the start of the request, over the requests whose generator streamed a first token
+      // (ADR 0012). A whole-response latency is not substituted for the others: it is not one.
+      const values = result.samples
+        .map((sample) => sample.firstTokenMs)
+        .filter((value): value is number => value !== null);
+      if (values.length === 0) {
+        return (
+          "no request streamed a first token: the generator returns whole answers (the stand-ins " +
+          "do), or no request reached generation"
+        );
+      }
+      return {
+        values,
+        at: 95,
+        caveat:
+          "time until the model's first token, from the start of the request. No answer reaches the " +
+          "caller then: it is returned whole, after verification (PRD 7.2)",
+      };
+    }
     case "COST-PER-ANSWER-P50":
     case "COST-PER-ANSWER-P95": {
       // "Per answered query" (PRD 9.3): an abstention answers nothing, and folding its cheaper cost

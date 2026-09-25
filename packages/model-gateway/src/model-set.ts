@@ -66,7 +66,9 @@ export interface OpenAiModelSetOptions {
  * The OpenAI embedder and generator, with the dated price table, or a refusal.
  *
  * The generator runs in JSON mode: grounding asks for a JSON object in words, and a model that
- * wraps it in a code fence would fail every answer for a formatting reason.
+ * wraps it in a code fence would fail every answer for a formatting reason. It also streams, so
+ * that time to first token is measured (PRD 9.3, ADR 0012); the answer is still returned whole and
+ * verified before release.
  */
 export function openAiModelSet(
   env: Readonly<Record<string, string | undefined>>,
@@ -88,6 +90,7 @@ export function openAiModelSet(
     model: generationModel,
     jsonOutput: true,
     maxOutputTokens: 800,
+    stream: true,
     ...transport,
   });
 

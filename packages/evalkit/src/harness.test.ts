@@ -218,6 +218,8 @@ function observationFor(
   const grounding: GroundingResult = {
     answer,
     degraded: degraded ? ["generation-unavailable"] : [],
+    // Scripted: no generator streamed anything.
+    firstTokenAtMs: null,
     passages: degraded
       ? candidates.map((candidate) => ({
           chunkId: candidate.chunkId,

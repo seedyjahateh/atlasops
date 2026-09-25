@@ -111,6 +111,10 @@ export function createAnswerPipeline(
         sink: ports.audit,
         prices: ports.prices ?? UNPRICED_TABLE,
         now: ports.now,
+        // The same clock the rest of the request is timed on. Grounding used to fall back to the
+        // system clock here, which agreed only by coincidence; `firstTokenAtMs` is a reading of this
+        // clock, and a caller subtracting its own start time needs them to be one clock (ADR 0012).
+        clock: ports.clock,
       },
       {
         requestId: request.requestId,

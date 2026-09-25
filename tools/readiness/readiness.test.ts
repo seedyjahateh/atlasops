@@ -528,7 +528,8 @@ describe("the proposal", () => {
     expect(changes.status).toBe("in-progress");
     // Every statement that something is unimplemented, not just the first: any one keeps it open.
     const view = withText(PATHS.limitations, (text) =>
-      text.replace(/\bis not implemented\b/g, "is implemented"),
+      // `\s+`: Prettier wraps prose, so the phrase can straddle a line break.
+      text.replace(/\bis not\s+implemented\b/g, "is implemented"),
     );
     expect(propose(view, decide(view), HISTORY).changes.status).toBe("complete");
   });

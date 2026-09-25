@@ -64,6 +64,81 @@ function chatBody(content: string, input = 11, output = 5, finishReason = "stop"
   });
 }
 
+/**
+ * A streamed chat completion, as server-sent events: an opening event that only announces the
+ * role, one event per content piece, a finish event, the usage event `include_usage` asks for, and
+ * the terminator.
+ */
+function sseEvents(
+  pieces: readonly string[],
+  options: { input?: number; output?: number; finish?: string | null; usage?: boolean } = {},
+): string[] {
+  const event = (value: unknown) => `data: ${JSON.stringify(value)}\n\n`;
+  const base = {
+    id: "chatcmpl-x",
+    object: "chat.completion.chunk",
+    model: "gpt-4.1-mini-2025-04-14",
+  };
+  const events = [
+    event({
+      ...base,
+      choices: [{ index: 0, delta: { role: "assistant", content: "" }, finish_reason: null }],
+    }),
+    ...pieces.map((content) =>
+      event({ ...base, choices: [{ index: 0, delta: { content }, finish_reason: null }] }),
+    ),
+  ];
+  if (options.finish !== null) {
+    events.push(
+      event({
+        ...base,
+        choices: [{ index: 0, delta: {}, finish_reason: options.finish ?? "stop" }],
+      }),
+    );
+  }
+  if (options.usage !== false) {
+    const input = options.input ?? 11;
+    const output = options.output ?? 5;
+    events.push(
+      event({
+        ...base,
+        choices: [],
+        usage: { prompt_tokens: input, completion_tokens: output, total_tokens: input + output },
+      }),
+    );
+  }
+  events.push("data: [DONE]\n\n");
+  return events;
+}
+
+/** A clock that advances by `step` on every read, so each timing is a known number. */
+function steppingClock(step: number) {
+  let at = 0;
+  return {
+    now: (): number => {
+      at += step;
+      return at;
+    },
+  };
+}
+
+function streamingGenerator(
+  exchanges: readonly (RecordedExchange | Error)[],
+  clock = steppingClock(10),
+) {
+  const transport = recordingTransport(exchanges);
+  return {
+    transport,
+    generator: openAiGenerator({
+      apiKey: KEY,
+      model: OPENAI_DEFAULT_GENERATION_MODEL,
+      transport,
+      stream: true,
+      clock,
+    }),
+  };
+}
+
 function embedder(exchanges: readonly (RecordedExchange | Error)[]) {
   const transport = recordingTransport(exchanges);
   return {
@@ -425,7 +500,8 @@ describe("choosing a model set (P18a)", () => {
   });
 
   it("asks the generator for JSON mode, so a code fence cannot fail every answer", async () => {
-    const transport = recordingTransport([{ status: 200, body: chatBody('{"abstain":true}') }]);
+    const events = sseEvents(['{"abstain":true}']);
+    const transport = recordingTransport([{ status: 200, body: events.join(""), chunks: events }]);
     const set = openAiModelSet({ OPENAI_API_KEY: KEY }, { transport });
 
     await set.generator.generate({ system: "Answer with a JSON object.", user: "q" });
@@ -434,6 +510,109 @@ describe("choosing a model set (P18a)", () => {
       response_format?: { type: string };
     };
     expect(payload.response_format).toEqual({ type: "json_object" });
+  });
+
+  it("streams, so the time to first token is measured on every real run (PRD 9.3)", async () => {
+    const events = sseEvents(['{"abstain":true}']);
+    const transport = recordingTransport([{ status: 200, body: events.join(""), chunks: events }]);
+    const set = openAiModelSet({ OPENAI_API_KEY: KEY }, { transport });
+
+    const result = await set.generator.generate({ system: "s", user: "q" });
+
+    const payload = JSON.parse(transport.sent()[0]?.body ?? "{}") as Record<string, unknown>;
+    expect(payload.stream).toBe(true);
+    expect(payload.stream_options).toEqual({ include_usage: true });
+    expect(result.firstTokenMs).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("streamed generation (PRD 9.3, ADR 0012)", () => {
+  it("assembles the whole answer, and returns it once", async () => {
+    const events = sseEvents(['{"segm', 'ents":[]', "}"], { input: 40, output: 9 });
+    const { generator: g } = streamingGenerator([{ status: 200, body: "", chunks: events }]);
+
+    const result = await g.generate({ system: "s", user: "q" });
+    expect(result.text).toBe('{"segments":[]}');
+    expect(result.usage).toEqual({ inputTokens: 40, outputTokens: 9 });
+    // The snapshot the provider served, as the non-streamed path reports it.
+    expect(result.modelId).toBe("gpt-4.1-mini-2025-04-14");
+  });
+
+  it("frames events split anywhere, because the network splits them anywhere", async () => {
+    const whole = sseEvents(['{"a":', "1}"]).join("");
+    // Cut every seven characters: through keys, through `data:`, through the blank lines.
+    const chunks = whole.match(/[\s\S]{1,7}/g) ?? [];
+    const { generator: g } = streamingGenerator([{ status: 200, body: "", chunks }]);
+
+    expect((await g.generate({ system: "s", user: "q" })).text).toBe('{"a":1}');
+  });
+
+  it("times the first token from the first content, not from the role announcement", async () => {
+    // The stepping clock reads 10 at the start; the role-only event carries no content, so the
+    // next read is at the first content event: 20 - 10 = 10.
+    const events = sseEvents(["x", "y"]);
+    const { generator: g } = streamingGenerator(
+      [{ status: 200, body: "", chunks: events }],
+      steppingClock(10),
+    );
+
+    const result = await g.generate({ system: "s", user: "q" });
+    expect(result.firstTokenMs).toBe(10);
+    expect(result.responseMs).toBeGreaterThan(result.firstTokenMs ?? 0);
+  });
+
+  it("refuses a stream that ends before the model finished", async () => {
+    const events = sseEvents(["partial"], { finish: null });
+    const { generator: g } = streamingGenerator([{ status: 200, body: "", chunks: events }]);
+    await expect(g.generate({ system: "s", user: "q" })).rejects.toThrow(/ended before/);
+  });
+
+  it("reports an answer cut off at the output limit the same way the whole-response path does", async () => {
+    const events = sseEvents(["long"], { finish: "length" });
+    const { generator: g } = streamingGenerator([{ status: 200, body: "", chunks: events }]);
+    await expect(g.generate({ system: "s", user: "q" })).rejects.toThrow(/output limit/);
+  });
+
+  it("refuses a stream without usage, which cannot be priced", async () => {
+    const events = sseEvents(["x"], { usage: false });
+    const { generator: g } = streamingGenerator([{ status: 200, body: "", chunks: events }]);
+    await expect(g.generate({ system: "s", user: "q" })).rejects.toThrow(/cannot be priced/);
+  });
+
+  it("raises an error event in the stream as a model failure, with the key redacted", async () => {
+    const chunks = [`data: ${JSON.stringify({ error: { message: `bad ${KEY}` } })}\n\n`];
+    const { generator: g } = streamingGenerator([{ status: 200, body: "", chunks }]);
+    const failure = await g.generate({ system: "s", user: "q" }).catch((error: unknown) => error);
+    expect(isModelError(failure)).toBe(true);
+    expect((failure as Error).message).not.toContain(KEY);
+  });
+
+  it("classifies a non-2xx streamed response exactly as a whole one, keeping the requested wait", async () => {
+    const { generator: g } = streamingGenerator([
+      {
+        status: 429,
+        body: '{"error":{"message":"Rate limit reached"}}',
+        headers: { "retry-after-ms": "338" },
+      },
+    ]);
+    const failure = await g.generate({ system: "s", user: "q" }).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(ModelError);
+    expect((failure as ModelError).kind).toBe("rate-limited");
+    expect((failure as ModelError).retryAfterMs).toBe(338);
+  });
+
+  it("refuses to be built over a transport that cannot stream", () => {
+    const whole = recordingTransport([]);
+    const sendOnly = { send: whole.send };
+    expect(() =>
+      openAiGenerator({ apiKey: KEY, model: "m", transport: sendOnly, stream: true }),
+    ).toThrow(/cannot stream/);
+  });
+
+  it("reports no first token for a whole response, rather than calling its latency one", async () => {
+    const { generator: g } = generator([{ status: 200, body: chatBody("{}") }]);
+    const result = await g.generate({ system: "s", user: "q" });
+    expect(result.firstTokenMs).toBeUndefined();
   });
 });
 

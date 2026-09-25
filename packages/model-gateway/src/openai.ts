@@ -30,7 +30,13 @@ import type {
   GenerateResult,
   Generator,
 } from "./ports.js";
-import { fetchTransport, type HttpResponse, type HttpTransport } from "./transport.js";
+import {
+  collectChunks,
+  fetchTransport,
+  type HttpRequest,
+  type HttpResponse,
+  type HttpTransport,
+} from "./transport.js";
 
 export const OPENAI_BASE_URL = "https://api.openai.com/v1";
 
@@ -140,32 +146,53 @@ interface CallInput {
   readonly signal?: AbortSignal | undefined;
 }
 
-async function call(input: CallInput): Promise<unknown> {
+function requestFor(input: CallInput): HttpRequest {
   const { config } = input;
-  const transport = config.transport ?? fetchTransport;
-  const baseUrl = config.baseUrl ?? OPENAI_BASE_URL;
-
   const headers: Record<string, string> = {
     authorization: `Bearer ${config.apiKey}`,
     "content-type": "application/json",
   };
   if (config.organization !== undefined) headers["openai-organization"] = config.organization;
 
-  const response: HttpResponse = await transport.send({
-    url: `${baseUrl}${input.path}`,
+  return {
+    url: `${config.baseUrl ?? OPENAI_BASE_URL}${input.path}`,
     method: "POST",
     headers,
     body: JSON.stringify(input.payload),
     signal: input.signal,
     timeoutMs: config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-  });
+  };
+}
+
+/** A non-2xx response as the failure it is, with the key redacted and the requested wait kept. */
+function failureFor(
+  capability: string,
+  status: number,
+  body: string,
+  headers: Readonly<Record<string, string>>,
+  apiKey: string,
+): ModelError {
+  return new ModelError(
+    capability,
+    failureKindFor(status, body),
+    `HTTP ${String(status)}: ${redactKey(body, apiKey).slice(0, 400)}`,
+    retryAfterMsOf(headers, body),
+  );
+}
+
+async function call(input: CallInput): Promise<unknown> {
+  const { config } = input;
+  const transport = config.transport ?? fetchTransport;
+
+  const response: HttpResponse = await transport.send(requestFor(input));
 
   if (response.status < 200 || response.status >= 300) {
-    throw new ModelError(
+    throw failureFor(
       input.capability,
-      failureKindFor(response.status, response.body),
-      `HTTP ${String(response.status)}: ${redactKey(response.body, config.apiKey).slice(0, 400)}`,
-      retryAfterMsOf(response.headers, response.body),
+      response.status,
+      response.body,
+      response.headers,
+      config.apiKey,
     );
   }
 
@@ -306,27 +333,175 @@ export interface OpenAiGeneratorConfig extends OpenAiConfig {
    * first real evaluation measure fences. JSON mode removes the fence without loosening the parser.
    */
   readonly jsonOutput?: boolean;
+  /**
+   * Read the answer as a stream, so the time to its first token can be measured (PRD 9.3).
+   *
+   * **The caller still receives the whole answer, once.** PRD 7.2 verifies an answer before it is
+   * returned, and a token cannot be verified alone, so nothing here streams to a user. What
+   * streaming buys is the measurement: how long the model took to start, distinct from how long
+   * it took to finish. Requires a transport that can stream.
+   */
+  readonly stream?: boolean;
+  /** Monotonic milliseconds for timing the stream. `performance.now()` unless a test supplies one. */
+  readonly clock?: { readonly now: () => number };
 }
 
+/** The `data:` payloads of a server-sent event stream, framed from chunks that split anywhere. */
+export async function* sseData(chunks: AsyncIterable<string>): AsyncGenerator<string> {
+  let buffer = "";
+  for await (const chunk of chunks) {
+    buffer += chunk;
+    let end = buffer.indexOf("\n");
+    while (end !== -1) {
+      const line = buffer.slice(0, end).replace(/\r$/, "");
+      buffer = buffer.slice(end + 1);
+      if (line.startsWith("data:")) yield line.slice("data:".length).trimStart();
+      end = buffer.indexOf("\n");
+    }
+  }
+  const last = buffer.replace(/\r$/, "");
+  if (last.startsWith("data:")) yield last.slice("data:".length).trimStart();
+}
+
+const OUTPUT_LIMIT =
+  "the model hit its output limit before finishing; raise maxOutputTokens or shorten the prompt";
+
 export function openAiGenerator(config: OpenAiGeneratorConfig): Generator {
+  const transport = config.transport ?? fetchTransport;
+  const streamed = transport.stream;
+  if (config.stream === true && streamed === undefined) {
+    // At construction, not at the first call: a load run that meant to measure time to first
+    // token and silently measured nothing is the failure this prevents.
+    throw new AtlasOpsError(
+      "VALIDATION",
+      "streaming was requested, but the transport cannot stream",
+      "config.stream",
+    );
+  }
+  const clock = config.clock ?? { now: (): number => performance.now() };
+
+  const payloadFor = (request: GenerateRequest): Record<string, unknown> => {
+    const payload: Record<string, unknown> = {
+      model: config.model,
+      temperature: config.temperature ?? 0,
+      messages: [
+        { role: "system", content: request.system },
+        { role: "user", content: request.user },
+      ],
+    };
+    if (config.maxOutputTokens !== undefined) {
+      payload.max_completion_tokens = config.maxOutputTokens;
+    }
+    if (config.jsonOutput === true) {
+      payload.response_format = { type: "json_object" };
+    }
+    return payload;
+  };
+
+  /**
+   * The streamed read. Usage arrives in a final event with no choices, because the request asks
+   * for it (`include_usage`); a stream that ends without it cannot be priced and is refused, the
+   * same as a whole response without it. A stream that ends before a finish reason was cut off,
+   * and a cut-off answer is not a shorter answer.
+   */
+  const generateStreamed = async (
+    stream: NonNullable<HttpTransport["stream"]>,
+    request: GenerateRequest,
+  ): Promise<GenerateResult> => {
+    const payload = {
+      ...payloadFor(request),
+      stream: true,
+      stream_options: { include_usage: true },
+    };
+    const started = clock.now();
+    const response = await stream(
+      requestFor({
+        capability: "generation",
+        path: "/chat/completions",
+        payload,
+        config,
+        signal: request.signal,
+      }),
+    );
+
+    if (response.status < 200 || response.status >= 300) {
+      const body = await collectChunks(response.chunks);
+      throw failureFor("generation", response.status, body, response.headers, config.apiKey);
+    }
+
+    let text = "";
+    let firstTokenMs: number | undefined;
+    let finishReason: unknown;
+    let usageRecord: unknown;
+    let servedModel: string | undefined;
+
+    for await (const data of sseData(response.chunks)) {
+      if (data === "[DONE]") break;
+      let event: unknown;
+      try {
+        event = JSON.parse(data);
+      } catch {
+        throw new ModelError("generation", "unavailable", "a stream event was not valid JSON");
+      }
+      const parsed = record(event, "generation", "stream event");
+      if (parsed.error !== undefined) {
+        throw new ModelError(
+          "generation",
+          "unavailable",
+          `the stream reported an error: ${redactKey(JSON.stringify(parsed.error), config.apiKey).slice(0, 400)}`,
+        );
+      }
+      if (typeof parsed.model === "string") servedModel = parsed.model;
+      if (parsed.usage !== undefined && parsed.usage !== null) usageRecord = parsed.usage;
+
+      const choices = parsed.choices;
+      if (Array.isArray(choices) && choices.length > 0) {
+        const first = record(choices[0], "generation", "choice");
+        const delta = first.delta;
+        const content =
+          typeof delta === "object" && delta !== null
+            ? (delta as Record<string, unknown>).content
+            : undefined;
+        if (typeof content === "string" && content.length > 0) {
+          // The first token is the first *content*. An opening event that only announces the
+          // assistant role carries none, and timing it would measure the connection.
+          firstTokenMs ??= clock.now() - started;
+          text += content;
+        }
+        if (typeof first.finish_reason === "string") finishReason = first.finish_reason;
+      }
+    }
+    const responseMs = clock.now() - started;
+
+    if (finishReason === "length") {
+      throw new ModelError("generation", "invalid-request", OUTPUT_LIMIT);
+    }
+    if (finishReason === undefined) {
+      throw new ModelError(
+        "generation",
+        "unavailable",
+        "the stream ended before the model finished",
+      );
+    }
+
+    const usage = usageFrom(usageRecord, "generation");
+    return {
+      modelId: servedModel ?? config.model,
+      text,
+      usage: { inputTokens: usage.input, outputTokens: usage.output },
+      ...(firstTokenMs === undefined ? {} : { firstTokenMs }),
+      responseMs,
+    };
+  };
+
   return {
     modelId: config.model,
 
     async generate(request: GenerateRequest): Promise<GenerateResult> {
-      const payload: Record<string, unknown> = {
-        model: config.model,
-        temperature: config.temperature ?? 0,
-        messages: [
-          { role: "system", content: request.system },
-          { role: "user", content: request.user },
-        ],
-      };
-      if (config.maxOutputTokens !== undefined) {
-        payload.max_completion_tokens = config.maxOutputTokens;
+      if (config.stream === true && streamed !== undefined) {
+        return generateStreamed(streamed, request);
       }
-      if (config.jsonOutput === true) {
-        payload.response_format = { type: "json_object" };
-      }
+      const payload = payloadFor(request);
 
       const body = await call({
         capability: "generation",
@@ -353,11 +528,7 @@ export function openAiGenerator(config: OpenAiGeneratorConfig): Generator {
       // and a response cut mid-citation would fail there with a confusing message; failing here
       // says what actually happened.
       if (first.finish_reason === "length") {
-        throw new ModelError(
-          "generation",
-          "invalid-request",
-          "the model hit its output limit before finishing; raise maxOutputTokens or shorten the prompt",
-        );
+        throw new ModelError("generation", "invalid-request", OUTPUT_LIMIT);
       }
 
       const usage = usageFrom(parsed.usage, "generation");

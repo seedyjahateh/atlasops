@@ -227,6 +227,15 @@ const BUDGET_METRICS: Readonly<Record<string, BudgetShape>> = {
     unit: "ms",
     direction: "lower-is-better",
   },
+  "TIME-TO-FIRST-TOKEN-P95": {
+    id: "time-to-first-token-p95",
+    category: "latency",
+    // "Model": nothing reaches the caller at the first token; the answer is released whole after
+    // verification (PRD 7.2, ADR 0012). The label must not suggest a user saw it.
+    label: "Time to the model's first token p95, from the start of the request",
+    unit: "ms",
+    direction: "lower-is-better",
+  },
   "RETRIEVAL-STAGE-P95": {
     id: "retrieval-stage-latency-p95",
     category: "latency",

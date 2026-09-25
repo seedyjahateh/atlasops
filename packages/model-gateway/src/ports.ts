@@ -74,6 +74,20 @@ export interface GenerateResult {
   readonly modelId: string;
   readonly text: string;
   readonly usage: Usage;
+  /**
+   * Milliseconds from sending the request to the first token of output, on the attempt that
+   * succeeded. Present only when the generator streams: a generator that returns its whole answer
+   * at once (every stand-in, and the adapter with streaming off) has no first token to time, and a
+   * whole-response latency is not one (PRD 9.3).
+   */
+  readonly firstTokenMs?: number;
+  /**
+   * Milliseconds from sending the request to the end of the response, on the same attempt. Carried
+   * with `firstTokenMs` so a caller can place the first token on its own clock by working back from
+   * when the call returned — which stays right through retries, where working forward from when the
+   * call started would not.
+   */
+  readonly responseMs?: number;
 }
 
 export interface Generator {
