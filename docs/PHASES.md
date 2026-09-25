@@ -1375,7 +1375,29 @@ request, not by the loop.
       `docs/measurements/accepted-breaches.json` is that record. `loadrun:check` honours an entry
       only when budget, record commit and value all match, so a re-run lapses it, and a malformed
       entry fails the check. The owner accepted this one; capping answer length was rejected as
-      trading completeness for a number, and streaming remains the real fix.
+      trading completeness for a number, and streaming remains the real fix. _(Corrected in P19d:
+      under PRD 7.2 streaming measures the model's first token but cannot deliver it.)_
+
+- [x] **P19d — Stream generation, so time to first token is measured** (ADR 0012). PRD 9.3's
+      first-token budget, unmeasurable since P13 because the adapter used the non-streaming endpoint.
+      The OpenAI generator now streams server-sent events and times the first content token. The
+      caller still receives the whole answer once, verified, because PRD 7.2 allows nothing else, so
+      this measures the model rather than what a user sees. Transport gained an optional `stream`;
+      grounding exposes `firstTokenAtMs` on its own clock, worked back from when the call returned
+      so retry waits cannot skew it; composition now passes its clock to grounding; the load harness
+      measures from each request's start. 841 tests.
+
+      Real load run at `cd06e78`: **time to first token 727 ms p95** over 260 requests, within
+      1,200 — the budget's first measurement. Two breaches, both accepted by the owner for this
+      record only: end-to-end p95 4,756 ms (the same long-answer question as P19c; the acceptance
+      corrects the earlier claim that streaming would help), and **retrieval stage p95 564 ms
+      against 400**, which is new. Retrieval runs only on the 13 cache misses, so its p95 is the
+      slowest one, an embeddings call. The retrieval code did not change, and re-running until it
+      fit was rejected. The budget needs more cache-miss samples before it means anything.
+
+      A correction to the limitations list, made along the way: it called only streaming
+      unimplemented, so building it would have flipped the readiness status to `complete` while
+      PRD 10's shared corpus store is not implemented either. It now says so in plain words.
 
 ## What this build does not do
 

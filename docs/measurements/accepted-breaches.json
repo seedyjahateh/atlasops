@@ -1,14 +1,23 @@
 {
-  "$comment": "Budget breaches accepted in a reviewed change (PRD 9.3). Each entry covers one breach in one load-run record: the budget, the record's commit and the measured value must all match, so a re-run lapses it. The target is never raised; a breach listed here is still a breach. See tools/loadrun/accept.ts.",
+  "$comment": "Budget breaches accepted in a reviewed change (PRD 9.3). Each entry covers one breach in one load-run record: the budget, the record's commit and the measured value must all match, so a re-run lapses it. The target is never raised; a breach listed here is still a breach. Lapsed entries are removed; their history is in git. See tools/loadrun/accept.ts.",
   "accepted": [
     {
       "budget": "ANSWER-LATENCY-P95",
-      "recordCommit": "d1b5c50",
-      "value": 4633.710999999996,
+      "recordCommit": "cd06e78",
+      "value": 4755.820900000001,
       "acceptedBy": "Seedy M. Jahateh",
       "acceptedAt": "2026-09-25",
-      "reason": "The breach is one workload question, 'when should an incident be escalated and to whom'. With reranking bypassed (ADR 0011) it receives passages that lead the generator to a complete 563-592-token answer, where the previous configuration answered in 134-420 tokens or refused; that takes about 5 s to generate, and its 20 repeats (7.7% of 260 requests) set the p95 alone. Generation p50 is unchanged (1,390 to 1,349 ms) and retrieval got faster. Accepted rather than capped: shortening the answer would trade completeness for a number, and the fix for perceived latency is streaming, which PRD 9.3 names for time to first token and which is not implemented.",
-      "decision": "docs/adr/0011-the-served-configuration-bypasses-the-stand-in-reranker.md; docs/PHASES.md P19c"
+      "reason": "The same cause as the breach accepted for d1b5c50: one workload question, 'when should an incident be escalated and to whom', gets a complete 563-608-token answer under the served configuration (ADR 0011), and its 20 repeats (7.7% of 260 requests) set the p95 alone. Accepted rather than capped, since shortening the answer would trade completeness for a number. Correction to the earlier acceptance: streaming does not shorten what a user waits for here. PRD 7.2 releases an answer only after verification, so it measures the model's first token (727 ms p95 in this run) without delivering it (ADR 0012).",
+      "decision": "docs/adr/0011-the-served-configuration-bypasses-the-stand-in-reranker.md; docs/adr/0012-generation-streams-so-time-to-first-token-is-measured.md; docs/PHASES.md P19d"
+    },
+    {
+      "budget": "RETRIEVAL-STAGE-P95",
+      "recordCommit": "cd06e78",
+      "value": 564.0732000000007,
+      "acceptedBy": "Seedy M. Jahateh",
+      "acceptedAt": "2026-09-25",
+      "reason": "The retrieval stage runs only on retrieval-cache misses: 13 of 260 requests, so its p95 is the single slowest sample. Nearly all of it is one OpenAI embeddings call. Three misses took 495-564 ms and the other ten 161-298 ms; the two previous runs peaked at 329 and 247 ms, and this commit did not change retrieval code. Read as embedding-API latency varying over a sample too small to have a meaningful p95. Accepted rather than re-run, because re-running until the number fits is not a measurement. What it needs is more cache-miss samples before this budget means anything.",
+      "decision": "docs/PHASES.md P19d"
     }
   ]
 }

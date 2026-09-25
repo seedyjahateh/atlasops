@@ -11,9 +11,9 @@
     "hardware": "12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process",
     "concurrency": 4
   },
-  "startedAt": "2026-09-25T15:00:38.834Z",
-  "finishedAt": "2026-09-25T15:02:23.964Z",
-  "commit": "d1b5c50",
+  "startedAt": "2026-09-25T15:39:40.440Z",
+  "finishedAt": "2026-09-25T15:41:26.420Z",
+  "commit": "cd06e78",
   "requests": 260,
   "abstentions": 42,
   "chunksIngested": 35,
@@ -23,92 +23,92 @@
   "latency": [
     {
       "stage": "end-to-end",
-      "p50": 1356.137499999997,
-      "p95": 4633.710999999996,
+      "p50": 1341.427300000003,
+      "p95": 4755.820900000001,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "end-to-end (retrieval cache miss)",
-      "p50": 1659.8873999999996,
-      "p95": 4950.878899999999,
+      "p50": 1717.5514000000003,
+      "p95": 8211.4041,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "end-to-end (retrieval cache hit)",
-      "p50": 1348.195000000007,
-      "p95": 4633.710999999996,
+      "p50": 1337.285400000008,
+      "p95": 4755.820900000001,
       "samples": 247,
       "p95IsMaximum": false
     },
     {
       "stage": "audit-write",
-      "p50": 0.032700000003387686,
-      "p95": 0.06750000000101863,
+      "p50": 0.03830000000016298,
+      "p95": 0.08540000000357395,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "dense-retrieval",
-      "p50": 193.50620000000026,
-      "p95": 246.92369999999937,
+      "p50": 246.1345999999994,
+      "p95": 563.8863000000001,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "fusion",
-      "p50": 0.021899999999732245,
-      "p95": 7.067199999999957,
+      "p50": 0.019500000000334694,
+      "p95": 8.333999999999833,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "generation",
-      "p50": 1348.7031000000006,
-      "p95": 4633.498,
+      "p50": 1334.9388999999974,
+      "p95": 4755.484500000002,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "lexical-retrieval",
-      "p50": 0.2559000000001106,
-      "p95": 0.4639999999999418,
+      "p50": 0.2606999999989057,
+      "p95": 0.4934000000002925,
       "samples": 13,
       "p95IsMaximum": true
     },
     {
       "stage": "permission-compile",
-      "p50": 0.005699999994249083,
-      "p95": 0.013399999996181577,
+      "p50": 0.006300000008195639,
+      "p95": 0.014500000004773028,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "permission-resolution",
-      "p50": 0.003700000001117587,
-      "p95": 0.00909999999566935,
+      "p50": 0.004099999998288695,
+      "p95": 0.010699999998905696,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "prompt-assembly",
-      "p50": 0.020700000000942964,
-      "p95": 0.040000000000873115,
+      "p50": 0.02410000000963919,
+      "p95": 0.05340000000069267,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "query-normalisation",
-      "p50": 0.03209999999671709,
-      "p95": 0.07909999999537831,
+      "p50": 0.0400999999983469,
+      "p95": 0.08520000000135042,
       "samples": 260,
       "p95IsMaximum": false
     },
     {
       "stage": "verification",
-      "p50": 0.012700000006589107,
-      "p95": 0.03920000001380686,
+      "p50": 0.01870000000053551,
+      "p95": 0.05490000000281725,
       "samples": 260,
       "p95IsMaximum": false
     }
@@ -119,7 +119,7 @@
       "target": 3000,
       "unit": "ms",
       "method": "scripted load run, fixed workload, stated concurrency",
-      "value": 4633.710999999996,
+      "value": 4755.820900000001,
       "sampleSize": 260,
       "within": false,
       "unmeasured": null,
@@ -130,20 +130,20 @@
       "target": 1200,
       "unit": "ms",
       "method": "streaming instrumentation on the same run",
-      "value": null,
-      "sampleSize": null,
-      "within": null,
-      "unmeasured": "no streaming instrumentation exists. The OpenAI adapter speaks the non-streaming endpoint (ADR 0006), and a first-token time cannot be inferred from a whole-response latency",
-      "caveat": null
+      "value": 726.6957000000002,
+      "sampleSize": 260,
+      "within": true,
+      "unmeasured": null,
+      "caveat": "time until the model's first token, from the start of the request. No answer reaches the caller then: it is returned whole, after verification (PRD 7.2)"
     },
     {
       "id": "RETRIEVAL-STAGE-P95",
       "target": 400,
       "unit": "ms",
       "method": "span aggregation",
-      "value": 247.39310000000023,
+      "value": 564.0732000000007,
       "sampleSize": 13,
-      "within": true,
+      "within": false,
       "unmeasured": null,
       "caveat": null
     },
@@ -163,7 +163,7 @@
       "target": 50,
       "unit": "ms",
       "method": "span aggregation",
-      "value": 0.02719999999681022,
+      "value": 0.030600000012782402,
       "sampleSize": 260,
       "within": true,
       "unmeasured": null,
@@ -174,7 +174,7 @@
       "target": 100,
       "unit": "ms",
       "method": "span aggregation",
-      "value": 0.03920000001380686,
+      "value": 0.05490000000281725,
       "sampleSize": 260,
       "within": true,
       "unmeasured": null,

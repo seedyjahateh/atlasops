@@ -101,8 +101,8 @@ Decided from `docs/evidence/governance.md`, `docs/evidence/run-dense-only.json`,
 - Holds: costs were computed from the versioned price table `openai-2026-09-24`, which is checked in.
 - Holds: the stage breakdown has the 10 PRD 9.2 stages the served configuration runs, and the end-to-end figure, each with its sample count; reranking is recorded as bypassed rather than measured.
 - Holds: the raw span export has 260 request trace(s), and the record declares 260 request(s).
-- Holds: 8 of 10 PRD 9.3 budgets are measured, and each unmeasured one states why.
-- Holds: the rendered report is published and cites the run's commit `d1b5c50`.
+- Holds: 9 of 10 PRD 9.3 budgets are measured, and each unmeasured one states why.
+- Holds: the rendered report is published and cites the run's commit `cd06e78`.
 
 Decided from `docs/measurements/load-run.json`, `docs/measurements/load-run.spans.jsonl`, `docs/evidence/cost-and-latency.md`, `packages/model-gateway/src/prices-openai.ts`.
 
@@ -152,9 +152,9 @@ never writes; until that edit is made, `proofLevel` is still `code`.
 | `status` | `in-progress` |
 | `proofLevel` | `measured` |
 | `content.problem` | from PRD section 1, 463 characters |
-| `content.limitations` | 12 entries from `docs/limitations.md` |
+| `content.limitations` | 13 entries from `docs/limitations.md` |
 | `stack` | languages: typescript; infrastructure: github-actions; testing: vitest |
-| `metrics` | 18, each with `environment`, `sampleSize`, `synthetic: true`, `measuredAt` and `evidenceUrl` |
+| `metrics` | 19, each with `environment`, `sampleSize`, `synthetic: true`, `measuredAt` and `evidenceUrl` |
 | `evidence` | 7, primary: `evaluation-served-configuration` |
 | `dates.started` | `2026-09-20` |
 | `dates.lastVerified` | `2026-09-25` |
@@ -175,14 +175,15 @@ Proposed metrics, each value copied unrounded from the artefact named in the pro
 | Abstention on questions the corpus can answer | 0 | ratio | 2 |
 | Permission leaks over the probe set | 0 | count | 6 |
 | Existence disclosures over the probe set | 0 | count | 6 |
-| End-to-end answer latency p95, all requests (95% retrieval-cache hits) | 4633.710999999996 | ms | 260 |
-| Retrieval stage latency p95, both retrievers and fusion | 247.39310000000023 | ms | 13 |
-| Permission resolution and predicate compilation latency p95 | 0.02719999999681022 | ms | 260 |
-| Citation verification latency p95 | 0.03920000001380686 | ms | 260 |
+| End-to-end answer latency p95, all requests (95% retrieval-cache hits) | 4755.820900000001 | ms | 260 |
+| Time to the model's first token p95, from the start of the request | 726.6957000000002 | ms | 260 |
+| Retrieval stage latency p95, both retrievers and fusion | 564.0732000000007 | ms | 13 |
+| Permission resolution and predicate compilation latency p95 | 0.030600000012782402 | ms | 260 |
+| Citation verification latency p95 | 0.05490000000281725 | ms | 260 |
 | Cost per answered query p50, excluding reranking | 0.0008052000000000001 | usd | 218 |
 | Cost per answered query p95, excluding reranking | 0.002122 | usd | 218 |
 | Ingestion embedding cost per 1,000 chunks | 0.0010000000000000002 | usd-per-1k | 1 |
-| End-to-end answer latency p95, retrieval-cache misses only (the slowest sample) | 4950.878899999999 | ms | 13 |
+| End-to-end answer latency p95, retrieval-cache misses only (the slowest sample) | 8211.4041 | ms | 13 |
 
 Left out, each for a stated reason:
 
@@ -195,7 +196,6 @@ Left out, each for a stated reason:
 - every metric of the `dense-only` arm (docs/evidence/run-dense-only.json) — an ablation arm is evidence about the served configuration, not a description of it; it is linked through the ablation report.
 - every metric of the `lexical-only` arm (docs/evidence/run-lexical-only.json) — an ablation arm is evidence about the served configuration, not a description of it; it is linked through the ablation report.
 - every metric of the `fused-with-rerank` arm (docs/evidence/run-fused-with-rerank.json) — an ablation arm is evidence about the served configuration, not a description of it; it is linked through the ablation report.
-- TIME-TO-FIRST-TOKEN-P95 (docs/measurements/load-run.json) — unmeasured: no streaming instrumentation exists. The OpenAI adapter speaks the non-streaming endpoint (ADR 0006), and a first-token time cannot be inferred from a whole-response latency.
 - RERANK-STAGE-P95 (docs/measurements/load-run.json) — unmeasured: the served configuration bypasses reranking (ADR 0011), so no request has a rerank stage to measure.
 - RETRIEVAL-ONLY-COST (docs/measurements/load-run.json) — 95% of requests were served from the retrieval cache and never embedded a query, so the figure measures the cache rather than a retrieval.
 
@@ -204,10 +204,11 @@ For the reviewer:
 - Nothing in this file has been applied. It is a proposal for a reviewed edit to the portfolio manifest, which this repository never writes.
 - Every URL points at `main`. Pin each to the commit you review, so that the evidence cannot change under the manifest after it is promoted.
 - `integrity.reviewedBy` and `integrity.reviewedAt` are left null on purpose: they record a person's review, and a generator cannot perform one.
-- `status` is `in-progress` rather than `complete` because the limitations list records a PRD requirement as unimplemented: "Streaming is the fix for what this feels like to a user, and is not implemented."
+- `status` is `in-progress` rather than `complete` because the limitations list records a PRD requirement as unimplemented: "PRD 10 has these components communicating through the corpus store and the indexes, and that shared store is not implemented; with a persistent profile they would communicate that way, and the composition root would not change."
 - The served configuration is not the best-ranking arm: its nDCG@10 is 0.8663, below dense-only (0.9493). The proposed retrieval metrics describe what is served; changing what is served is a decision to confirm on the held-out split before promotion, not after.
 - The evaluation used the development split only; no number here comes from the held-out split. Where a held-out run was published, it is linked from the limitations list rather than promoted.
-- ANSWER-LATENCY-P95 is over its PRD 9.3 budget: 4633.710999999996 ms against 3000. It is proposed as measured, not as met. Whether the breach was accepted, by whom and why is in docs/measurements/accepted-breaches.json.
+- ANSWER-LATENCY-P95 is over its PRD 9.3 budget: 4755.820900000001 ms against 3000. It is proposed as measured, not as met. Whether the breach was accepted, by whom and why is in docs/measurements/accepted-breaches.json.
+- RETRIEVAL-STAGE-P95 is over its PRD 9.3 budget: 564.0732000000007 ms against 400. It is proposed as measured, not as met. Whether the breach was accepted, by whom and why is in docs/measurements/accepted-breaches.json.
 - `content.problem` is the leading sentences of PRD section 1's first paragraph, cut at a sentence boundary to fit the schema's 600 characters rather than rewritten. Left out: "And it is unevenly permissioned — the security incident retro, the compensation policy, and the customer-specific runbook are each legitimately readable by different, overlapping sets of people." — decide whether the field needs it more than what precedes it.
 - The stack lists only terms the portfolio vocabulary has. The models used — text-embedding-3-small and gpt-4.1-mini, over HTTP without an SDK (ADR 0006) — have no term in `technology.v1`; adding one is a reviewed taxonomy change, not part of this edit.
 

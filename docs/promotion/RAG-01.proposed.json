@@ -17,9 +17,10 @@
         "Reranking is bypassed in the served configuration (ADR 0011), because the only reranker is the unselected stand-in, and it made ranking worse. OpenAI publishes no rerank model (ADR 0006). With real embeddings, serving the stand-in gave nDCG@10 0.71 on development and 0.64 on held-out, against 0.87 and 0.77 with it bypassed.",
         "The judge is a stand-in, so the groundedness rows (supported-claim rate, contradiction rate, judge-human agreement) are not quality evidence, whatever they read. PRD 8.3 does not let a judged metric gate a release alone, and here it cannot inform one either.",
         "Cost is measured, with one qualification. Cost per answered query is p50 $0.00081 and p95 $0.00212, and ingestion costs $0.001 per thousand chunks — all far inside PRD 9.3. Nothing is excluded now that no reranker runs, but a selected rerank model would add its own price. The evaluation report's own cost row counts generation only; the load run's is the whole-request figure.",
-        "The answer path is over its latency budget, and the breach is accepted, not fixed. End-to-end p95 is 4,634 ms against 3,000 (the cache-miss p95 is 4,951 ms, over thirteen samples).",
+        "The answer path is over its latency budget, and the breach is accepted, not fixed. End-to-end p95 is 4,756 ms against 3,000 (the cache-miss p95 is 8,211 ms, the slowest of thirteen). One workload question — \"when should an incident be escalated and to whom\" — gets a complete 563–608-token answer that takes about five seconds to generate, and its twenty repeats set the p95 alone.",
+        "The retrieval-stage budget is breached on thirteen samples, and accepted as such. Retrieval runs only on retrieval-cache misses — 13 of 260 requests — so its p95 is the slowest single one: 564 ms against 400, almost all of it one embeddings call. The other ten misses took 161–298 ms, earlier runs peaked at 329 and 247, and the retrieval code did not change.",
         "Generation failures degrade, and an evaluation leaves the degraded queries out. Since ADR 0010, a model failure in generation returns the ranked passages with no prose (PRD 9.4) instead of aborting the request. It took two aborted real evaluations to get there: one transient failure in P18b, and one answer that hit the 800-token output limit in the first held-out run.",
-        "Time to first token is unmeasurable. PRD 9.3 names streaming instrumentation as the method, and streaming is not implemented: the adapter speaks the non-streaming endpoint (ADR 0006).",
+        "Time to first token measures the model, not the user. Since ADR 0012 the generator streams, and the time from the start of a request to the model's first token is 727 ms at p95 over 260 requests, within PRD 9.3's 1,200. No token reaches the caller then: the answer is returned whole, after verification. Only the OpenAI set streams; the stand-ins report no first token.",
         "No persistent storage adapter exists. The only store profile is memory, in-process. Four components in four processes therefore cannot share a corpus, which is why the API and the evaluation runner crawl one themselves rather than reading what the worker wrote."
       ]
     },
@@ -172,52 +173,65 @@
         "id": "answer-latency-p95",
         "category": "latency",
         "label": "End-to-end answer latency p95, all requests (95% retrieval-cache hits)",
-        "value": 4633.710999999996,
+        "value": 4755.820900000001,
         "unit": "ms",
         "direction": "lower-is-better",
         "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
         "sampleSize": 260,
         "synthetic": true,
-        "measuredAt": "2026-09-25T15:02:23.964Z",
+        "measuredAt": "2026-09-25T15:41:26.420Z",
+        "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
+      },
+      {
+        "id": "time-to-first-token-p95",
+        "category": "latency",
+        "label": "Time to the model's first token p95, from the start of the request",
+        "value": 726.6957000000002,
+        "unit": "ms",
+        "direction": "lower-is-better",
+        "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
+        "sampleSize": 260,
+        "synthetic": true,
+        "measuredAt": "2026-09-25T15:41:26.420Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       },
       {
         "id": "retrieval-stage-latency-p95",
         "category": "latency",
         "label": "Retrieval stage latency p95, both retrievers and fusion",
-        "value": 247.39310000000023,
+        "value": 564.0732000000007,
         "unit": "ms",
         "direction": "lower-is-better",
         "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
         "sampleSize": 13,
         "synthetic": true,
-        "measuredAt": "2026-09-25T15:02:23.964Z",
+        "measuredAt": "2026-09-25T15:41:26.420Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       },
       {
         "id": "permission-latency-p95",
         "category": "latency",
         "label": "Permission resolution and predicate compilation latency p95",
-        "value": 0.02719999999681022,
+        "value": 0.030600000012782402,
         "unit": "ms",
         "direction": "lower-is-better",
         "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
         "sampleSize": 260,
         "synthetic": true,
-        "measuredAt": "2026-09-25T15:02:23.964Z",
+        "measuredAt": "2026-09-25T15:41:26.420Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       },
       {
         "id": "verification-latency-p95",
         "category": "latency",
         "label": "Citation verification latency p95",
-        "value": 0.03920000001380686,
+        "value": 0.05490000000281725,
         "unit": "ms",
         "direction": "lower-is-better",
         "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
         "sampleSize": 260,
         "synthetic": true,
-        "measuredAt": "2026-09-25T15:02:23.964Z",
+        "measuredAt": "2026-09-25T15:41:26.420Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       },
       {
@@ -230,7 +244,7 @@
         "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
         "sampleSize": 218,
         "synthetic": true,
-        "measuredAt": "2026-09-25T15:02:23.964Z",
+        "measuredAt": "2026-09-25T15:41:26.420Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       },
       {
@@ -243,7 +257,7 @@
         "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
         "sampleSize": 218,
         "synthetic": true,
-        "measuredAt": "2026-09-25T15:02:23.964Z",
+        "measuredAt": "2026-09-25T15:41:26.420Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       },
       {
@@ -256,20 +270,20 @@
         "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
         "sampleSize": 1,
         "synthetic": true,
-        "measuredAt": "2026-09-25T15:02:23.964Z",
+        "measuredAt": "2026-09-25T15:41:26.420Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       },
       {
         "id": "answer-latency-p95-cache-miss",
         "category": "latency",
         "label": "End-to-end answer latency p95, retrieval-cache misses only (the slowest sample)",
-        "value": 4950.878899999999,
+        "value": 8211.4041,
         "unit": "ms",
         "direction": "lower-is-better",
         "environment": "Load profile local-openai-c4: 12 x 12th Gen Intel(R) Core(TM) i5-1245U, 16 GB, win32/x64, single process; concurrency 4; 260 requests over workload sha256:e32b75e87ef4; embedder text-embedding-3-small, generator gpt-4.1-mini, reranker none; 95% retrieval-cache hits",
         "sampleSize": 13,
         "synthetic": true,
-        "measuredAt": "2026-09-25T15:02:23.964Z",
+        "measuredAt": "2026-09-25T15:41:26.420Z",
         "evidenceUrl": "https://github.com/seedyjahateh/atlasops/blob/main/docs/measurements/load-run.json"
       }
     ],
@@ -393,6 +407,10 @@
         "file": "docs/measurements/load-run.json",
         "pointer": "/budgets/0/value"
       },
+      "time-to-first-token-p95": {
+        "file": "docs/measurements/load-run.json",
+        "pointer": "/budgets/1/value"
+      },
       "retrieval-stage-latency-p95": {
         "file": "docs/measurements/load-run.json",
         "pointer": "/budgets/2/value"
@@ -473,10 +491,6 @@
       "reason": "an ablation arm is evidence about the served configuration, not a description of it; it is linked through the ablation report"
     },
     {
-      "what": "TIME-TO-FIRST-TOKEN-P95 (docs/measurements/load-run.json)",
-      "reason": "unmeasured: no streaming instrumentation exists. The OpenAI adapter speaks the non-streaming endpoint (ADR 0006), and a first-token time cannot be inferred from a whole-response latency"
-    },
-    {
       "what": "RERANK-STAGE-P95 (docs/measurements/load-run.json)",
       "reason": "unmeasured: the served configuration bypasses reranking (ADR 0011), so no request has a rerank stage to measure"
     },
@@ -489,10 +503,11 @@
     "Nothing in this file has been applied. It is a proposal for a reviewed edit to the portfolio manifest, which this repository never writes.",
     "Every URL points at `main`. Pin each to the commit you review, so that the evidence cannot change under the manifest after it is promoted.",
     "`integrity.reviewedBy` and `integrity.reviewedAt` are left null on purpose: they record a person's review, and a generator cannot perform one.",
-    "`status` is `in-progress` rather than `complete` because the limitations list records a PRD requirement as unimplemented: \"Streaming is the fix for what this feels like to a user, and is not implemented.\"",
+    "`status` is `in-progress` rather than `complete` because the limitations list records a PRD requirement as unimplemented: \"PRD 10 has these components communicating through the corpus store and the indexes, and that shared store is not implemented; with a persistent profile they would communicate that way, and the composition root would not change.\"",
     "The served configuration is not the best-ranking arm: its nDCG@10 is 0.8663, below dense-only (0.9493). The proposed retrieval metrics describe what is served; changing what is served is a decision to confirm on the held-out split before promotion, not after.",
     "The evaluation used the development split only; no number here comes from the held-out split. Where a held-out run was published, it is linked from the limitations list rather than promoted.",
-    "ANSWER-LATENCY-P95 is over its PRD 9.3 budget: 4633.710999999996 ms against 3000. It is proposed as measured, not as met. Whether the breach was accepted, by whom and why is in docs/measurements/accepted-breaches.json.",
+    "ANSWER-LATENCY-P95 is over its PRD 9.3 budget: 4755.820900000001 ms against 3000. It is proposed as measured, not as met. Whether the breach was accepted, by whom and why is in docs/measurements/accepted-breaches.json.",
+    "RETRIEVAL-STAGE-P95 is over its PRD 9.3 budget: 564.0732000000007 ms against 400. It is proposed as measured, not as met. Whether the breach was accepted, by whom and why is in docs/measurements/accepted-breaches.json.",
     "`content.problem` is the leading sentences of PRD section 1's first paragraph, cut at a sentence boundary to fit the schema's 600 characters rather than rewritten. Left out: \"And it is unevenly permissioned — the security incident retro, the compensation policy, and the customer-specific runbook are each legitimately readable by different, overlapping sets of people.\" — decide whether the field needs it more than what precedes it.",
     "The stack lists only terms the portfolio vocabulary has. The models used — text-embedding-3-small and gpt-4.1-mini, over HTTP without an SDK (ADR 0006) — have no term in `technology.v1`; adding one is a reviewed taxonomy change, not part of this edit."
   ]

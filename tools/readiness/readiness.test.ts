@@ -467,8 +467,13 @@ describe("the proposal", () => {
     expect(excluded.get("supported-claim-rate")).toMatch(/stand-in judge/);
     // Not measured at all since ADR 0011: the served configuration has no rerank stage.
     expect(excluded.get("RERANK-STAGE-P95")).toMatch(/^unmeasured: .*bypasses reranking/);
-    expect(excluded.get("TIME-TO-FIRST-TOKEN-P95")).toMatch(/^unmeasured/);
     expect(changes.metrics.map((metric) => metric.id)).not.toContain("rerank-stage-latency-p95");
+  });
+
+  it("proposes time to first token as the model's, never as what a user saw (ADR 0012)", () => {
+    const ttft = changes.metrics.find((metric) => metric.id === "time-to-first-token-p95");
+    expect(ttft).toBeDefined();
+    expect(ttft?.label).toMatch(/model's first token/);
   });
 
   it("would propose the rerank budget once a real reranker measured it", () => {

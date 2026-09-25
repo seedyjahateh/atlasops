@@ -72,15 +72,23 @@ excluded now that no reranker runs, but a selected rerank model would add its ow
 evaluation report's own cost row counts generation only; the load run's is the whole-request figure.
 
 **The answer path is over its latency budget, and the breach is accepted, not fixed.** End-to-end
-p95 is **4,634 ms** against 3,000 (the cache-miss p95 is 4,951 ms, over thirteen samples). One
-workload question — "when should an incident be escalated and to whom" — now gets a complete
-563–592-token answer that takes about five seconds to generate, and its twenty repeats set the p95
-alone; generation's median is unchanged. The breach is accepted in
-`docs/measurements/accepted-breaches.json` for this record only, as PRD 9.3 permits, and the
-budget was not raised. A re-run lapses the acceptance. Streaming is the fix for what this feels
-like to a user, and is not implemented. The run was also throttled by this account's rate limit
-(200,000 tokens per minute) at concurrency 4, and the waits are inside the figures. How many
-requests waited is not in the export.
+p95 is **4,756 ms** against 3,000 (the cache-miss p95 is 8,211 ms, the slowest of thirteen). One
+workload question — "when should an incident be escalated and to whom" — gets a complete
+563–608-token answer that takes about five seconds to generate, and its twenty repeats set the p95
+alone. The breach is accepted in `docs/measurements/accepted-breaches.json` for this record only,
+as PRD 9.3 permits, and the budget was not raised. A re-run lapses the acceptance. **Streaming does
+not shorten this wait**: PRD 7.2 releases an answer only after verification, so a user receives
+nothing until the whole answer exists (ADR 0012). Shortening it would take a different answer
+contract. The run was also throttled by this account's rate limit (200,000 tokens per minute) at
+concurrency 4, and the waits are inside the figures. How many requests waited is not in the
+export.
+
+**The retrieval-stage budget is breached on thirteen samples, and accepted as such.** Retrieval
+runs only on retrieval-cache misses — 13 of 260 requests — so its p95 is the slowest single one:
+**564 ms** against 400, almost all of it one embeddings call. The other ten misses took 161–298 ms,
+earlier runs peaked at 329 and 247, and the retrieval code did not change. That reads as provider
+latency varying over too small a sample, but thirteen points cannot show it. The breach is accepted
+for this record rather than re-run until it fits; what the budget needs is more cache-miss samples.
 
 **Generation failures degrade, and an evaluation leaves the degraded queries out.** Since ADR 0010,
 a model failure in generation returns the ranked passages with no prose (PRD 9.4) instead of
@@ -91,8 +99,10 @@ citation, groundedness and abstention metrics — so a run with many of them rep
 and its sample sizes say so. The load harness counts a degraded answer as an abstention, and its
 record does not yet export how many there were.
 
-**Time to first token is unmeasurable.** PRD 9.3 names streaming instrumentation as the method, and
-streaming is not implemented: the adapter speaks the non-streaming endpoint (ADR 0006).
+**Time to first token measures the model, not the user.** Since ADR 0012 the generator streams, and
+the time from the start of a request to the model's first token is **727 ms at p95** over 260
+requests, within PRD 9.3's 1,200. No token reaches the caller then: the answer is returned whole,
+after verification. Only the OpenAI set streams; the stand-ins report no first token.
 
 The stand-ins remain the **default** for every command, and everything below about them still holds
 for any run that uses them:
