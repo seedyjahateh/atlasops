@@ -341,12 +341,19 @@ describe("configuration and the ablation switches (PRD 5.2, 5.3)", () => {
 
   it("gives each ablation its own key, so results cannot be shared between them", () => {
     const base = configKey(RETRIEVAL_DEFAULTS);
-    const noRerank = configKey(
-      ablate(RETRIEVAL_DEFAULTS, { rerank: { enabled: false, depth: 20 } }),
+    const withRerank = configKey(
+      ablate(RETRIEVAL_DEFAULTS, { rerank: { enabled: true, depth: 20 } }),
     );
     const selected = configKey({ ...RETRIEVAL_DEFAULTS, provenance: "selected-on-dev-split" });
 
-    expect(new Set([base, noRerank, selected]).size).toBe(3);
+    expect(new Set([base, withRerank, selected]).size).toBe(3);
+  });
+
+  it("serves without reranking by default (ADR 0011)", () => {
+    // The only reranker this build has is the unselected stand-in, and it made ranking worse on
+    // both the development and the held-out split once the embeddings were real.
+    expect(RETRIEVAL_DEFAULTS.rerank.enabled).toBe(false);
+    expect(RETRIEVAL_DEFAULTS.dense.enabled && RETRIEVAL_DEFAULTS.lexical.enabled).toBe(true);
   });
 
   it("validates the instant on a temporal scope", () => {
@@ -550,6 +557,9 @@ describe("degraded modes (PRD 9.4)", () => {
       query: "refund eligibility",
       principal: ALICE,
       requestId: REQUEST,
+      // Reranking is off by default (ADR 0011); this degraded mode exists for a configuration that
+      // turns it on.
+      config: ablate(RETRIEVAL_DEFAULTS, { rerank: { enabled: true, depth: 20 } }),
     });
 
     expect(result.degraded).toEqual(["reranker-unavailable"]);
@@ -638,7 +648,7 @@ describe("the retrieval cache is keyed on the principal (PRD 6.3)", () => {
     await retrieve(ports, query);
     const ablated = await retrieve(ports, {
       ...query,
-      config: ablate(RETRIEVAL_DEFAULTS, { rerank: { enabled: false, depth: 20 } }),
+      config: ablate(RETRIEVAL_DEFAULTS, { rerank: { enabled: true, depth: 20 } }),
     });
 
     expect(ablated.cacheHit).toBe(false);

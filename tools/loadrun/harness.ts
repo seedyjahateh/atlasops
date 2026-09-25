@@ -59,7 +59,7 @@ import {
   type Generator,
   type ModelChoice,
 } from "@atlasops/model-gateway";
-import { inMemoryRetrievalCache } from "@atlasops/retrieval";
+import { RETRIEVAL_DEFAULTS, inMemoryRetrievalCache } from "@atlasops/retrieval";
 import {
   UNPRICED_TABLE,
   canPrice,
@@ -357,6 +357,9 @@ export async function runPool<T>(
 /** The model a request may leave unpriced without its cost becoming unknown. See `requestCost`. */
 export const LOCAL_RERANKER = "stand-in-reranker";
 
+/** What the profile records as the reranker when the served configuration bypasses reranking. */
+export const RERANKER_BYPASSED = "none (bypassed by the served configuration, ADR 0011)";
+
 /**
  * What one request cost, from every model call it made.
  *
@@ -433,7 +436,11 @@ export async function runLoad(options: LoadRunOptions): Promise<LoadRunResult> {
     corpusSnapshot: built.corpusSnapshot as ReferenceProfile["corpusSnapshot"],
     workload: workloadHash(workload) as ReferenceProfile["workload"],
     // The identifiers of the models that actually answered, as PRD 9.1 requires a profile to pin.
-    models: built.models.identifiers,
+    // A reranker the served configuration bypasses answered nothing, and naming it would say it had.
+    models: {
+      ...built.models.identifiers,
+      ...(RETRIEVAL_DEFAULTS.rerank.enabled ? {} : { reranker: RERANKER_BYPASSED }),
+    },
     hardware: describeHardware(),
     concurrency: options.concurrency,
   };

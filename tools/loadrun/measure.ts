@@ -29,6 +29,7 @@ import {
   type Stage,
 } from "@atlasops/telemetry";
 
+import { LOCAL_RERANKER, RERANKER_BYPASSED } from "./harness.js";
 import type { LoadRunResult, RequestSample } from "./harness.js";
 
 export interface LatencyRow {
@@ -178,6 +179,15 @@ const EXCLUDES_RERANK =
   "excludes reranking: the reranker is the unselected stand-in, a local function nobody bills for. " +
   "A selected rerank model would add its own price to every answered query.";
 
+/**
+ * The cost caveat, when there is one. Only a run that actually reranked with the stand-in excludes
+ * a reranking cost; a run whose served configuration bypasses reranking (ADR 0011) excludes
+ * nothing, and saying otherwise would understate what the figure covers.
+ */
+function costCaveat(result: LoadRunResult): { readonly caveat: string } | Record<string, never> {
+  return result.profile.models.reranker === LOCAL_RERANKER ? { caveat: EXCLUDES_RERANK } : {};
+}
+
 /** Costs of the answered queries, or null if any answered query could not be priced. */
 function answeredCosts(result: LoadRunResult): readonly number[] | null {
   const answered = result.samples.filter((sample) => !sample.abstained);
@@ -194,6 +204,12 @@ function valuesFor(id: BudgetId, result: LoadRunResult): Measured | string {
     case "RETRIEVAL-STAGE-P95":
       return { values: selfTimesFor(result.samples, [...STAGE_GROUPS.retrieval]), at: 95 };
     case "RERANK-STAGE-P95":
+      if (result.profile.models.reranker === RERANKER_BYPASSED) {
+        return (
+          "the served configuration bypasses reranking (ADR 0011), so no request has a rerank " +
+          "stage to measure"
+        );
+      }
       return { values: selfTimesFor(result.samples, ["reranking"]), at: 95 };
     case "PERMISSION-P95":
       return { values: selfTimesFor(result.samples, [...STAGE_GROUPS.permissions]), at: 95 };
@@ -212,12 +228,12 @@ function valuesFor(id: BudgetId, result: LoadRunResult): Measured | string {
       const costs = answeredCosts(result);
       if (costs === null) return UNPRICED;
       if (costs.length === 0) return "no query in this run was answered, so no answer was priced";
-      return { values: costs, at: id === "COST-PER-ANSWER-P50" ? 50 : 95, caveat: EXCLUDES_RERANK };
+      return { values: costs, at: id === "COST-PER-ANSWER-P50" ? 50 : 95, ...costCaveat(result) };
     }
     case "RETRIEVAL-ONLY-COST": {
       const costs = result.samples.map((sample) => sample.retrievalCostUsd);
       if (costs.some((cost) => cost === null)) return UNPRICED;
-      return { values: costs as number[], at: 95, caveat: EXCLUDES_RERANK };
+      return { values: costs as number[], at: 95, ...costCaveat(result) };
     }
     case "INGESTION-COST-PER-1K-CHUNKS": {
       if (result.ingestionCostUsd === null) return UNPRICED;

@@ -104,7 +104,7 @@ export {
   type Judgement,
 } from "./judge.js";
 
-export { ARMS, configForArm, type ArmName } from "./arms.js";
+export { ARMS, configForArm, servedArm, type ArmName } from "./arms.js";
 
 export {
   metricsOf,

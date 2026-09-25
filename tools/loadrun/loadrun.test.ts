@@ -17,6 +17,7 @@ import { describe, expect, it } from "vitest";
 import {
   LOCAL_RERANKER,
   parseWorkload,
+  RERANKER_BYPASSED,
   requestCost,
   runPool,
   workloadHash,
@@ -30,7 +31,11 @@ const PROFILE = {
   id: "test-profile",
   corpusSnapshot: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
   workload: "sha256:2222222222222222222222222222222222222222222222222222222222222222",
-  models: { embedder: "stand-in-embedder", generator: "stand-in-not-a-model" },
+  models: {
+    embedder: "stand-in-embedder",
+    generator: "stand-in-not-a-model",
+    reranker: "stand-in-reranker",
+  },
   hardware: "test harness",
   concurrency: 2,
 } as unknown as LoadRunResult["profile"];
@@ -225,11 +230,38 @@ describe("cost, when every model call is priced (P18a)", () => {
     expect(record.budgets.find((row) => row.id === "COST-PER-ANSWER-P50")?.sampleSize).toBe(3);
   });
 
-  it("says every cost figure excludes the unselected reranker", () => {
+  it("says every cost figure excludes the unselected reranker, when a run used it", () => {
     const record = recordOf(result(priced), null);
     for (const id of ["COST-PER-ANSWER-P50", "COST-PER-ANSWER-P95", "RETRIEVAL-ONLY-COST"]) {
       expect(record.budgets.find((row) => row.id === id)?.caveat, id).toMatch(/excludes reranking/);
     }
+  });
+
+  describe("when the served configuration bypasses reranking (ADR 0011)", () => {
+    const bypassed = (samples: readonly RequestSample[]): LoadRunResult => ({
+      ...result(samples),
+      profile: {
+        ...PROFILE,
+        models: { ...PROFILE.models, reranker: RERANKER_BYPASSED },
+      },
+    });
+
+    it("claims no reranking exclusion, because nothing was excluded", () => {
+      const record = recordOf(bypassed(priced), null);
+      for (const id of ["COST-PER-ANSWER-P50", "COST-PER-ANSWER-P95", "RETRIEVAL-ONLY-COST"]) {
+        expect(record.budgets.find((row) => row.id === id)?.caveat ?? "", id).not.toMatch(
+          /excludes reranking/,
+        );
+      }
+    });
+
+    it("reports the rerank budget unmeasured because there is no stage, not because a span is missing", () => {
+      const row = recordOf(bypassed(priced), null).budgets.find(
+        (entry) => entry.id === "RERANK-STAGE-P95",
+      );
+      expect(row?.value).toBeNull();
+      expect(row?.unmeasured).toMatch(/bypasses reranking \(ADR 0011\)/);
+    });
   });
 
   it("reports ingestion cost per thousand chunks from the embedder's own token count", () => {

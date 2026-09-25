@@ -70,12 +70,17 @@ describe("the artefacts carry every field PRD 12 item 2 names (P18b)", () => {
       readRunnerConfig(ENV, ["--commit", "abc123"]),
       DATASETS,
     );
-    const full = outcome.runs.find((run) => run.arm === "fused-with-rerank");
+    const full = outcome.runs.find((run) => run.arm === "fused-no-rerank");
     expect(full).toBeDefined();
     if (full === undefined) return;
 
     const record = runRecordOf(full, outcome);
     expect(record.commit).toBe("abc123");
+    // ADR 0011: the served arm says so on its record, and only it does.
+    expect(record.served).toBe(true);
+    expect(
+      outcome.runs.filter((run) => runRecordOf(run, outcome).served).map((run) => run.arm),
+    ).toEqual(["fused-no-rerank"]);
     expect(record.corpusSnapshot).toMatch(/^sha256:/);
     expect(record.datasets.every((ref) => ref.includes("sha256:"))).toBe(true);
     expect(Object.keys(record.models).sort()).toEqual([
@@ -88,7 +93,7 @@ describe("the artefacts carry every field PRD 12 item 2 names (P18b)", () => {
     expect(record.promptVersions.judge).toBe("v1");
     expect(record.runCount).toBe(1);
     expect(record.seeds.bootstrap).toBeGreaterThan(0);
-    expect(record.perQueryFile).toBe("run-fused-with-rerank.queries.jsonl");
+    expect(record.perQueryFile).toBe("run-fused-no-rerank.queries.jsonl");
     expect(record.metrics.length).toBeGreaterThan(0);
   });
 });
@@ -182,12 +187,13 @@ describe("running the suite", () => {
     ]);
   });
 
-  it("renders the governance report from the full arm, not an ablated one", async () => {
-    // A leak count from an ablated arm says nothing about the configuration a deployment serves.
+  it("renders the governance report from the served arm, not another one", async () => {
+    // A leak count from an arm nobody serves says nothing about the configuration a deployment
+    // serves. Since ADR 0011 that is fused retrieval without the stand-in reranker.
     const outcome = await runEvaluationSuite(readRunnerConfig(ENV), DATASETS);
     const governance = artefactsFor(outcome).find((a) => a.name === "governance.md");
 
-    expect(governance?.content).toContain("**Arm:** fused-with-rerank");
+    expect(governance?.content).toContain("**Arm:** fused-no-rerank");
     expect(governance?.content).toContain("permission-probe@1.2.0");
     // The injection probe is in the development split, so the routine run exercises it. It was
     // held out until P14b, which meant the gate that runs on every build never saw an injection.

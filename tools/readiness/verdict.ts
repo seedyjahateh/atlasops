@@ -42,9 +42,22 @@ export interface Verdict {
   readonly allMet: boolean;
 }
 
-/** PRD 8.2's ablation arms. The served configuration is the last. */
+/** PRD 8.2's ablation arms. */
 export const ARMS = ["dense-only", "lexical-only", "fused-no-rerank", "fused-with-rerank"] as const;
-export const SERVED_ARM = "fused-with-rerank";
+
+/**
+ * The arm the evaluation records as the served configuration, or `null` unless exactly one says so.
+ *
+ * Read from the records, not named here. Until ADR 0011 this file named `fused-with-rerank`, and
+ * changing the served default would have left the verdict judging an arm nobody served, with
+ * every finding still holding.
+ */
+export function servedArmOf(
+  records: ReadonlyMap<string, Record<string, unknown> | null>,
+): string | null {
+  const served = [...records].filter(([, record]) => record?.served === true).map(([arm]) => arm);
+  return served.length === 1 ? (served[0] ?? null) : null;
+}
 
 export const PATHS = {
   packageJson: "package.json",
@@ -395,6 +408,14 @@ function evaluationReport(view: RepositoryView): ItemVerdict {
     );
   }
 
+  const served = servedArmOf(records);
+  findings.check(
+    served !== null,
+    served === null
+      ? "the records do not mark exactly one arm as the served configuration, so nothing says which arm describes what ships"
+      : `the records mark \`${served}\` as the served configuration`,
+  );
+
   const ablation = view.read(PATHS.ablation);
   sources.push(PATHS.ablation);
   const absent = ARMS.filter((arm) => !(ablation ?? "").includes(arm));
@@ -501,7 +522,8 @@ function governanceReport(view: RepositoryView): ItemVerdict {
       : `the arm record(s) ${leaking.join(", ")} do not record a leak count of 0`,
   );
 
-  const served = records.get(SERVED_ARM);
+  const servedArm = servedArmOf(records);
+  const served = servedArm === null ? null : records.get(servedArm);
   const probeDataset =
     served !== null && served !== undefined && Array.isArray(served.datasets)
       ? served.datasets.find(
@@ -593,13 +615,20 @@ function costAndLatencyReport(view: RepositoryView): ItemVerdict {
         row.samples >= 1 &&
         typeof row.p95 === "number",
     );
-  const missingStages = STAGES.filter((stage) => !measured(stage));
+  // A stage the served configuration does not run has no spans to aggregate. Only reranking can be
+  // absent, and only when the profile records it as bypassed (ADR 0011) — anything else missing is
+  // a gap in the breakdown.
+  const rerankBypassed = typeof models.reranker === "string" && models.reranker.startsWith("none");
+  const required = STAGES.filter((stage) => !(rerankBypassed && stage === "reranking"));
+  const missingStages = required.filter((stage) => !measured(stage));
   findings.check(
     missingStages.length === 0 && measured("end-to-end"),
     missingStages.length > 0
       ? `the stage breakdown lacks ${missingStages.join(", ")}`
       : measured("end-to-end")
-        ? `the stage breakdown has all ${String(STAGES.length)} PRD 9.2 stages and the end-to-end figure, each with its sample count`
+        ? rerankBypassed
+          ? `the stage breakdown has the ${String(required.length)} PRD 9.2 stages the served configuration runs, and the end-to-end figure, each with its sample count; reranking is recorded as bypassed rather than measured`
+          : `the stage breakdown has all ${String(STAGES.length)} PRD 9.2 stages and the end-to-end figure, each with its sample count`
         : "the breakdown has no end-to-end figure",
   );
 

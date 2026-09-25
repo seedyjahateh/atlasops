@@ -29,7 +29,7 @@ import {
   loadRunRecord,
   PATHS,
   runRecords,
-  SERVED_ARM,
+  servedArmOf,
   type Verdict,
 } from "./verdict.js";
 import { isRecord, type RepositoryView } from "./view.js";
@@ -515,9 +515,10 @@ export function propose(view: RepositoryView, verdict: Verdict, history: History
     throw new RefusedError(verdict.items.filter((item) => !item.met).map((item) => item.item));
   }
   const records = runRecords(view);
-  const served = records.get(SERVED_ARM);
+  const servedArm = servedArmOf(records);
+  const served = servedArm === null ? null : records.get(servedArm);
   const load = loadRunRecord(view);
-  if (served === null || served === undefined || load === null) {
+  if (servedArm === null || served === null || served === undefined || load === null) {
     // Unreachable when the verdict holds, since items 2 and 4 read the same files.
     throw new Error("readiness: the verdict holds but an artefact it read is missing");
   }
@@ -525,7 +526,7 @@ export function propose(view: RepositoryView, verdict: Verdict, history: History
   const metrics: ProposedMetric[] = [];
   const provenance: Record<string, Provenance> = {};
   const excluded: { what: string; reason: string }[] = [];
-  const servedJson = PATHS.runJson(SERVED_ARM);
+  const servedJson = PATHS.runJson(servedArm);
   const servedModels = isRecord(served.models) ? served.models : {};
   const evaluationEnv = evaluationEnvironment(served);
   const evaluatedAt = String(served.measuredAt);
@@ -555,7 +556,7 @@ export function propose(view: RepositoryView, verdict: Verdict, history: History
     });
     provenance[shape.id] = { file: servedJson, pointer: `/metrics/${String(index)}/value` };
   });
-  for (const arm of ARMS.filter((arm) => arm !== SERVED_ARM)) {
+  for (const arm of ARMS.filter((arm) => arm !== servedArm)) {
     excluded.push({
       what: `every metric of the \`${arm}\` arm (${PATHS.runJson(arm)})`,
       reason:
@@ -626,8 +627,8 @@ export function propose(view: RepositoryView, verdict: Verdict, history: History
     {
       id: "evaluation-served-configuration",
       type: "evaluation",
-      title: "Evaluation report for the served configuration, fused retrieval with rerank",
-      url: blob(PATHS.runReport(SERVED_ARM)),
+      title: `Evaluation report for the served configuration, the ${servedArm} arm`,
+      url: blob(PATHS.runReport(servedArm)),
       primary: true,
       verifiedAt: dateOf(evaluatedAt),
       external: false,
@@ -711,8 +712,8 @@ export function propose(view: RepositoryView, verdict: Verdict, history: History
       record === null || record === undefined ? undefined : metricRowValue(record, "nDCG@10");
     return typeof value === "number" ? value : null;
   };
-  const servedNdcg = ndcg(SERVED_ARM);
-  const better = ARMS.filter((arm) => arm !== SERVED_ARM).filter((arm) => {
+  const servedNdcg = ndcg(servedArm);
+  const better = ARMS.filter((arm) => arm !== servedArm).filter((arm) => {
     const value = ndcg(arm);
     return value !== null && servedNdcg !== null && value > servedNdcg;
   });

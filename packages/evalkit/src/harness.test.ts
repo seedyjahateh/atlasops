@@ -39,7 +39,7 @@ import {
 import { UNPRICED_TABLE, createTrace, type Clock } from "@atlasops/telemetry";
 import { describe, expect, it } from "vitest";
 
-import { ARMS, configForArm } from "./arms.js";
+import { ARMS, configForArm, servedArm } from "./arms.js";
 import {
   BOOTSTRAP_DEFAULTS,
   GATE_DEFAULTS,
@@ -316,6 +316,27 @@ describe("the ablation arms (PRD 8.2)", () => {
     expect(dense.fusionK).toBe(RETRIEVAL_DEFAULTS.fusionK);
     expect(dense.limit).toBe(RETRIEVAL_DEFAULTS.limit);
     expect(dense.dense.depth).toBe(RETRIEVAL_DEFAULTS.dense.depth);
+  });
+
+  it("finds the served arm from the default configuration, rather than by name", () => {
+    // ADR 0011: the served configuration bypasses the stand-in reranker.
+    expect(servedArm(RETRIEVAL_DEFAULTS)).toBe("fused-no-rerank");
+    expect(servedArm({ ...RETRIEVAL_DEFAULTS, rerank: { enabled: true, depth: 20 } })).toBe(
+      "fused-with-rerank",
+    );
+    expect(servedArm({ ...RETRIEVAL_DEFAULTS, lexical: { enabled: false, depth: 50 } })).toBe(
+      "dense-only",
+    );
+  });
+
+  it("refuses a served configuration no arm measures", () => {
+    // Lexical-only with reranking has no arm; serving it would serve something never evaluated.
+    const unmeasured = {
+      ...RETRIEVAL_DEFAULTS,
+      dense: { enabled: false, depth: 50 },
+      rerank: { enabled: true, depth: 20 },
+    };
+    expect(() => servedArm(unmeasured)).toThrow(/matches no ablation arm/);
   });
 
   it("produces four distinct configurations", () => {

@@ -13,7 +13,7 @@ import {
   type Proposal,
 } from "./proposal.js";
 import { READINESS_PATH, renderReadiness } from "./render.js";
-import { ARMS, decide, PATHS, SERVED_ARM, type Verdict } from "./verdict.js";
+import { ARMS, decide, PATHS, runRecords, servedArmOf, type Verdict } from "./verdict.js";
 import {
   directoryView,
   isRecord,
@@ -29,6 +29,13 @@ const ROOT = resolve(here, "..", "..");
 /** The committed repository. The verdict is decided over the real artefacts, not a fixture. */
 const repository = directoryView(ROOT);
 const HISTORY = { started: "2026-09-20" };
+
+/** The served arm, as the published records say — never named in this file (ADR 0011). */
+const SERVED_ARM = ((): string => {
+  const arm = servedArmOf(runRecords(repository));
+  if (arm === null) throw new Error("fixture: the published records mark no single served arm");
+  return arm;
+})();
 
 function unmetItems(verdict: Verdict): number[] {
   return verdict.items.filter((item) => !item.met).map((item) => item.item);
@@ -197,6 +204,19 @@ describe("item 2: a published evaluation report", () => {
     });
     expect(failing(decide(view), 2).join()).toMatch(/differ in commit/);
   });
+
+  it("is unmet unless exactly one arm is marked as the served configuration", () => {
+    const none = withJson(PATHS.runJson(SERVED_ARM), (record) => {
+      record.served = false;
+    });
+    expect(failing(decide(none), 2).join()).toMatch(/do not mark exactly one arm/);
+
+    const other = ARMS.find((arm) => arm !== SERVED_ARM) ?? "dense-only";
+    const two = withJson(PATHS.runJson(other), (record) => {
+      record.served = true;
+    });
+    expect(failing(decide(two), 2).join()).toMatch(/do not mark exactly one arm/);
+  });
 });
 
 describe("item 3: a published governance report", () => {
@@ -255,6 +275,22 @@ describe("item 4: a published cost and latency report", () => {
       record.latency = rows(record, "latency").filter((row) => row.stage !== "verification");
     });
     expect(failing(decide(view), 4).join()).toMatch(/lacks verification/);
+  });
+
+  it("accepts a missing rerank stage only when the profile records reranking as bypassed", () => {
+    const withoutRerank = (reranker: string) =>
+      withJson(PATHS.loadRun, (record) => {
+        record.latency = rows(record, "latency").filter((row) => row.stage !== "reranking");
+        const profile = record.profile;
+        if (isRecord(profile) && isRecord(profile.models)) profile.models.reranker = reranker;
+      });
+    // Bypassed: nothing to measure, and the finding says so rather than pretending it measured it.
+    const bypassed = decide(withoutRerank("none (bypassed by the served configuration, ADR 0011)"));
+    expect(failing(bypassed, 4)).toEqual([]);
+    // A reranker that ran but left no spans is a gap in the breakdown.
+    expect(failing(decide(withoutRerank("some-rerank-model")), 4).join()).toMatch(
+      /lacks reranking/,
+    );
   });
 
   it("is unmet when the price table it names is not checked in", () => {
@@ -429,16 +465,29 @@ describe("the proposal", () => {
       proposal.excluded.map((entry) => [entry.what.split(" ")[0] ?? "", entry.reason]),
     );
     expect(excluded.get("supported-claim-rate")).toMatch(/stand-in judge/);
-    expect(excluded.get("RERANK-STAGE-P95")).toMatch(/stand-in-reranker/);
+    // Not measured at all since ADR 0011: the served configuration has no rerank stage.
+    expect(excluded.get("RERANK-STAGE-P95")).toMatch(/^unmeasured: .*bypasses reranking/);
     expect(excluded.get("TIME-TO-FIRST-TOKEN-P95")).toMatch(/^unmeasured/);
     expect(changes.metrics.map((metric) => metric.id)).not.toContain("rerank-stage-latency-p95");
   });
 
   it("would propose the rerank budget once a real reranker measured it", () => {
+    // Synthetic figures, arranged as a run with a selected reranker would record them.
     const view = withJson(PATHS.loadRun, (record) => {
       const profile = record.profile;
       if (isRecord(profile) && isRecord(profile.models))
         profile.models.reranker = "a-selected-rerank-model";
+      const budget = rows(record, "budgets").find((row) => row.id === "RERANK-STAGE-P95");
+      if (budget !== undefined) {
+        Object.assign(budget, { value: 42, sampleSize: 13, within: true, unmeasured: null });
+      }
+      const latency = rows(record, "latency");
+      if (!latency.some((row) => row.stage === "reranking")) {
+        record.latency = [
+          ...latency,
+          { stage: "reranking", p50: 40, p95: 42, samples: 13, p95IsMaximum: true },
+        ];
+      }
     });
     const withReal = propose(view, decide(view), HISTORY);
     expect(withReal.changes.metrics.map((metric) => metric.id)).toContain(

@@ -50,7 +50,11 @@ export const RETRIEVAL_DEFAULTS: RetrievalConfig = {
   dense: { enabled: true, depth: 50 },
   lexical: { enabled: true, depth: 50 },
   fusionK: 60,
-  rerank: { enabled: true, depth: 20 },
+  // Off in the served configuration since ADR 0011. The only reranker this build has is the
+  // unselected stand-in, and with real embeddings it made ranking worse on both the development
+  // and the held-out split. The port stays wired and the `fused-with-rerank` arm still evaluates
+  // it, so a selected rerank model is a configuration change, not a rebuild.
+  rerank: { enabled: false, depth: 20 },
   limit: 8,
   temporal: { kind: "current" },
   provenance: "unselected-default",

@@ -16,6 +16,7 @@
  * arms also differ in their depth is not an ablation of the arm.
  */
 
+import { AtlasOpsError } from "@atlasops/contracts";
 import { ablate, type RetrievalConfig } from "@atlasops/retrieval";
 
 export const ARMS = ["dense-only", "lexical-only", "fused-no-rerank", "fused-with-rerank"] as const;
@@ -48,3 +49,36 @@ export function configForArm(base: RetrievalConfig, arm: ArmName): RetrievalConf
       });
   }
 }
+
+/**
+ * The arm that *is* the served configuration: the one whose switches match `served`.
+ *
+ * Derived, not named. Until ADR 0011 the served configuration was `fused-with-rerank`, and that
+ * name was written into the runner, the governance report and the readiness verdict separately.
+ * Changing the default would then have left each of them describing an arm nobody served. Every
+ * one of them now asks this function.
+ *
+ * Throws when no arm matches, because a served configuration outside the ablation is one the
+ * evaluation does not measure.
+ */
+export function servedArm(served: RetrievalConfig): ArmName {
+  const switches = `${String(served.dense.enabled)}/${String(served.lexical.enabled)}/${String(served.rerank.enabled)}`;
+  const match = ARMS.find((arm) => ARM_SWITCHES[arm] === switches);
+  if (match === undefined) {
+    throw new AtlasOpsError(
+      "VALIDATION",
+      `the served configuration (dense/lexical/rerank ${switches}) matches no ablation arm, so no ` +
+        `evaluation measures what is served`,
+      "config",
+    );
+  }
+  return match;
+}
+
+/** Each arm's dense/lexical/rerank switches: the same ones `configForArm` sets. */
+const ARM_SWITCHES: Readonly<Record<ArmName, string>> = {
+  "dense-only": "true/false/false",
+  "lexical-only": "false/true/false",
+  "fused-no-rerank": "true/true/false",
+  "fused-with-rerank": "true/true/true",
+};

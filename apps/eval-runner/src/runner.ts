@@ -42,8 +42,8 @@ import {
   renderGovernanceReport,
   renderRunReport,
   runEvaluation,
+  servedArm,
   type ArmDelta,
-  type ArmName,
   type Dataset,
   type DatasetInput,
   type PermissionProbeItem,
@@ -387,7 +387,8 @@ export async function runEvaluationSuite(
 
   return {
     runs,
-    deltas: compareArms(runs, "fused-with-rerank" satisfies ArmName),
+    // Deltas against what is served, whichever arm that is (ADR 0011).
+    deltas: compareArms(runs, servedArm(RETRIEVAL_DEFAULTS)),
     corpusSnapshot,
     snapshotMatchesDatasets,
     probes: loaded.probes ?? null,
@@ -414,6 +415,12 @@ export async function runEvaluationSuite(
 export interface RunRecord {
   readonly runId: string;
   readonly arm: string;
+  /**
+   * Whether this arm is the configuration a deployment serves. Recorded so that a reader of the
+   * artefacts — the readiness verdict among them — learns which arm is served from the evidence,
+   * not from a name somebody copied (ADR 0011).
+   */
+  readonly served: boolean;
   readonly system: string;
   readonly commit: string | null;
   readonly measuredAt: string;
@@ -442,6 +449,7 @@ export function runRecordOf(run: RunReport, outcome: EvaluationOutcome): RunReco
   return {
     runId: run.runId,
     arm: run.arm,
+    served: run.arm === servedArm(RETRIEVAL_DEFAULTS),
     system: run.system,
     commit: run.commit,
     measuredAt: run.measuredAt,
@@ -492,9 +500,10 @@ export function artefactsFor(outcome: EvaluationOutcome): readonly {
     },
   ]);
 
-  // PRD 12 item 3. Rendered from the full arm, because that is the configuration a deployment
-  // would serve — a leak count from an ablated arm says nothing about the system that ships.
-  const full = outcome.runs.find((run) => run.arm === "fused-with-rerank");
+  // PRD 12 item 3. Rendered from the served arm — a leak count from an arm nobody serves says
+  // nothing about the system that ships. Derived from the default, not named (ADR 0011).
+  const served = servedArm(RETRIEVAL_DEFAULTS);
+  const full = outcome.runs.find((run) => run.arm === served);
   if (outcome.probes !== null && full !== undefined) {
     files.push({
       name: "governance.md",
