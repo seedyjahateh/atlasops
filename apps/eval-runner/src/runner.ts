@@ -47,6 +47,7 @@ import {
   type Dataset,
   type DatasetInput,
   type PermissionProbeItem,
+  type RelevanceItem,
   type RunReport,
   type Split,
 } from "@atlasops/evalkit";
@@ -80,6 +81,8 @@ import {
 } from "@atlasops/model-gateway";
 import { RETRIEVAL_DEFAULTS } from "@atlasops/retrieval";
 import { UNPRICED_TABLE, systemClock, type PriceTable } from "@atlasops/telemetry";
+
+import { renderRetrievalBySplit, retrievalBySplit } from "./splits.js";
 
 export class ConfigError extends Error {
   public override readonly name = "ConfigError";
@@ -247,6 +250,8 @@ export interface EvaluationOutcome {
   readonly snapshotMatchesDatasets: boolean;
   /** The probe set, so the governance artefact can be rendered against what actually ran. */
   readonly probes: Dataset<PermissionProbeItem> | null;
+  /** The relevance set, so a run that read held-out can break retrieval out by split. */
+  readonly relevance: Dataset<RelevanceItem> | null;
   /** One real record the run wrote, so the audit schema is derived rather than described. */
   readonly auditSample: AuditRecord | null;
   readonly commit: string | null;
@@ -386,6 +391,7 @@ export async function runEvaluationSuite(
     corpusSnapshot,
     snapshotMatchesDatasets,
     probes: loaded.probes ?? null,
+    relevance: loaded.relevance ?? null,
     auditSample: audit.records()[0] ?? null,
     commit: config.commit,
   };
@@ -529,5 +535,21 @@ export function artefactsFor(outcome: EvaluationOutcome): readonly {
     "",
   ].join("\n");
 
-  return [...files, { name: "ablation.md", content: deltas }];
+  // A final evaluation pools its splits in every figure above; the decision it exists for needs the
+  // held-out split on its own. Written only when held-out was read, so a routine run is unchanged.
+  const readHeldOut = outcome.runs.some((run) => run.splits.includes("held-out"));
+  const bySplit =
+    readHeldOut && outcome.relevance !== null
+      ? [
+          {
+            name: "retrieval-by-split.md",
+            content: renderRetrievalBySplit(retrievalBySplit(outcome.relevance, outcome.runs), {
+              commit: outcome.commit,
+              corpusSnapshot: outcome.corpusSnapshot,
+            }),
+          },
+        ]
+      : [];
+
+  return [...files, { name: "ablation.md", content: deltas }, ...bySplit];
 }

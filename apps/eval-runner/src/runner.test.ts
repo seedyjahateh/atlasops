@@ -20,6 +20,7 @@ import {
   runRecordOf,
   type DatasetsFile,
 } from "./runner.js";
+import { retrievalBySplit } from "./splits.js";
 
 const CORPUS = fileURLToPath(new URL("../../../examples/corpus", import.meta.url));
 const DATASETS_PATH = fileURLToPath(
@@ -224,6 +225,43 @@ describe("running the suite", () => {
     const ablation = artefactsFor(outcome).find((artefact) => artefact.name === "ablation.md");
 
     expect(ablation?.content).toContain("An ablation is not a regression");
+  });
+
+  it("writes no split breakdown for a routine run, which read one split", async () => {
+    const outcome = await runEvaluationSuite(readRunnerConfig(ENV), DATASETS);
+    const names = artefactsFor(outcome).map((artefact) => artefact.name);
+    expect(names).not.toContain("retrieval-by-split.md");
+  });
+
+  it("breaks retrieval out by split when the held-out split was read", async () => {
+    // A final evaluation pools its splits in every reported figure; the held-out rows are the ones
+    // a decision needs, and they must come from the run itself rather than a script run later.
+    const outcome = await runEvaluationSuite(
+      readRunnerConfig(ENV, ["--final", "runner test reads both splits"]),
+      DATASETS,
+    );
+    const artefact = artefactsFor(outcome).find((a) => a.name === "retrieval-by-split.md");
+    expect(artefact).toBeDefined();
+    const content = artefact?.content ?? "";
+    expect(content).toContain("## development");
+    expect(content).toContain("## held-out");
+    for (const run of outcome.runs) expect(content).toContain(`| ${run.arm} |`);
+
+    // The held-out rows score exactly the held-out items, with evalkit's own definitions.
+    const relevance = outcome.relevance;
+    if (relevance === null) throw new Error("fixture: the datasets file has no relevance set");
+    const rows = retrievalBySplit(relevance, outcome.runs).filter(
+      (row) => row.split === "held-out",
+    );
+    expect(rows).toHaveLength(outcome.runs.length);
+    const heldOutIds = relevance.items
+      .filter((item) => item.split === "held-out")
+      .map((item) => item.id)
+      .sort();
+    for (const row of rows) {
+      const ndcg = row.metrics.find((metric) => metric.metric === "nDCG@10");
+      expect(ndcg?.perQuery.map((score) => score.itemId).sort()).toEqual(heldOutIds);
+    }
   });
 
   it("carries the judge's pinned identity into every run report", async () => {
