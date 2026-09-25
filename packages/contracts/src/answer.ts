@@ -56,6 +56,12 @@ export const ABSTENTION_REASONS = [
   "verification-failed",
   /** The only relevant material was excluded by permissions. */
   "permission-excluded",
+  /**
+   * Generation failed, so no prose was synthesised (PRD 9.4). The caller receives the ranked
+   * passages instead. Not a judgement that the material is insufficient — which is why an
+   * evaluation must not score it as one.
+   */
+  "generation-unavailable",
 ] as const;
 
 export type AbstentionReason = (typeof ABSTENTION_REASONS)[number];

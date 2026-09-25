@@ -478,10 +478,7 @@ describe("the proposal", () => {
   it("says in-progress while the limitations record an unimplemented requirement, and complete once none does", () => {
     expect(changes.status).toBe("in-progress");
     const view = withText(PATHS.limitations, (text) =>
-      text.replace(
-        "That degraded mode is not implemented.",
-        "That degraded mode is now implemented.",
-      ),
+      text.replace("streaming is not implemented", "streaming is implemented"),
     );
     expect(propose(view, decide(view), HISTORY).changes.status).toBe("complete");
   });

@@ -1321,6 +1321,23 @@ model and inventing one is not available.
       spends money when nobody asked it to — and it has to exist before the verdict can mean
       anything. P18b then runs whichever set is configured and says which it was.
 
+## After promotion
+
+Work done after RAG-01 was promoted to `measured` (portfolio `4df53ab`), each item at a person's
+request, not by the loop.
+
+- [x] **P19a — Generation unavailable degrades to ranked passages** (ADR 0010). PRD 9.4's fifth
+      degraded mode, missing since P7. It aborted the first held-out evaluation when one answer hit
+      the 800-token output limit. A generation `ModelError` now returns the ranked passages with no
+      prose, marked degraded in the response and the trace. The harness keeps such queries in the
+      per-query file and leaves them out of the answer metrics, so an outage is never scored as a
+      decision. Tests cover the fallback, the regeneration path, retries spent, a non-model error
+      still throwing, the API response and the harness exclusions.
+- [ ] **P19b — The held-out evaluation for the reranker decision.** Run the final evaluation at a
+      committed SHA, publish it, and report the held-out split's retrieval metrics per arm from its
+      per-query files with a tested command. Acceptance: the decision about the stand-in reranker
+      is a person's, made on the published held-out numbers; this phase changes no default.
+
 ## What this build does not do
 
 P12 produces the evidence. It does **not** edit `content/projects/RAG-01.json` in the portfolio

@@ -41,9 +41,11 @@ export {
 
 export {
   groundAnswer,
+  type GroundingDegradedReason,
   type GroundingPorts,
   type GroundingRequest,
   type GroundingResult,
+  type RankedPassage,
 } from "./ground.js";
 
 export { STAND_IN_MODEL_ID, citingStandIn } from "./stand-in.js";

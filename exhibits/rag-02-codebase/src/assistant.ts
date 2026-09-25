@@ -164,7 +164,34 @@ export async function createAssistant(options: AssistantOptions): Promise<Assist
 
     const { answer } = outcome.grounding;
     if (answer.abstained) {
-      return { answer, message: outcome.grounding.message, citations: [], related: [] };
+      // PRD 9.4: with generation unavailable the answer is the ranked passages, and there are no
+      // spans to narrow them to — so each is cited whole, as `chunk` precision. Any other
+      // abstention returns no passages and so cites nothing.
+      const passages: Citation[] = [];
+      for (const passage of outcome.grounding.passages) {
+        const stored = await sink.get(passage.chunkId);
+        const file = byVersion.get(passage.sourceVersionId);
+        if (stored === null || file === undefined) {
+          throw new Error(
+            `passage ${passage.chunkId} cannot be resolved to a version this assistant read`,
+          );
+        }
+        const lines = linesInVersion(
+          file.text,
+          passage.sourceVersionId,
+          stored.chunk.charStart,
+          stored.chunk.charEnd,
+        );
+        passages.push({
+          path: file.path,
+          version: passage.sourceVersionId,
+          lines,
+          rendered: renderLines(file.path, lines),
+          precision: "chunk",
+          symbols: symbolNamesOf(stored),
+        });
+      }
+      return { answer, message: outcome.grounding.message, citations: passages, related: [] };
     }
 
     const citations: Citation[] = [];

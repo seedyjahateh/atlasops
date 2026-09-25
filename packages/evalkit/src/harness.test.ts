@@ -132,6 +132,8 @@ interface Script {
   readonly cites?: readonly string[];
   readonly abstains?: boolean;
   readonly retrievers?: readonly string[];
+  /** PRD 9.4: the generator failed, so the answer is the ranked passages with no prose. */
+  readonly generationFails?: boolean;
 }
 
 function observationFor(
@@ -172,14 +174,20 @@ function observationFor(
     queryHash: analysed.hash,
   });
 
-  const cited = script.abstains === true ? [] : (script.cites ?? script.returns.slice(0, 1));
+  const degraded = script.generationFails === true;
+  const cited = degraded
+    ? script.returns
+    : script.abstains === true
+      ? []
+      : (script.cites ?? script.returns.slice(0, 1));
   const promptChunks = candidates.map((candidate) => ({
     chunkId: candidate.chunkId,
     sourceVersionId: candidate.sourceVersionId,
   }));
 
-  const answer: GroundingResult["answer"] =
-    script.abstains === true
+  const answer: GroundingResult["answer"] = degraded
+    ? { requestId, abstained: true, reason: "generation-unavailable" }
+    : script.abstains === true
       ? { requestId, abstained: true, reason: "low-support" }
       : {
           requestId,
@@ -209,8 +217,16 @@ function observationFor(
 
   const grounding: GroundingResult = {
     answer,
+    degraded: degraded ? ["generation-unavailable"] : [],
+    passages: degraded
+      ? candidates.map((candidate) => ({
+          chunkId: candidate.chunkId,
+          sourceVersionId: candidate.sourceVersionId,
+          text: candidate.text,
+        }))
+      : [],
     message:
-      script.abstains === true
+      degraded || script.abstains === true
         ? abstentionMessage("nothing-relevant")
         : cited.map((chunkId) => TEXT[chunkId] ?? "").join(" "),
     prose: answer.abstained ? "" : answer.segments.map((segment) => segment.text).join(" "),
@@ -558,6 +574,69 @@ describe("the harness (PRD 8.2)", () => {
   it("carries the judge's identity onto the report", async () => {
     const report = await run(GOOD);
     expect(report.judge).toEqual({ modelId: "fixture-judge", promptVersion: "v1" });
+  });
+
+  describe("a query whose generation failed (PRD 9.4)", () => {
+    const metric = (report: RunReport, dimension: string, name: string) =>
+      report.table
+        .find((row) => row.dimension === dimension)
+        ?.metrics.find((result) => result.metric === name);
+
+    it("is kept in the per-query record, marked degraded, and the run completes", async () => {
+      const report = await run({ ...GOOD, "grd-001": { returns: [A], generationFails: true } });
+      const record = report.perQuery.find((entry) => entry.itemId === "grd-001");
+      expect(record?.degraded).toContain("generation-unavailable");
+      expect(record?.citedChunks).toEqual([A]);
+    });
+
+    it("is left out of the citation metrics rather than scored as a miss", async () => {
+      // Recall scores an abstention 0 on purpose — the material existed and the answer missed it.
+      // An outage is not that, so the item leaves the denominator instead.
+      const good = await run(GOOD);
+      const degraded = await run({ ...GOOD, "grd-001": { returns: [A], generationFails: true } });
+      const before = metric(good, "Citation", "citation-recall");
+      const after = metric(degraded, "Citation", "citation-recall");
+      expect(after?.sampleSize).toBe((before?.sampleSize ?? 0) - 1);
+      expect(after?.perQuery.map((score) => score.itemId)).not.toContain("grd-001");
+    });
+
+    it("is not credited as a correct abstention", async () => {
+      // The trap this guards: a degraded answer is an abstention in shape, so on an unanswerable
+      // question it would otherwise score as the system refusing correctly.
+      const refusal = abstention.items.find((item) => item.shouldAbstain);
+      if (refusal === undefined) throw new Error("fixture: no unanswerable abstention item");
+      const good = await run(GOOD);
+      const degraded = await run({
+        ...GOOD,
+        [refusal.id]: { returns: [A], generationFails: true },
+      });
+      const before = metric(good, "Abstention", "correct-abstention");
+      const after = metric(degraded, "Abstention", "correct-abstention");
+      expect(after?.sampleSize).toBe((before?.sampleSize ?? 0) - 1);
+      expect(after?.perQuery.map((score) => score.itemId)).not.toContain(refusal.id);
+    });
+
+    it("reports the abstention row unavailable when the failures removed a whole kind of item", async () => {
+      const scripts: Record<string, Script> = { ...GOOD };
+      for (const item of abstention.items.filter((candidate) => candidate.shouldAbstain)) {
+        scripts[item.id] = { returns: [A], generationFails: true };
+      }
+      const report = await run(scripts);
+      const row = report.table.find((entry) => entry.dimension === "Abstention");
+      expect(row?.metrics).toEqual([]);
+      expect(row?.unavailable).toMatch(/generation was unavailable for \d+ item/);
+    });
+
+    it("still counts the query's retrieval, which ran normally", async () => {
+      const good = await run(GOOD);
+      const degraded = await run({
+        ...GOOD,
+        "rel-001": { returns: [A, B], generationFails: true },
+      });
+      expect(metric(degraded, "Retrieval", "recall@10")).toEqual(
+        metric(good, "Retrieval", "recall@10"),
+      );
+    });
   });
 });
 

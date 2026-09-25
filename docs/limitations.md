@@ -78,13 +78,17 @@ slowest one. Generation is almost the whole of it. The run was also throttled by
 rate limit (200,000 tokens per minute) at concurrency 4, and the waits are inside the figures; how
 many requests waited is not in the export.
 
-**A transient generation failure aborts an evaluation rather than degrading.** PRD 9.4 says that with
-generation unavailable the system should return ranked passages and no prose. The first real
-evaluation died mid-run on an error thrown from the answer path (not captured), and an immediate
-retry completed. That degraded mode is not implemented.
+**Generation failures degrade, and an evaluation leaves the degraded queries out.** Since ADR 0010,
+a model failure in generation returns the ranked passages with no prose (PRD 9.4) instead of
+aborting the request. It took two aborted real evaluations to get there: one transient failure in
+P18b, and one answer that hit the 800-token output limit in the first held-out run. An evaluation
+now completes, marks those queries degraded in its per-query file, and leaves them out of the
+citation, groundedness and abstention metrics — so a run with many of them reports on fewer items,
+and its sample sizes say so. The load harness counts a degraded answer as an abstention, and its
+record does not yet export how many there were.
 
-**Time to first token is unmeasurable**, because the adapter speaks the non-streaming endpoint
-(ADR 0006).
+**Time to first token is unmeasurable.** PRD 9.3 names streaming instrumentation as the method, and
+streaming is not implemented: the adapter speaks the non-streaming endpoint (ADR 0006).
 
 The stand-ins remain the **default** for every command, and everything below about them still holds
 for any run that uses them:

@@ -38,7 +38,13 @@ import {
   inMemoryAuditSink,
   type Principal,
 } from "@atlasops/governance";
-import { fakeGenerator, recordingSleeper, type Generator } from "@atlasops/model-gateway";
+import {
+  ModelError,
+  fakeGenerator,
+  recordingSleeper,
+  unavailableGenerator,
+  type Generator,
+} from "@atlasops/model-gateway";
 import { RETRIEVAL_DEFAULTS, analyseQuery, type FusedCandidate } from "@atlasops/retrieval";
 import { createTrace, manualClock, type PriceTable } from "@atlasops/telemetry";
 import { describe, expect, it } from "vitest";
@@ -580,6 +586,112 @@ describe("the answer path", () => {
     });
     expect(result.attempts).toBe(0);
     expect(result.answer.abstained).toBe(true);
+  });
+});
+
+/* ------------------------------------------------------------------ generation unavailable */
+
+describe("generation unavailable degrades to ranked passages (PRD 9.4)", () => {
+  const POLICY = candidate("policy", "Refunds are issued to the original payment method.");
+
+  /** Fails verification on the first call, then the provider goes away for the regeneration. */
+  function forgingThenUnavailable(): Generator {
+    const forging = forgingGenerator();
+    let calls = 0;
+    return {
+      modelId: forging.modelId,
+      generate: (request) => {
+        calls += 1;
+        return calls === 1
+          ? forging.generate(request)
+          : Promise.reject(new ModelError("generation", "unavailable", "provider went away"));
+      },
+    };
+  }
+
+  it("returns the ranked passages as citations, with no prose, marked degraded", async () => {
+    const sink = inMemoryAuditSink();
+    const result = await groundAnswer(ports(unavailableGenerator(), { sink }), {
+      requestId: REQUEST,
+      principal: ALICE,
+      retrieval: retrievalResult([REFUND, POLICY]),
+    });
+
+    expect(result.answer).toEqual({
+      requestId: REQUEST,
+      abstained: true,
+      reason: "generation-unavailable",
+    });
+    expect(result.degraded).toEqual(["generation-unavailable"]);
+    expect(result.passages.map((passage) => passage.chunkId)).toEqual([
+      REFUND.chunkId,
+      POLICY.chunkId,
+    ]);
+    expect(result.passages[0]?.text).toBe(REFUND.text);
+    expect(result.prose).toBe("");
+    expect(result.message).toMatch(/most relevant passages/);
+    // The audit records what the caller was shown: every passage, in rank order.
+    expect(sink.records()[0]?.citedChunks.map((entry) => entry.chunkId)).toEqual([
+      REFUND.chunkId,
+      POLICY.chunkId,
+    ]);
+  });
+
+  it("degrades when the regeneration fails, not only the first attempt", async () => {
+    const result = await groundAnswer(ports(forgingThenUnavailable()), {
+      requestId: REQUEST,
+      principal: ALICE,
+      retrieval: retrievalResult([REFUND]),
+    });
+    expect(result.attempts).toBe(2);
+    expect(result.answer.abstained && result.answer.reason).toBe("generation-unavailable");
+    expect(result.passages).toHaveLength(1);
+  });
+
+  it("retries a retryable failure first, and degrades only once the retries are spent", async () => {
+    const sleeper = recordingSleeper();
+    const result = await groundAnswer(ports(unavailableGenerator("rate-limited"), { sleeper }), {
+      requestId: REQUEST,
+      principal: ALICE,
+      retrieval: retrievalResult([REFUND]),
+    });
+    expect(sleeper.delays().length).toBeGreaterThan(0);
+    expect(result.degraded).toEqual(["generation-unavailable"]);
+  });
+
+  it("degrades on a request the provider rejects, such as an answer that hit the output limit", async () => {
+    // The failure that aborted the first held-out evaluation: not retryable, and not a bug here.
+    const result = await groundAnswer(ports(unavailableGenerator("invalid-request")), {
+      requestId: REQUEST,
+      principal: ALICE,
+      retrieval: retrievalResult([REFUND]),
+    });
+    expect(result.degraded).toEqual(["generation-unavailable"]);
+  });
+
+  it("still throws on a failure that is not a model failure", async () => {
+    // A bug in this package is not an unavailable dependency; degrading around it would hide it.
+    const broken: Generator = {
+      modelId: "broken",
+      generate: () => Promise.reject(new TypeError("a programming error")),
+    };
+    await expect(
+      groundAnswer(ports(broken), {
+        requestId: REQUEST,
+        principal: ALICE,
+        retrieval: retrievalResult([REFUND]),
+      }),
+    ).rejects.toThrow(TypeError);
+  });
+
+  it("returns no passages and no degraded mark when generation works", async () => {
+    const result = await groundAnswer(ports(citingGenerator(REFUND)), {
+      requestId: REQUEST,
+      principal: ALICE,
+      retrieval: retrievalResult([REFUND]),
+    });
+    expect(result.degraded).toEqual([]);
+    expect(result.passages).toEqual([]);
   });
 });
 

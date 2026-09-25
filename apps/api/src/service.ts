@@ -57,6 +57,7 @@ import {
   type EmbedRequest,
   type EmbedResult,
   type Embedder,
+  type Generator,
 } from "@atlasops/model-gateway";
 import { inMemoryRetrievalCache } from "@atlasops/retrieval";
 import { systemClock } from "@atlasops/telemetry";
@@ -88,7 +89,19 @@ export interface AnswerService {
   readonly bootstrap: () => Promise<number>;
 }
 
-export function createAnswerService(config: ApiConfig): AnswerService {
+/**
+ * What a test may substitute. Only the generator: it is the one dependency whose failure the
+ * response has to represent (PRD 9.4's generation-unavailable mode), and a real one cannot be made
+ * to fail on demand.
+ */
+export interface AnswerServiceOverrides {
+  readonly generator?: Generator;
+}
+
+export function createAnswerService(
+  config: ApiConfig,
+  overrides: AnswerServiceOverrides = {},
+): AnswerService {
   const store = inMemoryCorpusStore();
   const schema = currentSchema(EMBEDDING);
   const lexical = inMemoryLexicalIndex(schema);
@@ -125,7 +138,7 @@ export function createAnswerService(config: ApiConfig): AnswerService {
     sleeper,
     clock: systemClock,
     reranker: fakeReranker("stand-in-reranker"),
-    generator: citingStandIn(),
+    generator: overrides.generator ?? citingStandIn(),
     // Either the corpus's own membership file or a single bootstrap principal. A real deployment
     // resolves this against a directory; the resolver is a port precisely so that swap is a
     // configuration change rather than a rewrite.
@@ -226,15 +239,20 @@ export async function handle(
         // The message, never the abstention reason. See the file header.
         message: outcome.grounding.message,
         abstained: outcome.grounding.answer.abstained,
+        // PRD 9.4: with generation unavailable the citations *are* the answer — the ranked
+        // passages, most relevant first, with no prose. Otherwise an abstention cites nothing.
         citations: outcome.grounding.answer.abstained
-          ? []
+          ? outcome.grounding.passages.map((passage) => ({
+              chunkId: passage.chunkId,
+              sourceVersionId: passage.sourceVersionId,
+            }))
           : outcome.grounding.answer.segments.flatMap((segment) =>
               segment.references.map((reference) => ({
                 chunkId: reference.chunkId,
                 sourceVersionId: reference.sourceVersionId,
               })),
             ),
-        degraded: outcome.retrieval.degraded,
+        degraded: [...outcome.retrieval.degraded, ...outcome.grounding.degraded],
         requestId: outcome.grounding.audit.requestId,
       },
     };

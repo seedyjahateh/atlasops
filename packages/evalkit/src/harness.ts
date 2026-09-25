@@ -187,8 +187,29 @@ function recordOf(
     inputTokens: grounding.audit.inputTokens,
     outputTokens: grounding.audit.outputTokens,
     costUsd: grounding.audit.costUsd,
-    degraded: retrieval.degraded,
+    // Both stages' degraded modes: retrieval's (a retriever or the reranker bypassed) and
+    // grounding's (generation unavailable, passages returned). One list, because a reader of the
+    // per-query file asks "did this query run degraded", not "in which package".
+    degraded: [...retrieval.degraded, ...grounding.degraded],
   };
+}
+
+/**
+ * Whether generation was unavailable for this query (PRD 9.4).
+ *
+ * Such a query is left out of the answer metrics — citation, groundedness, abstention — rather than
+ * scored. Its "abstention" is not a decision about the evidence, so counting it would credit a
+ * provider outage as a correct refusal on an unanswerable question and charge it as an
+ * over-abstention on an answerable one. Retrieval metrics still count it: retrieval ran normally.
+ * The per-query record carries the mark, and the metric's sample size shrinks by the same count,
+ * so the exclusion is visible rather than silent.
+ */
+function generationDegraded(observation: SystemObservation): boolean {
+  return observation.grounding.degraded.includes("generation-unavailable");
+}
+
+function degradedNote(count: number): string {
+  return `generation was unavailable for ${String(count)} item(s), which are left out rather than scored (PRD 9.4)`;
 }
 
 function blocksOf(grounding: GroundingResult): readonly { chunkId: string; text: string }[] {
@@ -306,9 +327,14 @@ export async function runEvaluation(input: RunInput): Promise<RunReport> {
       blocks: readonly { chunkId: string; text: string }[];
     }[] = [];
     const judged: JudgedOutcome[] = [];
+    const degradedIds = new Set<string>();
 
     for (const item of items) {
       const observation = await ask(item.id, item.query, item.principal);
+      if (generationDegraded(observation)) {
+        degradedIds.add(item.id);
+        continue;
+      }
       answers.push({
         itemId: item.id,
         answer: observation.grounding.answer,
@@ -334,24 +360,34 @@ export async function runEvaluation(input: RunInput): Promise<RunReport> {
       }
     }
 
-    table.push({
-      dimension: "Citation",
-      metrics: [
-        citationPrecision(items, answers),
-        citationRecall(items, answers),
-        spanValidityRate(answers),
-      ],
-      unavailable: null,
-    });
+    const scored = items.filter((item) => !degradedIds.has(item.id));
 
-    if (input.judge === undefined) {
+    if (scored.length === 0 && degradedIds.size > 0) {
+      for (const dimension of ["Citation", "Groundedness"]) {
+        table.push({ dimension, metrics: [], unavailable: degradedNote(degradedIds.size) });
+      }
+    } else {
+      table.push({
+        dimension: "Citation",
+        metrics: [
+          citationPrecision(scored, answers),
+          citationRecall(scored, answers),
+          spanValidityRate(answers),
+        ],
+        unavailable: null,
+      });
+    }
+
+    if (scored.length === 0 && degradedIds.size > 0) {
+      // Both rows already say why.
+    } else if (input.judge === undefined) {
       table.push({
         dimension: "Groundedness",
         metrics: [],
         unavailable: "no judge was supplied; PRD 8.3 does not permit these to be string-matched",
       });
     } else {
-      const results = judgedMetrics(items, judged, input.judge.identity);
+      const results = judgedMetrics(scored, judged, input.judge.identity);
       table.push({
         dimension: "Groundedness",
         metrics: [results.supportedClaimRate, results.contradictionRate, results.agreement],
@@ -372,17 +408,32 @@ export async function runEvaluation(input: RunInput): Promise<RunReport> {
     datasets.push(datasetRef(input.abstention));
     const items = visible(input.abstention);
     const outcomes: { itemId: string; abstained: boolean }[] = [];
+    const degradedIds = new Set<string>();
 
     for (const item of items) {
       const observation = await ask(item.id, item.query, item.principal);
-      outcomes.push({ itemId: item.id, abstained: observation.grounding.answer.abstained });
+      if (generationDegraded(observation)) degradedIds.add(item.id);
+      else outcomes.push({ itemId: item.id, abstained: observation.grounding.answer.abstained });
     }
 
-    table.push({
-      dimension: "Abstention",
-      metrics: [correctAbstentionRate(items, outcomes), overAbstentionRate(items, outcomes)],
-      unavailable: null,
-    });
+    const scored = items.filter((item) => !degradedIds.has(item.id));
+    // A dataset without both kinds of item is a dataset error, and the metric functions still throw
+    // on it. Only when the missing kind went missing *because* generation failed is the row reported
+    // unavailable instead — an outage is not a malformed dataset.
+    const vacuous =
+      !scored.some((item) => item.shouldAbstain) || !scored.some((item) => !item.shouldAbstain);
+    table.push(
+      vacuous && degradedIds.size > 0
+        ? { dimension: "Abstention", metrics: [], unavailable: degradedNote(degradedIds.size) }
+        : {
+            dimension: "Abstention",
+            metrics: [
+              correctAbstentionRate(scored, outcomes),
+              overAbstentionRate(scored, outcomes),
+            ],
+            unavailable: null,
+          },
+    );
   }
 
   /* ------------------------------------------------------------------------- governance */

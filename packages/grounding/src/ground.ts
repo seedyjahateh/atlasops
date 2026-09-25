@@ -20,6 +20,15 @@
  * may not see" and "nothing was found" are the same bytes for a `hidden` source. A caller that
  * surfaces `reason` to an unprivileged user reopens the oracle, and that is stated here because no
  * type can prevent it.
+ *
+ * **Generation unavailable degrades to ranked passages** (PRD 9.4): "a retrieval result with no
+ * synthesis is still useful; a synthesis with no retrieval is not." A `ModelError` from the
+ * generator — the provider down, a rate limit that outlasted its retries, an answer that hit the
+ * output limit — ends generation for this request. The caller receives the retrieved passages, in
+ * rank order, as citations with no prose, and the answer and the trace are marked degraded. Every
+ * passage is one the pre-filter already let this principal read, so the fallback shows nothing
+ * the answer path would not have. Anything that is not a `ModelError` still throws: a bug in this
+ * package is not an unavailable dependency, and degrading around it would hide it.
  */
 
 import { parseAnswer, renderProse, type Answer, type RequestId } from "@atlasops/contracts";
@@ -34,6 +43,7 @@ import {
 } from "@atlasops/governance";
 import {
   generateWithRetry,
+  isModelError,
   toModelCall,
   type Generator,
   type Sleeper,
@@ -102,8 +112,25 @@ export interface GroundingRequest {
   readonly priorTimings?: readonly StageTiming[];
 }
 
+/** PRD 9.4's degraded modes that arise in this stage. Retrieval's own are on `RetrievalResult`. */
+export type GroundingDegradedReason = "generation-unavailable";
+
+/** A retrieved passage returned as-is, when there is no synthesis to cite it from. */
+export interface RankedPassage {
+  readonly chunkId: RetrievalResult["candidates"][number]["chunkId"];
+  readonly sourceVersionId: RetrievalResult["candidates"][number]["sourceVersionId"];
+  readonly text: string;
+}
+
 export interface GroundingResult {
   readonly answer: Answer;
+  /** Empty unless a degraded mode ran. A caller merges this with retrieval's. */
+  readonly degraded: readonly GroundingDegradedReason[];
+  /**
+   * The ranked passages, when generation was unavailable; empty otherwise. These are the citations
+   * of a degraded answer — the answer itself is an abstention with no prose.
+   */
+  readonly passages: readonly RankedPassage[];
   /** What a caller shows a user. Never derived from `Abstention.reason` — see the file header. */
   readonly message: string;
   /** The prose, derived from the structure. Empty on abstention. */
@@ -127,6 +154,12 @@ export interface GroundingResult {
 /** The wording a caller may show. Permission-driven cases go through governance's constants. */
 function messageFor(answer: Answer, retrieval: RetrievalResult, hadCandidates: boolean): string {
   if (!answer.abstained) return renderProse(answer);
+
+  // Only reached with candidates: generation is never attempted without them. The passages are all
+  // readable by this principal, so saying they are there discloses nothing (PRD 6.4).
+  if (answer.reason === "generation-unavailable") {
+    return "An answer could not be written just now. These are the most relevant passages you can read, most relevant first.";
+  }
 
   // Nothing readable was retrieved: the only safe wording is the one that cannot be told apart
   // from "nothing exists", which governance decides from the existence policies (PRD 6.4).
@@ -187,6 +220,7 @@ export async function groundAnswer(
   let usage: Usage = { inputTokens: 0, outputTokens: 0 };
   let attempts = 0;
   let answer: Answer;
+  let generationUnavailable = false;
 
   if (support.abstain) {
     // PRD 7.3: below the support threshold, or nothing to answer from at all. When nothing was
@@ -206,11 +240,22 @@ export async function groundAnswer(
     for (let attempt = 0; attempt < 2; attempt += 1) {
       attempts += 1;
       const generation = trace.span("generation");
-      const outcome = await generateWithRetry(
-        ports.generator,
-        { system: prompt.system, user: instruction },
-        { sleeper: ports.sleeper },
-      );
+      let outcome: Awaited<ReturnType<typeof generateWithRetry>>;
+      try {
+        outcome = await generateWithRetry(
+          ports.generator,
+          { system: prompt.system, user: instruction },
+          { sleeper: ports.sleeper },
+        );
+      } catch (error) {
+        // Decided by the call site, not by `error.capability`: this call is to the generator, so
+        // any model failure here is generation failing. The retry loop has already spent its
+        // budget on the kinds worth retrying. See the file header.
+        if (!isModelError(error)) throw error;
+        generation.end({ degraded: true });
+        generationUnavailable = true;
+        break;
+      }
       // PRD 9.2: a model-calling span records the model, its tokens, the computed cost, whether it
       // was a cache hit and how many retries it took. A duration alone cannot answer "which stage
       // spent the money", which is the question the aggregate views exist for.
@@ -267,8 +312,9 @@ export async function groundAnswer(
       instruction = `${prompt.user}\n\n${correction(report)}`;
     }
 
-    answer =
-      verified?.ok === true && candidate !== null
+    answer = generationUnavailable
+      ? { requestId: request.requestId, abstained: true, reason: "generation-unavailable" }
+      : verified?.ok === true && candidate !== null
         ? candidate
         : { requestId: request.requestId, abstained: true, reason: "verification-failed" };
   }
@@ -277,7 +323,22 @@ export async function groundAnswer(
     chunkId: entry.chunkId,
     sourceVersionId: entry.sourceVersionId,
   }));
-  const citedIds = new Set(answer.abstained ? [] : (verifications.at(-1)?.citedChunks ?? []));
+  // The degraded answer's citations are the passages it returns: the audit records what the caller
+  // was shown, and here that is every candidate, in rank order.
+  const passages: RankedPassage[] = generationUnavailable
+    ? retrieval.candidates.map((entry) => ({
+        chunkId: entry.chunkId,
+        sourceVersionId: entry.sourceVersionId,
+        text: entry.text,
+      }))
+    : [];
+  const citedIds = new Set(
+    generationUnavailable
+      ? passages.map((passage) => passage.chunkId)
+      : answer.abstained
+        ? []
+        : (verifications.at(-1)?.citedChunks ?? []),
+  );
 
   const modelId = ports.generator.modelId;
   // Null rather than zero when the table has no price for this model (ADR 0002). A reader can
@@ -315,6 +376,8 @@ export async function groundAnswer(
 
   return {
     answer: released,
+    degraded: generationUnavailable ? ["generation-unavailable"] : [],
+    passages,
     message: messageFor(released, retrieval, retrieval.candidates.length > 0),
     prose: renderProse(released),
     prompt,

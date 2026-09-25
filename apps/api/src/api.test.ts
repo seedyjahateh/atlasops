@@ -12,6 +12,7 @@
 
 import { fileURLToPath } from "node:url";
 
+import { unavailableGenerator } from "@atlasops/model-gateway";
 import { describe, expect, it } from "vitest";
 
 import { ConfigError, readApiConfig, describeApiConfig } from "./config.js";
@@ -136,6 +137,36 @@ describe("answering", () => {
 
     const result = await handle(api, post({ query: "photosynthesis", principal: "prn_reader" }));
     expect((result.body as { abstained: boolean }).abstained).toBe(false);
+  });
+
+  it("returns ranked passages and no prose when generation is unavailable (PRD 9.4)", async () => {
+    // Not retryable, so the real sleeper in this service never waits.
+    const api = createAnswerService(readApiConfig(BASE), {
+      generator: unavailableGenerator("invalid-request"),
+    });
+    await api.bootstrap();
+
+    const result = await handle(api, post({ query: "refund window", principal: "prn_reader" }));
+    const body = result.body as {
+      abstained: boolean;
+      citations: { chunkId: string }[];
+      degraded: string[];
+      message: string;
+    };
+
+    expect(result.status).toBe(200);
+    expect(body.abstained).toBe(true);
+    expect(body.degraded).toContain("generation-unavailable");
+    expect(body.citations.length).toBeGreaterThan(0);
+    expect(body.message).toMatch(/most relevant passages/);
+    // Still the same key set: the degraded mode adds no field, so it adds no way to leak.
+    expect(Object.keys(body).sort()).toEqual([
+      "abstained",
+      "citations",
+      "degraded",
+      "message",
+      "requestId",
+    ]);
   });
 
   it("answers nothing to a principal the resolver does not know", async () => {
