@@ -1,9 +1,29 @@
 # AtlasOps
 
+[![CI](https://github.com/seedyjahateh/atlasops/actions/workflows/ci.yml/badge.svg)](https://github.com/seedyjahateh/atlasops/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6.svg)
+![Node](https://img.shields.io/badge/Node-%E2%89%A524-339933.svg)
+
 **Retrieval-augmented answers you can audit.** Every claim cites the passage it came from and is
 checked before release. Access control runs inside retrieval, so a user's prompt never contains a
 document they may not read. Quality, cost and latency are measured against real models, and the
 numbers are published with their sample sizes.
+
+## What this demonstrates
+
+A production-minded RAG system, built end to end by one engineer:
+
+- **Retrieval:** hybrid dense and lexical search, fused with reciprocal rank fusion, over versioned
+  sources with incremental ingestion.
+- **LLM evaluation:** a four-way ablation, a sealed held-out split, per-query records, bootstrap
+  confidence intervals and regression detection. Configuration changes are decided by the evidence.
+- **AI safety and governance:** permission-aware retrieval, prompt-injection defences, structural
+  citation checks before any answer is released, and an audit record for every request.
+- **LLMOps:** a provider adapter with retry and backoff, streaming time to first token, cost per
+  query from a versioned price table, graceful degradation, and latency budgets enforced in CI.
+- **Engineering:** strict TypeScript, 846 tests, enforced module boundaries, 12 architecture
+  decision records, and a threat model mapping each mitigation to its test.
 
 ```mermaid
 flowchart LR
@@ -18,6 +38,8 @@ flowchart LR
 ```
 
 ## Try it
+
+Requires Node 24 or later and pnpm.
 
 ```bash
 pnpm install
@@ -108,3 +130,12 @@ Dependencies flow downward through the layers declared in `tools/boundaries/laye
 stays acyclic, and **exhibits are leaves**: nothing imports an exhibit, so any one of them can be
 read, run, deleted or published on its own. `pnpm boundaries:check` enforces this in CI, because a
 rule this load-bearing decays the first time someone is in a hurry.
+
+## Author
+
+Built by **Seedy M. Jahateh**. [GitHub](https://github.com/seedyjahateh) ·
+[LinkedIn](https://linkedin.com/in/seedyjahateh)
+
+## License
+
+[MIT](LICENSE).

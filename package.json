@@ -2,6 +2,8 @@
   "name": "atlasops",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
+  "author": "Seedy M. Jahateh",
   "type": "module",
   "packageManager": "pnpm@11.24.0",
   "engines": {
